@@ -1,15 +1,17 @@
-package cuttle
+package profiles
 
 import "strings"
 
 type Protocol int
 
 const (
-	INVALID Protocol = iota // SSH with Key
-	SSH                     // SSH with Key
-	SSHPWD                  // SSH with Password
+	INVALID Protocol = iota
+	SSH              // SSH with Key
+	SSHPWD           // SSH with Password
 	RDP
 	TELNET
+	REST
+	K8S
 )
 
 var stop = map[string]Protocol{

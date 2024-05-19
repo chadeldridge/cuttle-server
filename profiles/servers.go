@@ -1,4 +1,4 @@
-package cuttle
+package profiles
 
 import (
 	"fmt"
@@ -30,14 +30,16 @@ func NewServer(name, proto string) (Server, error) {
 		return s, err
 	}
 
+	s.SetPort(0)
 	return s, nil
 }
 
 func (s *Server) Name() string       { return s.name }
 func (s *Server) Hostname() string   { return s.hostname }
-func (s *Server) IP() net.IP         { return s.ip }
+func (s *Server) IP() string         { return s.ip.String() }
 func (s *Server) Protocol() Protocol { return s.proto }
 func (s *Server) Port() string       { return s.port }
+func (s *Server) IsEmpty() bool      { return s.name == "" && s.hostname == "" }
 
 // SetName sets the display name for Server.
 func (s *Server) SetName(name string) error {
@@ -66,8 +68,9 @@ func (s *Server) SetHostname(hostname string) error {
 	return nil
 }
 
-// SetIP sets the IP address to be used for connecting to the server. If Server.hostname is set to
-// an IP, this field will automatically be set. Setting this field prevents hostname lookup.
+// SetIP sets the ip address to be used for connecting to the server. If Server.hostname is set to
+// an ip, this field will automatically be set. Setting this field prevents hostname lookup.
+// If hostname is unset, hostname will be set to ip.
 func (s *Server) SetIP(ip string) error {
 	if ip == "" {
 		return fmt.Errorf("expected valid IPv4 string, got empty string")
@@ -75,6 +78,9 @@ func (s *Server) SetIP(ip string) error {
 
 	if i := net.ParseIP(ip); i != nil {
 		s.ip = i
+		if s.hostname == "" {
+			s.hostname = i.String()
+		}
 		return nil
 	}
 

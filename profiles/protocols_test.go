@@ -1,4 +1,4 @@
-package cuttle
+package profiles
 
 import (
 	"testing"

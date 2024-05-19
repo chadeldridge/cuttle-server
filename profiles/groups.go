@@ -1,4 +1,4 @@
-package cuttle
+package profiles
 
 type Group struct {
 	Name    string

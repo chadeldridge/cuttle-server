@@ -23,7 +23,7 @@ func (s SSH) TestConnection() error {
 		return err
 	}
 
-	s.Results.Append(fmt.Sprintf("%s...%s", s.IP, res))
+	fmt.Fprintf(s.Results, "%s...%s", s.Hostname(), res)
 	return nil
 }
 
@@ -39,7 +39,12 @@ func (s *SSH) run(cmd string, expect string) (string, error) {
 		Auth:            s.auth,
 	}
 
-	client, err := ssh.Dial("tcp", net.JoinHostPort(s.IP.String(), s.Port), c)
+	host := s.Server.Hostname()
+	if i := s.Server.IP(); i != "<nil>" {
+		host = i
+	}
+
+	client, err := ssh.Dial("tcp", net.JoinHostPort(host, s.Port()), c)
 	if err != nil {
 		return "", err
 	}

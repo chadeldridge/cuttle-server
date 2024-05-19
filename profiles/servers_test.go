@@ -1,7 +1,6 @@
-package cuttle
+package profiles
 
 import (
-	"net"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -18,7 +17,7 @@ type serverInputs struct {
 type serverWants struct {
 	Name     string
 	Hostname string
-	IP       net.IP
+	IP       string
 	Protocol
 	Port string
 }
@@ -43,7 +42,7 @@ var (
 	goodWant = serverWants{
 		Name:     goodInputs.Name,
 		Hostname: goodInputs.Hostname,
-		IP:       net.IP([]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 192, 168, 50, 105}),
+		IP:       "192.168.50.105",
 		Protocol: SSH,
 		Port:     "22",
 	}
@@ -51,9 +50,9 @@ var (
 	badWant = serverWants{
 		Name:     goodInputs.Name, // Change this when exploit validation is added for Name
 		Hostname: "",
-		IP:       net.IP([]byte{}),
+		IP:       "<nil>",
 		Protocol: INVALID,
-		Port:     "",
+		Port:     "0",
 	}
 )
 
@@ -83,7 +82,7 @@ func TestServersSetHostname(t *testing.T) {
 	require.Nil(t, err, "error recieved when setting a good hostname", err, goodInputs.Hostname)
 	require.Equal(t, goodWant.Hostname, got.Hostname(), "hostname did not match")
 	// IP should be empty because we should not be resolving a non-IP hostname here.
-	require.Empty(t, got.IP(), "got.IP() was not empty when setting a no-IP hostname", got.IP())
+	require.Equal(t, badWant.IP, got.IP(), "got.IP() was not <nil> when setting a good hostname")
 
 	// Good IP Hostname
 	got, _ = NewServer(goodInputs.Name, goodInputs.Protocol)
@@ -97,20 +96,20 @@ func TestServersSetHostname(t *testing.T) {
 	err = got.SetHostname("")
 	require.NotNil(t, err, "did not recieve error when setting an empty hostname")
 	require.Equal(t, badWant.Hostname, got.Hostname(), "hostname was not empty when setting an empty hostname")
-	require.Empty(t, got.IP(), "got.IP() was not empty when setting an empty hostname", got.IP())
+	require.Equal(t, badWant.IP, got.IP(), "got.IP() was not <nil> when setting an empty hostname")
 
 	// Bad Hostname
 	got, _ = NewServer(goodInputs.Name, goodInputs.Protocol)
 	err = got.SetHostname(badInputs.Hostname)
 	require.NotNil(t, err, "did not recieve error when setting a bad hostname", badInputs.Hostname)
-	require.Empty(t, got.IP(), "got.IP() was not empty when setting a no-IP hostname", got.IP())
+	require.Equal(t, badWant.IP, got.IP(), "got.IP() was not <nil> when setting a bad hostname")
 
 	// Bad IP Hostname
 	got, _ = NewServer(goodInputs.Name, goodInputs.Protocol)
 	err = got.SetHostname(badInputs.IP)
 	require.NotNil(t, err, "did not recieve error when setting a bad IP hostname", badInputs.IP)
 	require.Equal(t, badWant.Hostname, got.Hostname(), "hostname not set for bad IP")
-	require.Empty(t, got.IP(), "got.IP() was not empty when setting a bad IP hostname", got.IP())
+	require.Equal(t, badWant.IP, got.IP(), "got.IP() was not <nil> when setting a bad IP hostname")
 }
 
 func TestServersSetIP(t *testing.T) {
@@ -124,13 +123,13 @@ func TestServersSetIP(t *testing.T) {
 	got, _ = NewServer(goodInputs.Name, goodInputs.Protocol)
 	err = got.SetIP("")
 	require.NotNil(t, err, "did not recieve error when setting an empty IP")
-	require.Empty(t, got.IP(), "got.IP() was not empty when setting an empty hostname", got.IP())
+	require.Equal(t, badWant.IP, got.IP(), "got.IP() was not <nil> when setting a empty IP")
 
 	// Bad IP
 	got, _ = NewServer(goodInputs.Name, goodInputs.Protocol)
 	err = got.SetIP(badInputs.IP)
 	require.NotNil(t, err, "did not recieve error when setting a bad IP", badInputs.IP)
-	require.Empty(t, got.IP(), "got.IP() was not empty when setting a bad IP hostname", got.IP())
+	require.Equal(t, badWant.IP, got.IP(), "got.IP() was not <nil> when setting a bad IP")
 }
 
 func TestServersSetPort(t *testing.T) {
@@ -144,5 +143,5 @@ func TestServersSetPort(t *testing.T) {
 	got, _ = NewServer(goodInputs.Name, goodInputs.Protocol)
 	err = got.SetPort(badInputs.Port)
 	require.NotNil(t, err, "did not recieve error when setting a bad Port", badInputs.Port)
-	require.Empty(t, got.Port(), "got.IP() was not empty when setting a bad IP hostname", got.IP())
+	require.Equal(t, badWant.Port, got.Port(), "got.Port() was not 0 when setting a bad port", got.Port())
 }
