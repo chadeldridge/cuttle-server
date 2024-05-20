@@ -1,81 +1,86 @@
 package connections
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 
-	"github.com/chadeldridge/cuttle/profiles"
 	"golang.org/x/crypto/ssh"
 )
 
 const (
 	SSHDefaultPort = 22
+	SSHProtocol    = SSH
 )
 
-type SSH struct {
+type SSHHandler struct {
 	auth     []ssh.AuthMethod
 	user     string
 	key      ssh.Signer
 	password string
-	Results  *bytes.Buffer
-	Logs     *bytes.Buffer
-	profiles.Server
 }
 
 // NewSSH creates an SSH struct and sets the Server, Results, and Logs fields. Results and Logs
 // can be set to nil if you don't want to ignore them.
-func NewSSH(server profiles.Server, results, logs *bytes.Buffer) (SSH, error) {
-	s := SSH{Results: results, Logs: logs}
-	if server.IsEmpty() {
-		return s, errors.New("empty server profile")
+func NewSSH(server *Server, username string) (SSHHandler, error) {
+	s := SSHHandler{}
+	if username == "" {
+		return s, errors.New("received empty username")
 	}
 
 	if server.Port() == "0" {
 		server.SetPort(SSHDefaultPort)
 	}
 
-	s.Server = server
+	s.user = username
+
 	return s, nil
 }
 
-func (s *SSH) SetUser(username string) error {
-	// Add username validation here
-
-	s.user = username
+// SetUser sets the username to be used for connection credentials.
+func (h *SSHHandler) SetUser(username string) error {
+	//								//
+	// Add username validation here //
+	//								//
+	h.user = username
 	return nil
 }
 
-func (s *SSH) SetKey(key ssh.Signer) {
-	s.key = key
-	s.auth = append(s.auth, ssh.PublicKeys(key))
+// SetKey sets the key signer and appends it as an auth method.
+func (h *SSHHandler) SetKey(key ssh.Signer) {
+	h.key = key
+	h.auth = append(h.auth, ssh.PublicKeys(key))
 }
 
-func (s *SSH) ParseKey(privateKey []byte) error {
+// ParseKey parses the private key into a key signer and sends it to SSHHandler.SetKey()
+func (h *SSHHandler) ParseKey(privateKey []byte) error {
 	key, err := ssh.ParsePrivateKey(privateKey)
 	if err != nil {
 		return err
 	}
 
-	s.SetKey(key)
+	h.SetKey(key)
 	return nil
 }
 
-func (s *SSH) ParseKeyWithPassphrase(privateKey, passphrase []byte) error {
+// ParseKeyWithPassphrase parses a passhphrase protected private key into a key signer
+// and sends it to SSHHandler.SetKey().
+func (h *SSHHandler) ParseKeyWithPassphrase(privateKey, passphrase []byte) error {
 	key, err := ssh.ParsePrivateKeyWithPassphrase(privateKey, passphrase)
 	if err != nil {
 		return err
 	}
 
-	s.SetKey(key)
+	h.SetKey(key)
 	return nil
 }
 
-func (s *SSH) SetPassword(password string) {
-	s.password = password
-	s.auth = append(s.auth, ssh.Password(password))
+// SetPassword sets the password field and appends it as an auth method.
+func (h *SSHHandler) SetPassword(password string) {
+	h.password = password
+	h.auth = append(h.auth, ssh.Password(password))
 }
 
-func (s *SSH) Log(txt string) {
-	fmt.Fprintf(s.Logs, "%s@%s:~ %s", s.user, s.Server.Hostname(), txt)
+// Logs sends the returned connection data to the Server.Logs buffer.
+func (h *SSHHandler) Log(server Server, txt string) {
+	fmt.Fprintf(server.Logs, "%s@%s:~ %s", h.user, server.Hostname(), txt)
 }
