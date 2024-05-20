@@ -7,7 +7,6 @@ import (
 	"os"
 
 	"github.com/chadeldridge/cuttle/connections"
-	"github.com/chadeldridge/cuttle/profiles"
 )
 
 var (
@@ -16,29 +15,28 @@ var (
 )
 
 func main() {
-	server, err := profiles.NewServer("test.home", "sshpwd")
+	server, err := connections.NewServer("test.home", 0, &results, &logs)
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	/*
-		if err := server.SetHostname("test.home"); err != nil {
-			log.Fatal(err)
-		}
-	*/
 
 	if err := server.SetIP("192.168.50.105"); err != nil {
 		log.Fatal(err)
 	}
 
-	conn, err := connections.NewSSH(server, &results, &logs)
+	conn, err := connections.NewSSH(&server, "debian")
 	if err != nil {
 		log.Fatal(err)
 	}
-	conn.SetUser("debian")
+
+	server.SetHandler(&conn)
 	conn.SetPassword(getPassword())
 
-	testConnection(conn)
+	err = server.TestConnection()
+	if err != nil {
+		log.Println(err)
+	}
+
 	fmt.Printf("--- Results ---\n%s\n", results.String())
 	fmt.Printf("\n--- Logs ---\n%s\n", logs.String())
 }
@@ -50,11 +48,4 @@ func getPassword() string {
 
 	log.Fatal("failed to get env PASSWORD")
 	return ""
-}
-
-func testConnection(conn connections.Handler) {
-	err := conn.TestConnection()
-	if err != nil {
-		log.Println(err)
-	}
 }
