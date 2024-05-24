@@ -6,9 +6,7 @@ import (
 	"github.com/chadeldridge/cuttle/connections"
 )
 
-const (
-	ErrEndOfList = "end of list"
-)
+var ErrEndOfList = errors.New("end of list")
 
 type Group struct {
 	Name    string
@@ -49,7 +47,7 @@ func (g *Group) Reset() { g.state = 0 }
 func (g *Group) Next() (*connections.Server, error) {
 	if g.state >= len(g.Servers) {
 		g.state = 0
-		return nil, errors.New(ErrEndOfList)
+		return nil, ErrEndOfList
 	}
 
 	s := &(g.Servers[g.state])
