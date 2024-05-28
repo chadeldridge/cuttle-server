@@ -35,10 +35,11 @@ func DefaultTile() Tile {
 	}
 }
 
-func NewTile(name string, cmd string) Tile {
+func NewTile(name string, cmd string, exp string) Tile {
 	t := DefaultTile()
 	t.name = name
 	t.cmd = cmd
+	t.exp = exp
 
 	return t
 }
