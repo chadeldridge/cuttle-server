@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/chadeldridge/cuttle/connections"
+	"github.com/chadeldridge/cuttle/profiles"
 )
 
 var (
@@ -15,12 +16,12 @@ var (
 )
 
 func main() {
+	pool := connections.NewPool()
+	profile := profiles.NewProfile("My Profile")
+
+	// Setup server
 	server, err := connections.NewServer("test.home", 0, &results, &logs)
 	if err != nil {
-		log.Fatal(err)
-	}
-
-	if err := server.SetIP("192.168.50.105"); err != nil {
 		log.Fatal(err)
 	}
 
@@ -31,6 +32,24 @@ func main() {
 
 	server.SetHandler(&conn)
 	conn.SetPassword(getPassword())
+
+	// Create group with server and add to profile
+	group := profiles.NewGroup("Test Group", server)
+	profile.AddGroups(group)
+
+	/*
+		if err := server.SetIP("192.168.50.105"); err != nil {
+			log.Fatal(err)
+		}
+	*/
+
+	tile := profiles.NewTile("echo Test", "echo 'my test echo'", "my test echo")
+	err = profile.AddTiles(tile)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	profile.Execute(pool, tile.Name(), group.Name)
 
 	err = server.TestConnection()
 	if err != nil {
