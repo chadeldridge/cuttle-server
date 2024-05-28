@@ -18,7 +18,7 @@ type Server struct {
 	ip       net.IP
 	port     string
 	useIP    bool
-	Connection
+	Connector
 	Results *bytes.Buffer
 	Logs    *bytes.Buffer
 }
@@ -50,8 +50,16 @@ func (s Server) Port() string     { return s.port }
 func (s Server) UseIP() bool      { return s.useIP }
 func (s Server) IsEmpty() bool    { return s.hostname == "" }
 
-func (s Server) TestConnection() error                  { return s.Connection.TestConnection(s) }
-func (s Server) Run(cmd, expect string) (string, error) { return s.Connection.Run(s, cmd, expect) }
+func (s Server) TestConnection() error        { return s.Connector.TestConnection(s) }
+func (s Server) Run(cmd, expect string) error { return s.Connector.Run(s, cmd, expect) }
+
+func (s Server) PrintResults(result string, err error) {
+	if err != nil {
+		fmt.Fprintf(s.Results, "%s...%s: %s", s.hostname, result, err)
+	}
+
+	fmt.Fprintf(s.Results, "%s...%s", s.hostname, result)
+}
 
 // GetAddr determines the address to connect to. Returns "hostname:port" or "ip:port". If port is
 // set to 0, GetAddr uses protocol's default port instead.
@@ -130,7 +138,7 @@ func (s *Server) SetPort(port int) error {
 }
 
 // SetHandler sets the Handler interface to be used for connecting to the server.
-func (s *Server) SetHandler(handler Connection) error {
+func (s *Server) SetHandler(handler Connector) error {
 	if handler == nil {
 		return errors.New("could not set handler, provided handler was nil")
 	}
@@ -138,7 +146,7 @@ func (s *Server) SetHandler(handler Connection) error {
 		return errors.New("could not set handler, provided handler was empty")
 	}
 
-	s.Connection = handler
+	s.Connector = handler
 
 	if s.port == "0" {
 		s.port = strconv.Itoa(handler.DefaultPort())
