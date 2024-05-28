@@ -27,23 +27,16 @@ func (h *SSHHandler) TestConnection(server Server) error {
 	}
 
 	expect := fmt.Sprintf("cuttle from %s ok", hostLocal)
-	res, err := h.run(server, fmt.Sprintf("echo '%s'", expect), expect)
-	if err != nil {
-		fmt.Fprintf(server.Results, "%s...failed: %s", server.Hostname(), err)
-		return err
-	}
-
-	fmt.Fprintf(server.Results, "%s...%s", server.Hostname(), res)
-	return nil
+	return h.run(server, fmt.Sprintf("echo '%s'", expect), expect)
 }
 
 // Run executes a command against the server and compares the return to the expect string.
-func (h *SSHHandler) Run(server Server, cmd string, expect string) (string, error) {
+func (h *SSHHandler) Run(server Server, cmd string, expect string) error {
 	// Replace command variables before s.run()
 	return h.run(server, cmd, expect)
 }
 
-func (h *SSHHandler) run(server Server, cmd string, expect string) (string, error) {
+func (h *SSHHandler) run(server Server, cmd string, expect string) error {
 	c := &ssh.ClientConfig{
 		User:            h.user,
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
@@ -54,7 +47,8 @@ func (h *SSHHandler) run(server Server, cmd string, expect string) (string, erro
 	client, err := ssh.Dial("tcp", server.GetAddr(), c)
 	if err != nil {
 		h.Log(server, err.Error())
-		return "", err
+		server.PrintResults("error", err)
+		return err
 	}
 	defer client.Close()
 	// log.Print("done.")
@@ -63,7 +57,8 @@ func (h *SSHHandler) run(server Server, cmd string, expect string) (string, erro
 	sess, err := client.NewSession()
 	if err != nil {
 		h.Log(server, err.Error())
-		return "", err
+		server.PrintResults("error", err)
+		return err
 	}
 	defer sess.Close()
 	// log.Print("done.")
@@ -75,18 +70,56 @@ func (h *SSHHandler) run(server Server, cmd string, expect string) (string, erro
 	err = sess.Run(cmd)
 	if err != nil {
 		h.Log(server, err.Error())
-		return "", err
+		server.PrintResults("error", err)
+		return err
 	}
 	// log.Print("done.")
 
 	h.Log(server, b.String())
 
 	ok := foundExpect(b.Bytes(), expect)
-	if ok {
-		return "ok", nil
+	if !ok {
+		server.PrintResults("failed", nil)
+		return nil
 	}
 
-	return "failed", nil
+	server.PrintResults("ok", nil)
+	return nil
+}
+
+// Logs sends the returned connection data to the Server.Logs buffer.
+func (h SSHHandler) Log(server Server, txt string) {
+	fmt.Fprintf(server.Logs, "%s@%s:~ %s", h.user, server.Hostname(), txt)
+}
+
+func (h *SSHHandler) Open(server Server) error {
+	config := &ssh.ClientConfig{
+		User:            h.user,
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		Auth:            h.auth,
+	}
+
+	// log.Print("Dialing server...")
+	client, err := ssh.Dial("tcp", server.GetAddr(), config)
+	if err != nil {
+		return err
+	}
+	h.Client = client
+	// log.Print("done.")
+
+	// log.Print(" - Creating session...")
+	sess, err := client.NewSession()
+	if err != nil {
+		return err
+	}
+	h.Session = sess
+
+	return nil
+}
+
+func (h *SSHHandler) Close() {
+	h.Client.Close()
+	h.Session.Close()
 }
 
 func foundExpect(data []byte, expect string) bool {

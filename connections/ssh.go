@@ -2,7 +2,6 @@ package connections
 
 import (
 	"errors"
-	"fmt"
 
 	"golang.org/x/crypto/ssh"
 )
@@ -17,6 +16,8 @@ type SSHHandler struct {
 	user     string
 	key      ssh.Signer
 	password string
+	*ssh.Client
+	*ssh.Session
 }
 
 // NewSSH creates an SSH struct and sets the Server, Results, and Logs fields. Results and Logs
@@ -78,9 +79,4 @@ func (h *SSHHandler) ParseKeyWithPassphrase(privateKey, passphrase []byte) error
 func (h *SSHHandler) SetPassword(password string) {
 	h.password = password
 	h.auth = append(h.auth, ssh.Password(password))
-}
-
-// Logs sends the returned connection data to the Server.Logs buffer.
-func (h *SSHHandler) Log(server Server, txt string) {
-	fmt.Fprintf(server.Logs, "%s@%s:~ %s", h.user, server.Hostname(), txt)
 }
