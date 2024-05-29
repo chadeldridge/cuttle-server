@@ -17,7 +17,7 @@ func (h *SSHHandler) IsEmpty() bool      { return h.user == "" }
 
 // IsValid determines if the SSHHandler object is in a useable state. The user and
 // at least 1 auth method must be set for the SSHHandler to be considered valid.
-func (h *SSHHandler) IsValid() bool { return h.user == "" || len(h.auth) < 1 }
+func (h *SSHHandler) IsValid() bool { return h.user != "" && len(h.auth) > 0 }
 
 // TestConnection connects to the server and attempts to verify a command can be run.
 func (h *SSHHandler) TestConnection(server Server) error {
