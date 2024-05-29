@@ -22,23 +22,19 @@ type SSHHandler struct {
 
 // NewSSH creates an SSH struct and sets the Server, Results, and Logs fields. Results and Logs
 // can be set to nil if you don't want to ignore them.
-func NewSSH(server *Server, username string) (SSHHandler, error) {
+func NewSSH(username string) (SSHHandler, error) {
 	s := SSHHandler{}
-	if username == "" {
-		return s, errors.New("received empty username")
-	}
 
-	if server.Port() == "0" {
-		server.SetPort(SSHDefaultPort)
-	}
-
-	s.user = username
-
-	return s, nil
+	err := s.SetUser(username)
+	return s, err
 }
 
 // SetUser sets the username to be used for connection credentials.
 func (h *SSHHandler) SetUser(username string) error {
+	if username == "" {
+		return errors.New("connections.SSHHandler.SetUser: username was empty")
+	}
+
 	//								//
 	// Add username validation here //
 	//								//

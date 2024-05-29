@@ -20,7 +20,7 @@ type serverWants struct {
 	Hostname string
 	IP       string
 	Protocol
-	Port string
+	Port int
 }
 
 var (
@@ -48,7 +48,7 @@ var (
 		Hostname: goodInputs.Hostname,
 		IP:       "192.168.50.105",
 		Protocol: SSH,
-		Port:     "22",
+		Port:     22,
 	}
 
 	badWant = serverWants{
@@ -56,7 +56,7 @@ var (
 		Hostname: "",
 		IP:       "<nil>",
 		Protocol: INVALID,
-		Port:     "",
+		Port:     0,
 	}
 )
 

@@ -18,7 +18,7 @@ type Server struct {
 	name     string
 	hostname string
 	ip       net.IP
-	port     string
+	port     int
 	useIP    bool
 	Connector
 	Results *bytes.Buffer
@@ -48,7 +48,7 @@ func NewPlacholderServer() Server { return Server{name: "Empty Server Profile"} 
 func (s Server) Name() string     { return s.name }
 func (s Server) Hostname() string { return s.hostname }
 func (s Server) IP() string       { return s.ip.String() }
-func (s Server) Port() string     { return s.port }
+func (s Server) Port() int        { return s.port }
 func (s Server) UseIP() bool      { return s.useIP }
 func (s Server) IsEmpty() bool    { return s.hostname == "" }
 
@@ -84,7 +84,12 @@ func (s Server) GetAddr() string {
 		host = s.IP()
 	}
 
-	return net.JoinHostPort(host, s.port)
+	p := s.port
+	if p == 0 {
+		p = s.DefaultPort()
+	}
+
+	return net.JoinHostPort(host, strconv.Itoa(p))
 }
 
 // SetUseIP sets the useIP field to true or false. This field is used to determine if the ip field
@@ -148,7 +153,7 @@ func (s *Server) SetPort(port int) error {
 		return fmt.Errorf("connections.Server.SetPort: port must be between 0 and 65535")
 	}
 
-	s.port = strconv.Itoa(port)
+	s.port = port
 	return nil
 }
 
@@ -162,10 +167,5 @@ func (s *Server) SetHandler(handler Connector) error {
 	}
 
 	s.Connector = handler
-
-	if s.port == "0" {
-		s.port = strconv.Itoa(handler.DefaultPort())
-	}
-
 	return nil
 }
