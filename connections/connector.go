@@ -7,7 +7,7 @@ type Connector interface {
 	IsEmpty() bool
 	IsValid() bool
 	TestConnection(server Server) error
-	Run(server Server, cmd string, expect string) error
+	Run(server Server, cmd string, exp string) error
 	Open(server Server) error
 	Close()
 }

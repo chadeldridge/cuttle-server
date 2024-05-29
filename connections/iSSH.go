@@ -32,12 +32,12 @@ func (h *SSHHandler) TestConnection(server Server) error {
 }
 
 // Run executes a command against the server and compares the return to the expect string.
-func (h *SSHHandler) Run(server Server, cmd string, expect string) error {
+func (h *SSHHandler) Run(server Server, cmd string, exp string) error {
 	// Replace command variables before s.run()
-	return h.run(server, cmd, expect)
+	return h.run(server, cmd, exp)
 }
 
-func (h *SSHHandler) run(server Server, cmd string, expect string) error {
+func (h *SSHHandler) run(server Server, cmd string, exp string) error {
 	err := h.OpenSession(server)
 	if err != nil {
 		return err
@@ -64,7 +64,7 @@ func (h *SSHHandler) run(server Server, cmd string, expect string) error {
 	server.Log(eventTime, b.String())
 
 	// Match results to the expected results and print
-	ok := foundExpect(b.Bytes(), expect)
+	ok := foundExpect(b.Bytes(), exp)
 	if !ok {
 		server.PrintResults(eventTime, "failed", nil)
 		return nil
