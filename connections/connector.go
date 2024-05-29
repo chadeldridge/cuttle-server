@@ -8,7 +8,6 @@ type Connector interface {
 	IsValid() bool
 	TestConnection(server Server) error
 	Run(server Server, cmd string, expect string) error
-	Log(server Server, txt string)
 	Open(server Server) error
 	Close()
 }

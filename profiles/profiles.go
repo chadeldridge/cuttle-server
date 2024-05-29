@@ -70,7 +70,7 @@ func (p *Profile) AddGroups(groups ...Group) error {
 	return nil
 }
 
-func (p Profile) Execute(pool connections.Pool, tileName, groupName string) error {
+func (p Profile) Execute(tileName, groupName string) error {
 	tile, err := p.GetTile(tileName)
 	if err != nil {
 		return fmt.Errorf("profiles.Profile.Execute: %s", err)
@@ -93,7 +93,7 @@ func (p Profile) Execute(pool connections.Pool, tileName, groupName string) erro
 		}
 
 		// Make sure we have an open connection to the server.
-		_, err = pool.Open(server)
+		_, err = connections.Pool.Open(server)
 		if err != nil {
 			log.Printf("profiles.Profile.Execute: failed to open connection to %s: %s", server.Hostname(), err)
 			errs = errors.Join(errs, err)

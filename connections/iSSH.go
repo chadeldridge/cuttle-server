@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"time"
 
 	"golang.org/x/crypto/ssh"
 )
@@ -23,7 +24,7 @@ func (h *SSHHandler) IsValid() bool { return h.user != "" && len(h.auth) > 0 }
 func (h *SSHHandler) TestConnection(server Server) error {
 	hostLocal, err := os.Hostname()
 	if err != nil {
-		return fmt.Errorf("error retrieving local hostname: %s", err)
+		return fmt.Errorf("connections.SSHHandler.TestConnection: error retrieving local hostname: %s", err)
 	}
 
 	expect := fmt.Sprintf("cuttle from %s ok", hostLocal)
@@ -37,59 +38,40 @@ func (h *SSHHandler) Run(server Server, cmd string, expect string) error {
 }
 
 func (h *SSHHandler) run(server Server, cmd string, expect string) error {
-	c := &ssh.ClientConfig{
-		User:            h.user,
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		Auth:            h.auth,
-	}
-
-	// log.Print("Dialing server...")
-	client, err := ssh.Dial("tcp", server.GetAddr(), c)
+	err := h.OpenSession(server)
 	if err != nil {
-		h.Log(server, err.Error())
-		server.PrintResults("error", err)
 		return err
 	}
-	defer client.Close()
-	// log.Print("done.")
 
-	// log.Print(" - Creating session...")
-	sess, err := client.NewSession()
-	if err != nil {
-		h.Log(server, err.Error())
-		server.PrintResults("error", err)
-		return err
-	}
-	defer sess.Close()
-	// log.Print("done.")
+	// We have to close the session each time or it will block further command execution.
+	defer h.CloseSession()
 
+	// Set ssh.Session.Stdout so we capture the output
 	var b bytes.Buffer
-	sess.Stdout = &b
+	h.Session.Stdout = &b
+	eventTime := time.Now()
 
 	// log.Print("   - Running cmd...")
-	err = sess.Run(cmd)
+	err = h.Session.Run(cmd)
 	if err != nil {
-		h.Log(server, err.Error())
-		server.PrintResults("error", err)
+		server.Log(eventTime, err.Error())
+		server.PrintResults(eventTime, "error", err)
 		return err
 	}
 	// log.Print("done.")
 
-	h.Log(server, b.String())
+	// Log the full output of the command
+	server.Log(eventTime, b.String())
 
+	// Match results to the expected results and print
 	ok := foundExpect(b.Bytes(), expect)
 	if !ok {
-		server.PrintResults("failed", nil)
+		server.PrintResults(eventTime, "failed", nil)
 		return nil
 	}
 
-	server.PrintResults("ok", nil)
+	server.PrintResults(eventTime, "ok", nil)
 	return nil
-}
-
-// Logs sends the returned connection data to the Server.Logs buffer.
-func (h SSHHandler) Log(server Server, txt string) {
-	fmt.Fprintf(server.Logs, "%s@%s:~ %s", h.user, server.Hostname(), txt)
 }
 
 func (h *SSHHandler) Open(server Server) error {
@@ -102,24 +84,34 @@ func (h *SSHHandler) Open(server Server) error {
 	// log.Print("Dialing server...")
 	client, err := ssh.Dial("tcp", server.GetAddr(), config)
 	if err != nil {
+		server.Log(time.Now(), err.Error())
+		server.PrintResults(time.Now(), "error", err)
 		return err
 	}
+
 	h.Client = client
 	// log.Print("done.")
-
-	// log.Print(" - Creating session...")
-	sess, err := client.NewSession()
-	if err != nil {
-		return err
-	}
-	h.Session = sess
-
 	return nil
 }
 
+func (h *SSHHandler) OpenSession(server Server) error {
+	// log.Print(" - Creating session...")
+	sess, err := h.NewSession()
+	if err != nil {
+		server.Log(time.Now(), err.Error())
+		server.PrintResults(time.Now(), "error", err)
+		return err
+	}
+
+	h.Session = sess
+	return nil
+}
+
+func (h *SSHHandler) CloseSession() error { return h.Session.Close() }
+
 func (h *SSHHandler) Close() {
+	// h.Session.Close()
 	h.Client.Close()
-	h.Session.Close()
 }
 
 func foundExpect(data []byte, expect string) bool {

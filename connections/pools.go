@@ -5,23 +5,25 @@ import (
 	"time"
 )
 
-var TTL int // Time To Live in number of minutes
+var (
+	Pool ConnectionPool
+	TTL  int // Time To Live in number of minutes
+)
 
-type Pool struct {
-	Connections map[string]*Connection // map[Open.hostame]Open
-}
+type ConnectionPool map[string]*Connection // map[Open.hostame]Open
 
 type Connection struct {
 	*Server
 	killAt time.Time
 }
 
-func NewPool() Pool {
-	return Pool{Connections: make(map[string]*Connection)}
-}
+func init() { Pool = make(map[string]*Connection) }
 
-func (p Pool) Open(server *Server) (*Connection, error) {
-	if conn, ok := p.Connections[server.hostname]; ok {
+// func init()                   { Pool = NewPool() }
+// func NewPool() ConnectionPool { return make(map[string]*Connection) }
+
+func (p ConnectionPool) Open(server *Server) (*Connection, error) {
+	if conn, ok := p[server.hostname]; ok {
 		return conn, nil
 	}
 
@@ -32,13 +34,13 @@ func (p Pool) Open(server *Server) (*Connection, error) {
 		return conn, err
 	}
 
-	p.Connections[server.hostname] = conn
+	p[server.hostname] = conn
 	return conn, nil
 }
 
 // GetConnection returns a connection for the server if one exists. Returns nil if no connection is found.
-func (p Pool) GetConnection(server Server) *Connection {
-	conn, ok := p.Connections[server.hostname]
+func (p ConnectionPool) GetConnection(server Server) *Connection {
+	conn, ok := p[server.hostname]
 	if !ok {
 		return nil
 	}
@@ -46,8 +48,8 @@ func (p Pool) GetConnection(server Server) *Connection {
 	return conn
 }
 
-func (p Pool) Close(conn *Connection) {
-	c, ok := p.Connections[conn.hostname]
+func (p ConnectionPool) Close(conn *Connection) {
+	c, ok := p[conn.hostname]
 	if !ok {
 		return
 	}
@@ -58,19 +60,19 @@ func (p Pool) Close(conn *Connection) {
 	}
 
 	conn.Close()
-	delete(p.Connections, conn.hostname)
+	delete(p, conn.hostname)
 }
 
-func (p Pool) CloseAll(server Server) {
-	for _, conn := range p.Connections {
-		conn.Close()
-		delete(p.Connections, conn.hostname)
+func (p ConnectionPool) CloseAll() {
+	for _, c := range p {
+		c.Close()
+		delete(p, c.hostname)
 	}
 }
 
 func (c *Connection) Close() { c.Server.Connector.Close() }
 
-func (p *Pool) TimeOut(conn *Connection) {
+func (p *ConnectionPool) TimeOut(conn *Connection) {
 	now := time.Now()
 	if now.Before(conn.killAt) {
 		return

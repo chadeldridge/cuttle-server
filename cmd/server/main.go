@@ -16,8 +16,8 @@ var (
 )
 
 func main() {
-	pool := connections.NewPool()
 	profile := profiles.NewProfile("My Profile")
+	defer connections.Pool.CloseAll()
 
 	// Setup server
 	server, err := connections.NewServer("test.home", 0, &results, &logs)
@@ -32,6 +32,11 @@ func main() {
 
 	server.SetHandler(&conn)
 	conn.SetPassword(getPassword())
+
+	err = server.TestConnection()
+	if err != nil {
+		log.Fatalf("TestConnection error: %s\n", err)
+	}
 
 	// Create group with server and add to profile
 	group := profiles.NewGroup("Test Group", server)
@@ -49,11 +54,9 @@ func main() {
 		log.Fatal(err)
 	}
 
-	profile.Execute(pool, tile.Name(), group.Name)
-
-	err = server.TestConnection()
+	err = profile.Execute(tile.Name(), group.Name)
 	if err != nil {
-		log.Println(err)
+		log.Printf("Execute error: %s\n", err)
 	}
 
 	fmt.Printf("--- Results ---\n%s\n", results.String())

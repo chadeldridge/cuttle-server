@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net"
 	"strconv"
+	"strings"
+	"time"
 
 	validator "github.com/go-playground/validator/v10"
 )
@@ -50,15 +52,28 @@ func (s Server) Port() string     { return s.port }
 func (s Server) UseIP() bool      { return s.useIP }
 func (s Server) IsEmpty() bool    { return s.hostname == "" }
 
-func (s Server) TestConnection() error        { return s.Connector.TestConnection(s) }
 func (s Server) Run(cmd, expect string) error { return s.Connector.Run(s, cmd, expect) }
 
-func (s Server) PrintResults(result string, err error) {
+func (s Server) TestConnection() error {
+	_, err := Pool.Open(&s)
 	if err != nil {
-		fmt.Fprintf(s.Results, "%s...%s: %s", s.hostname, result, err)
+		return fmt.Errorf("connections.Server.TestConnection: %s", err)
+	}
+	return s.Connector.TestConnection(s)
+}
+
+func (s Server) PrintResults(eventTime time.Time, result string, err error) {
+	if err != nil {
+		fmt.Fprintf(s.Results, "%s: %s...%s: %s\n", eventTime.Format("2006/01/02 15:04:05"), s.hostname, result, err)
 	}
 
-	fmt.Fprintf(s.Results, "%s...%s", s.hostname, result)
+	fmt.Fprintf(s.Results, "%s: %s...%s\n", eventTime.Format("2006/01/02 15:04:05"), s.hostname, result)
+}
+
+// Logs sends the returned connection data to the Server.Logs buffer.
+func (s Server) Log(eventTime time.Time, txt string) {
+	txt = strings.TrimSpace(txt)
+	fmt.Fprintf(s.Logs, "%s %s@%s:~ %s\n", eventTime.Format("2006/01/02 15:04:05"), s.User(), s.Hostname(), txt)
 }
 
 // GetAddr determines the address to connect to. Returns "hostname:port" or "ip:port". If port is
@@ -87,7 +102,7 @@ func (s *Server) SetName(name string) error {
 // it will set both the Hostname and IP to the IP.
 func (s *Server) SetHostname(hostname string) error {
 	if hostname == "" {
-		return fmt.Errorf("expected valid hostname, got empty string")
+		return fmt.Errorf("connections.Server.SetHostname: expected valid hostname, got empty string")
 	}
 
 	if err := s.SetIP(hostname); err == nil {
@@ -112,7 +127,7 @@ func (s *Server) SetHostname(hostname string) error {
 // If hostname is unset, hostname will be set to ip.
 func (s *Server) SetIP(ip string) error {
 	if ip == "" {
-		return fmt.Errorf("expected valid IPv4 string, got empty string")
+		return fmt.Errorf("connections.Server.SetIP: expected valid IPv4 string, got empty string")
 	}
 
 	if i := net.ParseIP(ip); i != nil {
@@ -124,13 +139,13 @@ func (s *Server) SetIP(ip string) error {
 		return nil
 	}
 
-	return fmt.Errorf("ip not valid: %s", ip)
+	return fmt.Errorf("connections.Server.SetIP: ip not valid: %s", ip)
 }
 
 // SetPort sets the Port to be used when connecting to the server. Empty uses Protocol default.
 func (s *Server) SetPort(port int) error {
 	if port < 0 || port > 65535 {
-		return fmt.Errorf("port must be between 0 and 65535")
+		return fmt.Errorf("connections.Server.SetPort: port must be between 0 and 65535")
 	}
 
 	s.port = strconv.Itoa(port)
@@ -140,10 +155,10 @@ func (s *Server) SetPort(port int) error {
 // SetHandler sets the Handler interface to be used for connecting to the server.
 func (s *Server) SetHandler(handler Connector) error {
 	if handler == nil {
-		return errors.New("could not set handler, provided handler was nil")
+		return errors.New("connections.Server.SetHandler: provided handler was nil")
 	}
 	if handler.IsEmpty() {
-		return errors.New("could not set handler, provided handler was empty")
+		return errors.New("connections.Server.SetHandler: provided handler was empty")
 	}
 
 	s.Connector = handler
