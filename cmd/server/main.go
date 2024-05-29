@@ -25,7 +25,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	conn, err := connections.NewSSH(&server, "debian")
+	conn, err := connections.NewSSH("debian")
 	if err != nil {
 		log.Fatal(err)
 	}
