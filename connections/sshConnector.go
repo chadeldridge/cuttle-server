@@ -23,7 +23,7 @@ type SSHConnector struct {
 	*ssh.Session
 }
 
-// NewSSH creates an SSHHandler struct to be used to connect via SSH to a server.
+// NewSSH creates an SSHConnector struct to be used to connect via SSH to a server.
 func NewSSH(username string) (SSHConnector, error) {
 	s := SSHConnector{}
 
@@ -34,7 +34,7 @@ func NewSSH(username string) (SSHConnector, error) {
 // SetUser sets the username to be used for connection credentials.
 func (c *SSHConnector) SetUser(username string) error {
 	if username == "" {
-		return errors.New("connections.SSHHandler.SetUser: username was empty")
+		return errors.New("connections.SSHConnector.SetUser: username was empty")
 	}
 
 	// INCOMPLETE: Add username validation here
@@ -47,7 +47,7 @@ func (c *SSHConnector) AddKeyAuth(key ssh.Signer) {
 	c.auth = append(c.auth, ssh.PublicKeys(key))
 }
 
-// ParseKey parses the private key into a key signer and sends it to SSHHandler.AddKeyAuth().
+// ParseKey parses the private key into a key signer and sends it to SSHConnector.AddKeyAuth().
 func (c *SSHConnector) ParseKey(privateKey []byte) error {
 	key, err := ssh.ParsePrivateKey(privateKey)
 	if err != nil {
@@ -59,7 +59,7 @@ func (c *SSHConnector) ParseKey(privateKey []byte) error {
 }
 
 // ParseKeyWithPassphrase parses a passhphrase protected private key into a key signer
-// and sends it to SSHHandler.SetKey().
+// and sends it to SSHConnector.SetKey().
 func (c *SSHConnector) ParseKeyWithPassphrase(privateKey, passphrase []byte) error {
 	key, err := ssh.ParsePrivateKeyWithPassphrase(privateKey, passphrase)
 	if err != nil {
