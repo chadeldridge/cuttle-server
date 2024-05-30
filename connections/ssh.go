@@ -12,10 +12,10 @@ const (
 )
 
 type SSHHandler struct {
-	auth     []ssh.AuthMethod
-	user     string
-	key      ssh.Signer
-	password string
+	IsConnected bool             // Track if we have an active connection to the server.
+	HasSession  bool             // Indicates there's an active session so we don't close the connection on it.
+	auth        []ssh.AuthMethod // Each auth method will be tried in turn until one works or all fail.
+	user        string           // The username to login to the server with.
 	*ssh.Client
 	*ssh.Session
 }
@@ -44,7 +44,6 @@ func (h *SSHHandler) SetUser(username string) error {
 
 // SetKey sets the key signer and appends it as an auth method.
 func (h *SSHHandler) SetKey(key ssh.Signer) {
-	h.key = key
 	h.auth = append(h.auth, ssh.PublicKeys(key))
 }
 
@@ -73,6 +72,5 @@ func (h *SSHHandler) ParseKeyWithPassphrase(privateKey, passphrase []byte) error
 
 // SetPassword sets the password field and appends it as an auth method.
 func (h *SSHHandler) SetPassword(password string) {
-	h.password = password
 	h.auth = append(h.auth, ssh.Password(password))
 }
