@@ -11,7 +11,8 @@ const (
 	SSHProtocol    = SSH
 )
 
-type SSHHandler struct {
+// SSHConnector impletments the Connector interface for SSH connectivity.
+type SSHConnector struct {
 	IsConnected bool             // Track if we have an active connection to the server.
 	HasSession  bool             // Indicates there's an active session so we don't close the connection on it.
 	auth        []ssh.AuthMethod // Each auth method will be tried in turn until one works or all fail.
@@ -20,57 +21,54 @@ type SSHHandler struct {
 	*ssh.Session
 }
 
-// NewSSH creates an SSH struct and sets the Server, Results, and Logs fields. Results and Logs
-// can be set to nil if you don't want to ignore them.
-func NewSSH(username string) (SSHHandler, error) {
-	s := SSHHandler{}
+// NewSSH creates an SSHHandler struct to be used to connect via SSH to a server.
+func NewSSH(username string) (SSHConnector, error) {
+	s := SSHConnector{}
 
 	err := s.SetUser(username)
 	return s, err
 }
 
 // SetUser sets the username to be used for connection credentials.
-func (h *SSHHandler) SetUser(username string) error {
+func (c *SSHConnector) SetUser(username string) error {
 	if username == "" {
 		return errors.New("connections.SSHHandler.SetUser: username was empty")
 	}
 
-	//								//
-	// Add username validation here //
-	//								//
-	h.user = username
+	// INCOMPLETE: Add username validation here
+	c.user = username
 	return nil
 }
 
-// SetKey sets the key signer and appends it as an auth method.
-func (h *SSHHandler) SetKey(key ssh.Signer) {
-	h.auth = append(h.auth, ssh.PublicKeys(key))
+// AddKeyAuth adds an AuthMethod using the ssh private key.
+func (c *SSHConnector) AddKeyAuth(key ssh.Signer) {
+	c.auth = append(c.auth, ssh.PublicKeys(key))
 }
 
-// ParseKey parses the private key into a key signer and sends it to SSHHandler.SetKey()
-func (h *SSHHandler) ParseKey(privateKey []byte) error {
+// ParseKey parses the private key into a key signer and sends it to SSHHandler.AddKeyAuth().
+func (c *SSHConnector) ParseKey(privateKey []byte) error {
 	key, err := ssh.ParsePrivateKey(privateKey)
 	if err != nil {
 		return err
 	}
 
-	h.SetKey(key)
+	c.AddKeyAuth(key)
 	return nil
 }
 
 // ParseKeyWithPassphrase parses a passhphrase protected private key into a key signer
 // and sends it to SSHHandler.SetKey().
-func (h *SSHHandler) ParseKeyWithPassphrase(privateKey, passphrase []byte) error {
+func (c *SSHConnector) ParseKeyWithPassphrase(privateKey, passphrase []byte) error {
 	key, err := ssh.ParsePrivateKeyWithPassphrase(privateKey, passphrase)
 	if err != nil {
 		return err
 	}
 
-	h.SetKey(key)
+	c.AddKeyAuth(key)
 	return nil
 }
 
-// SetPassword sets the password field and appends it as an auth method.
-func (h *SSHHandler) SetPassword(password string) {
-	h.auth = append(h.auth, ssh.Password(password))
+// AddPasswordAuth adds an AuthMethod using a password.
+func (c *SSHConnector) AddPasswordAuth(password string) {
+	c.auth = append(c.auth, ssh.Password(password))
 }
