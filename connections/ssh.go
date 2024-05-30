@@ -1,7 +1,9 @@
 package connections
 
 import (
+	"bytes"
 	"errors"
+	"time"
 
 	"golang.org/x/crypto/ssh"
 )
@@ -71,4 +73,35 @@ func (c *SSHConnector) ParseKeyWithPassphrase(privateKey, passphrase []byte) err
 // AddPasswordAuth adds an AuthMethod using a password.
 func (c *SSHConnector) AddPasswordAuth(password string) {
 	c.auth = append(c.auth, ssh.Password(password))
+}
+
+// OpenSession creates a new single command session.
+func (c *SSHConnector) OpenSession(server Server) error {
+	// log.Print(" - Creating session...")
+	sess, err := c.NewSession()
+	if err != nil {
+		server.Log(time.Now(), err.Error())
+		server.PrintResults(time.Now(), "error", err)
+		return err
+	}
+
+	c.hasSession = true
+	c.Session = sess
+	return nil
+}
+
+// CloseSession closes an open session.
+func (c *SSHConnector) CloseSession() error {
+	c.hasSession = false
+	if c.Session != nil {
+		return c.Session.Close()
+	}
+
+	return errors.New("connections.SSHConnector.CloseSession: no session avaiable")
+}
+
+// foundExpect returns true if expect matches anywhere in the byte array.
+func foundExpect(data []byte, expect string) bool {
+	m := bytes.Index(data, []byte(expect))
+	return m > -1
 }

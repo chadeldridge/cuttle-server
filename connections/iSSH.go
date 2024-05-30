@@ -17,12 +17,8 @@ func (h *SSHConnector) Protocol() Protocol { return SSHProtocol }
 func (h *SSHConnector) User() string       { return h.user }
 func (h *SSHConnector) DefaultPort() int   { return SSHDefaultPort }
 func (h *SSHConnector) IsEmpty() bool      { return h.user == "" }
+func (h *SSHConnector) IsValid() bool      { return h.user != "" && len(h.auth) > 0 }
 
-// IsValid determines if the SSHHandler object is in a useable state. The user and
-// at least 1 auth method must be set for the SSHHandler to be considered valid.
-func (h *SSHConnector) IsValid() bool { return h.user != "" && len(h.auth) > 0 }
-
-// TestConnection connects to the server and attempts to verify a command can be run.
 func (h *SSHConnector) TestConnection(server Server) error {
 	hostLocal, err := os.Hostname()
 	if err != nil {
@@ -33,7 +29,6 @@ func (h *SSHConnector) TestConnection(server Server) error {
 	return h.run(server, fmt.Sprintf("echo '%s'", expect), expect)
 }
 
-// Run executes a command against the server and compares the return to the expect string.
 func (h *SSHConnector) Run(server Server, cmd string, exp string) error {
 	// Replace command variables before s.run()
 	return h.run(server, cmd, exp)
@@ -97,25 +92,6 @@ func (h *SSHConnector) Open(server Server) error {
 	return nil
 }
 
-func (h *SSHConnector) OpenSession(server Server) error {
-	// log.Print(" - Creating session...")
-	sess, err := h.NewSession()
-	if err != nil {
-		server.Log(time.Now(), err.Error())
-		server.PrintResults(time.Now(), "error", err)
-		return err
-	}
-
-	h.hasSession = true
-	h.Session = sess
-	return nil
-}
-
-func (h *SSHConnector) CloseSession() error {
-	h.hasSession = false
-	return h.Session.Close()
-}
-
 func (h *SSHConnector) Close(force bool) error {
 	if h.hasSession {
 		// If we don't want to foce close the connection return an error.
@@ -129,9 +105,4 @@ func (h *SSHConnector) Close(force bool) error {
 
 	h.isConnected = false
 	return h.Client.Close()
-}
-
-func foundExpect(data []byte, expect string) bool {
-	m := bytes.Index(data, []byte(expect))
-	return m > -1
 }
