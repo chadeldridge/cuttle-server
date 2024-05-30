@@ -9,26 +9,26 @@ import (
 
 var username = "bob"
 
-func testNewMockHandler(t *testing.T) MockConnector {
-	got, err := NewMockHandler(username)
+func testNewMockConnector(t *testing.T) MockConnector {
+	got, err := NewMockConnector(username)
 	require.Nil(t, err, "got error when creating MockHandler")
 	require.Equal(t, username, got.user, "user did not match username after MockHandler creation")
 	return got
 }
 
-func TestMockHandlerNewMockHandler(t *testing.T) {
-	testNewMockHandler(t)
+func TestMockConnectorNewMockConnector(t *testing.T) {
+	testNewMockConnector(t)
 
 	// Test empty username
-	got, err := NewMockHandler("")
+	got, err := NewMockConnector("")
 	require.NotNil(t, err, "did not get error when creating MockHandler with empty username")
 	require.Equal(t, "", got.user, "MockHandler.user was not empty after empty username given")
 }
 
-func TestMockHandlerSetUser(t *testing.T) {
+func TestMockConnectorSetUser(t *testing.T) {
 	newUser := "george"
 
-	got := testNewMockHandler(t)
+	got := testNewMockConnector(t)
 	err := got.SetUser(newUser)
 	require.Nil(t, err, "got error when creating MockHandler")
 	require.Equal(t, newUser, got.user, "user did not match username after SetUser")
@@ -41,40 +41,40 @@ func TestMockHandlerSetUser(t *testing.T) {
 
 // Test Connector{}
 
-func TestMockHandlerProtocol(t *testing.T) {
-	got := testNewMockHandler(t)
+func TestMockConnectorProtocol(t *testing.T) {
+	got := testNewMockConnector(t)
 	require.Equal(t, MockProtocol, got.Protocol(), "unexpected Protocol returned for MockHandler")
 }
 
-func TestMockHandlerUser(t *testing.T) {
-	got := testNewMockHandler(t)
+func TestMockConnectorUser(t *testing.T) {
+	got := testNewMockConnector(t)
 	require.Equal(t, username, got.User(), "MockHandler.User() did not match username")
 }
 
-func TestMockHandlerDefaultPort(t *testing.T) {
-	got := testNewMockHandler(t)
+func TestMockConnectorDefaultPort(t *testing.T) {
+	got := testNewMockConnector(t)
 	require.Equal(t, MockDefaultPort, got.DefaultPort(), "MockHandler.DefaultPort() di not match MockDefaultPort")
 }
 
-func TestMockHandlerIsEmpty(t *testing.T) {
+func TestMockConnectorIsEmpty(t *testing.T) {
 	got := MockConnector{}
 	require.True(t, got.IsEmpty(), "MockHandler was not empty somehow! Seriously, how?")
 
 	// Test Not Emtpy
-	got = testNewMockHandler(t)
+	got = testNewMockConnector(t)
 	require.False(t, got.IsEmpty(), "MockHandler was empty but user should have been set")
 }
 
-func TestMockHandlerIsValid(t *testing.T) {
+func TestMockConnectorIsValid(t *testing.T) {
 	got := MockConnector{}
 	require.False(t, got.IsValid(), "MockHandler was valid somehow! Seriously, how?")
 
-	got = testNewMockHandler(t)
+	got = testNewMockConnector(t)
 	require.True(t, got.IsValid(), "MockHandler was not valid but user shoud have been set")
 }
 
-func TestMockHandlerOpen(t *testing.T) {
-	got := testNewMockHandler(t)
+func TestMockConnectorOpen(t *testing.T) {
+	got := testNewMockConnector(t)
 	err := got.Open(Server{})
 	require.Nil(t, err, "MockHandler.Open() returned an error")
 	require.True(t, got.isConnected, "failed to open MockHandler")
@@ -86,8 +86,8 @@ func TestMockHandlerOpen(t *testing.T) {
 	require.False(t, got.isConnected, "MockHandler openned despite invalid state")
 }
 
-func TestMockHandlerClose(t *testing.T) {
-	got := testNewMockHandler(t)
+func TestMockConnectorClose(t *testing.T) {
+	got := testNewMockConnector(t)
 	err := got.Open(Server{})
 	require.Nil(t, err, "MockHandler.Open() returned an error")
 	require.True(t, got.isConnected, "failed to open MockHandler")
@@ -96,15 +96,16 @@ func TestMockHandlerClose(t *testing.T) {
 	require.False(t, got.isConnected, "failed to close MockHandler")
 }
 
-func TestMockHandlerRun(t *testing.T) {
+func TestMockConnectorRun(t *testing.T) {
 	var res bytes.Buffer
 	var log bytes.Buffer
 
-	conn := testNewMockHandler(t)
+	conn := testNewMockConnector(t)
 	cmd := "echo testing"
 	exp := "testing"
 
 	server := Server{hostname: "testing.test", Results: &res, Logs: &log}
+	// This also verifies that MockConnector properly implements the Connector interface.
 	err := server.SetHandler(&conn)
 	require.Nil(t, err, "MockHandler.SetHandler() returned an error")
 
@@ -136,11 +137,11 @@ func TestMockHandlerRun(t *testing.T) {
 	require.NotNil(t, err, "MockHandler.Run() did not return an error")
 }
 
-func TestMockHandlerTestConnection(t *testing.T) {
+func TestMockConnectorTestConnection(t *testing.T) {
 	var res bytes.Buffer
 	var log bytes.Buffer
 
-	conn := testNewMockHandler(t)
+	conn := testNewMockConnector(t)
 
 	server := Server{hostname: "testing.test", Results: &res, Logs: &log}
 	err := server.SetHandler(&conn)

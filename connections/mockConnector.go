@@ -13,13 +13,15 @@ type MockConnector struct {
 	isConnected bool
 }
 
-func NewMockHandler(username string) (MockConnector, error) {
+// NewMockConnector creates a MockConnector to simulate connecting to a server.
+func NewMockConnector(username string) (MockConnector, error) {
 	m := MockConnector{}
 
 	err := m.SetUser(username)
 	return m, err
 }
 
+// SetUser sets the username to be used for the connection credentials.
 func (h *MockConnector) SetUser(username string) error {
 	if username == "" {
 		return errors.New("connections.MockHandler.SetUser: username was empty")
