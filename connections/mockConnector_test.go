@@ -9,7 +9,7 @@ import (
 
 var username = "bob"
 
-func testNewMockHandler(t *testing.T) MockHandler {
+func testNewMockHandler(t *testing.T) MockConnector {
 	got, err := NewMockHandler(username)
 	require.Nil(t, err, "got error when creating MockHandler")
 	require.Equal(t, username, got.user, "user did not match username after MockHandler creation")
@@ -57,7 +57,7 @@ func TestMockHandlerDefaultPort(t *testing.T) {
 }
 
 func TestMockHandlerIsEmpty(t *testing.T) {
-	got := MockHandler{}
+	got := MockConnector{}
 	require.True(t, got.IsEmpty(), "MockHandler was not empty somehow! Seriously, how?")
 
 	// Test Not Emtpy
@@ -66,7 +66,7 @@ func TestMockHandlerIsEmpty(t *testing.T) {
 }
 
 func TestMockHandlerIsValid(t *testing.T) {
-	got := MockHandler{}
+	got := MockConnector{}
 	require.False(t, got.IsValid(), "MockHandler was valid somehow! Seriously, how?")
 
 	got = testNewMockHandler(t)
@@ -77,23 +77,23 @@ func TestMockHandlerOpen(t *testing.T) {
 	got := testNewMockHandler(t)
 	err := got.Open(Server{})
 	require.Nil(t, err, "MockHandler.Open() returned an error")
-	require.True(t, got.connected, "failed to open MockHandler")
+	require.True(t, got.isConnected, "failed to open MockHandler")
 
 	// Test invalid MockHandler
-	got = MockHandler{}
+	got = MockConnector{}
 	err = got.Open(Server{})
 	require.NotNil(t, err, "MockHandler.Open() did not return an error")
-	require.False(t, got.connected, "MockHandler openned despite invalid state")
+	require.False(t, got.isConnected, "MockHandler openned despite invalid state")
 }
 
 func TestMockHandlerClose(t *testing.T) {
 	got := testNewMockHandler(t)
 	err := got.Open(Server{})
 	require.Nil(t, err, "MockHandler.Open() returned an error")
-	require.True(t, got.connected, "failed to open MockHandler")
+	require.True(t, got.isConnected, "failed to open MockHandler")
 
-	got.Close()
-	require.False(t, got.connected, "failed to close MockHandler")
+	got.Close(true)
+	require.False(t, got.isConnected, "failed to close MockHandler")
 }
 
 func TestMockHandlerRun(t *testing.T) {
@@ -116,8 +116,8 @@ func TestMockHandlerRun(t *testing.T) {
 	require.NotEmpty(t, res.String(), "results Buffer was empty")
 	require.NotEmpty(t, log.String(), "logs Buffer was empty")
 
-	conn.Close()
-	require.False(t, conn.connected, "failed to close MockHandler")
+	conn.Close(true)
+	require.False(t, conn.isConnected, "failed to close MockHandler")
 
 	// Test while not connected
 	err = conn.Run(server, cmd, exp)

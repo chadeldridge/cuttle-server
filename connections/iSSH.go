@@ -9,19 +9,21 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-// Implementation of Handler interface for SSH Connections
+// iSSH contains the implementation of the Connector interface for SSH Connections.
 
-func (h *SSHHandler) Protocol() Protocol { return SSHProtocol }
-func (h *SSHHandler) User() string       { return h.user }
-func (h *SSHHandler) DefaultPort() int   { return SSHDefaultPort }
-func (h *SSHHandler) IsEmpty() bool      { return h.user == "" }
+func (h *SSHConnector) IsConnected() bool  { return h.isConnected }
+func (h *SSHConnector) IsActive() bool     { return h.hasSession }
+func (h *SSHConnector) Protocol() Protocol { return SSHProtocol }
+func (h *SSHConnector) User() string       { return h.user }
+func (h *SSHConnector) DefaultPort() int   { return SSHDefaultPort }
+func (h *SSHConnector) IsEmpty() bool      { return h.user == "" }
 
 // IsValid determines if the SSHHandler object is in a useable state. The user and
 // at least 1 auth method must be set for the SSHHandler to be considered valid.
-func (h *SSHHandler) IsValid() bool { return h.user != "" && len(h.auth) > 0 }
+func (h *SSHConnector) IsValid() bool { return h.user != "" && len(h.auth) > 0 }
 
 // TestConnection connects to the server and attempts to verify a command can be run.
-func (h *SSHHandler) TestConnection(server Server) error {
+func (h *SSHConnector) TestConnection(server Server) error {
 	hostLocal, err := os.Hostname()
 	if err != nil {
 		return fmt.Errorf("connections.SSHHandler.TestConnection: error retrieving local hostname: %s", err)
@@ -32,12 +34,12 @@ func (h *SSHHandler) TestConnection(server Server) error {
 }
 
 // Run executes a command against the server and compares the return to the expect string.
-func (h *SSHHandler) Run(server Server, cmd string, exp string) error {
+func (h *SSHConnector) Run(server Server, cmd string, exp string) error {
 	// Replace command variables before s.run()
 	return h.run(server, cmd, exp)
 }
 
-func (h *SSHHandler) run(server Server, cmd string, exp string) error {
+func (h *SSHConnector) run(server Server, cmd string, exp string) error {
 	err := h.OpenSession(server)
 	if err != nil {
 		return err
@@ -74,7 +76,7 @@ func (h *SSHHandler) run(server Server, cmd string, exp string) error {
 	return nil
 }
 
-func (h *SSHHandler) Open(server Server) error {
+func (h *SSHConnector) Open(server Server) error {
 	config := &ssh.ClientConfig{
 		User:            h.user,
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
@@ -89,12 +91,13 @@ func (h *SSHHandler) Open(server Server) error {
 		return err
 	}
 
+	h.isConnected = true
 	h.Client = client
 	// log.Print("done.")
 	return nil
 }
 
-func (h *SSHHandler) OpenSession(server Server) error {
+func (h *SSHConnector) OpenSession(server Server) error {
 	// log.Print(" - Creating session...")
 	sess, err := h.NewSession()
 	if err != nil {
@@ -103,15 +106,29 @@ func (h *SSHHandler) OpenSession(server Server) error {
 		return err
 	}
 
+	h.hasSession = true
 	h.Session = sess
 	return nil
 }
 
-func (h *SSHHandler) CloseSession() error { return h.Session.Close() }
+func (h *SSHConnector) CloseSession() error {
+	h.hasSession = false
+	return h.Session.Close()
+}
 
-func (h *SSHHandler) Close() {
-	// h.Session.Close()
-	h.Client.Close()
+func (h *SSHConnector) Close(force bool) error {
+	if h.hasSession {
+		// If we don't want to foce close the connection return an error.
+		if !force {
+			return ErrSessionActive
+		}
+
+		// Otherwise force the session closed.
+		h.CloseSession()
+	}
+
+	h.isConnected = false
+	return h.Client.Close()
 }
 
 func foundExpect(data []byte, expect string) bool {

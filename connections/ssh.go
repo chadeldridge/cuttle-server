@@ -13,8 +13,8 @@ const (
 
 // SSHConnector impletments the Connector interface for SSH connectivity.
 type SSHConnector struct {
-	IsConnected bool             // Track if we have an active connection to the server.
-	HasSession  bool             // Indicates there's an active session so we don't close the connection on it.
+	isConnected bool             // Track if we have an active connection to the server.
+	hasSession  bool             // Indicates there's an active session so we don't close the connection on it.
 	auth        []ssh.AuthMethod // Each auth method will be tried in turn until one works or all fail.
 	user        string           // The username to login to the server with.
 	*ssh.Client

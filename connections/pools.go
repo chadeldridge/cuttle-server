@@ -1,26 +1,26 @@
 package connections
 
 import (
+	"errors"
 	"log"
 	"time"
 )
 
 var (
-	Pool ConnectionPool
-	TTL  int // Time To Live in number of minutes
+	Pool ConnectionPool // Our shared connection pool
+	TTL  int            // Time To Live in number of minutes
 )
 
+// ConnectionPool holds an array of connections used to setup our shared pool.
 type ConnectionPool map[string]*Connection // map[Open.hostame]Open
 
+// Connection holds a Server ref and our time to kill for connection cleanup.
 type Connection struct {
 	*Server
 	killAt time.Time
 }
 
 func init() { Pool = make(map[string]*Connection) }
-
-// func init()                   { Pool = NewPool() }
-// func NewPool() ConnectionPool { return make(map[string]*Connection) }
 
 func (p ConnectionPool) Open(server *Server) (*Connection, error) {
 	if conn, ok := p[server.hostname]; ok {
@@ -48,35 +48,40 @@ func (p ConnectionPool) GetConnection(server Server) *Connection {
 	return conn
 }
 
-func (p ConnectionPool) Close(conn *Connection) {
-	c, ok := p[conn.hostname]
+func (c *Connection) Close(force bool) error {
+	_, ok := Pool[c.hostname]
 	if !ok {
-		return
+		return errors.New("connections.Connection.Close: Connection not found in Pool")
 	}
 
-	if c != conn {
-		log.Printf("connections.Pool.Close: found multiple connections for %s, closing both", conn.hostname)
-		c.Close()
+	err := c.Server.Close(force)
+	if err != nil {
+		return err
 	}
 
-	conn.Close()
-	delete(p, conn.hostname)
+	delete(Pool, c.hostname)
+	return nil
 }
 
 func (p ConnectionPool) CloseAll() {
 	for _, c := range p {
-		c.Close()
+		err := c.Close(true)
+		if err != nil {
+			log.Printf("connections.ConnectionPool.CloseAll: %s", err)
+		}
+
 		delete(p, c.hostname)
 	}
 }
 
-func (c *Connection) Close() { c.Server.Connector.Close() }
-
-func (p *ConnectionPool) TimeOut(conn *Connection) {
+func (c *Connection) TimeOut() {
 	now := time.Now()
-	if now.Before(conn.killAt) {
+	if now.Before(c.killAt) {
 		return
 	}
 
-	p.Close(conn)
+	err := c.Close(false)
+	if err != nil && err != ErrSessionActive {
+		log.Printf("connections.Pool.TimeOut: error closing connection: %s", err)
+	}
 }
