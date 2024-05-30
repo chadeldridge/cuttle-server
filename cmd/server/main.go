@@ -25,13 +25,13 @@ func main() {
 		log.Fatal(err)
 	}
 
-	conn, err := connections.NewSSH("debian")
+	conn, err := connections.NewSSHConnector("debian")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	server.SetHandler(&conn)
-	conn.SetPassword(getPassword())
+	server.SetConnector(&conn)
+	conn.AddPasswordAuth(getPassword())
 
 	err = server.TestConnection()
 	if err != nil {
