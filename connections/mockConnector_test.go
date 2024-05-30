@@ -106,7 +106,7 @@ func TestMockConnectorRun(t *testing.T) {
 
 	server := Server{hostname: "testing.test", Results: &res, Logs: &log}
 	// This also verifies that MockConnector properly implements the Connector interface.
-	err := server.SetHandler(&conn)
+	err := server.SetConnector(&conn)
 	require.Nil(t, err, "MockHandler.SetHandler() returned an error")
 
 	err = conn.Open(server)
@@ -144,7 +144,7 @@ func TestMockConnectorTestConnection(t *testing.T) {
 	conn := testNewMockConnector(t)
 
 	server := Server{hostname: "testing.test", Results: &res, Logs: &log}
-	err := server.SetHandler(&conn)
+	err := server.SetConnector(&conn)
 	require.Nil(t, err, "MockHandler.SetHandler() returned an error")
 
 	err = conn.Open(server)
