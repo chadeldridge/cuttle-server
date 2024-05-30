@@ -25,8 +25,9 @@ type Server struct {
 	Logs    *bytes.Buffer
 }
 
-// NewServer creates a new Server with a display Name and connection Protocol to use. If port is
-// set to 0, the default port for the protocol will be used.
+// NewServer creates a new Server object with a display name, port, and stores the byte.Buffers to
+// be used for results and logs output. If port is set to 0, the default port for the Connector
+// will always be used.
 func NewServer(hostname string, port int, results, logs *bytes.Buffer) (Server, error) {
 	s := Server{}
 	if err := s.SetHostname(hostname); err != nil {
@@ -43,17 +44,37 @@ func NewServer(hostname string, port int, results, logs *bytes.Buffer) (Server, 
 	return s, nil
 }
 
-func NewPlacholderServer() Server { return Server{name: "Empty Server Profile"} }
+// Name returns the value of Server.name.
+func (s Server) Name() string { return s.name }
 
-func (s Server) Name() string     { return s.name }
+// Hostname returns the value of Server.hostname.
 func (s Server) Hostname() string { return s.hostname }
-func (s Server) IP() string       { return s.ip.String() }
-func (s Server) Port() int        { return s.port }
-func (s Server) UseIP() bool      { return s.useIP }
-func (s Server) IsEmpty() bool    { return s.hostname == "" }
 
-func (s Server) Run(cmd, expect string) error { return s.Connector.Run(s, cmd, expect) }
+// IP returns Server.ip as a string.
+func (s Server) IP() string { return s.ip.String() }
 
+// Port retuns the value of Server.port.
+func (s Server) Port() int { return s.port }
+
+// UseIP returns true if the Connector should use the set Server.ip instead of the hostname.
+func (s Server) UseIP() bool { return s.useIP }
+
+// IsEmpty returns true of Server.hostname is not set.
+func (s Server) IsEmpty() bool { return s.hostname == "" }
+
+// IsValid retuns true if all fields needed to connect to a server are not empty and if
+// Connector.IsValid returns true. If IsValid returns true you should be able to make a connection
+// to the server assuming good values have been set.
+func (s Server) IsValid() bool {
+	return s.hostname != "" && s.Connector.IsValid() && s.Results != nil && s.Logs != nil
+}
+
+// Run passes cmd(command) and exp(expect), along with itself, on to Connector.Run to be executed.
+// See Connector.Run() for more details.
+func (s Server) Run(cmd, exp string) error { return s.Connector.Run(s, cmd, exp) }
+
+// TestConnection tries to open a connection to the server and sends an echo command to validate
+// connectivity and basic access.
 func (s Server) TestConnection() error {
 	_, err := Pool.Open(&s)
 	if err != nil {
@@ -62,6 +83,7 @@ func (s Server) TestConnection() error {
 	return s.Connector.TestConnection(s)
 }
 
+// PrintResults adds the formated result to the Server.Results buffer.
 func (s Server) PrintResults(eventTime time.Time, result string, err error) {
 	if err != nil {
 		fmt.Fprintf(s.Results, "%s: %s...%s: %s\n", eventTime.Format("2006/01/02 15:04:05"), s.hostname, result, err)
@@ -80,46 +102,55 @@ func (s Server) Log(eventTime time.Time, txt string) {
 // set to 0, GetAddr uses protocol's default port instead.
 func (s Server) GetAddr() string {
 	host := s.hostname
+	// Overwrite hostname with IP if Server.usIP is true. Properly set hostnames are preferred
+	// but there may be times when this is not possible.
 	if s.useIP {
 		host = s.IP()
 	}
 
+	// If Server.port is set to 0, use the Connector's default port.
 	p := s.port
 	if p == 0 {
 		p = s.DefaultPort()
 	}
 
+	// return "host:port"
 	return net.JoinHostPort(host, strconv.Itoa(p))
 }
 
 // SetUseIP sets the useIP field to true or false. This field is used to determine if the ip field
-// should be used instead of the hostname.
+// should be used instead of the hostname for connecting to the server.
 func (s *Server) SetUseIP(flag bool) { s.useIP = flag }
 
-// SetName sets the display name for Server.
+// SetName sets the display name for the server.
 func (s *Server) SetName(name string) error {
-	// Add verification to prevent escape character and other exploits.
+	// INCOMPLETE: Add verification to prevent escape character and other exploits.
 	s.name = name
 	return nil
 }
 
-// SetHostname sets the hostname to use for the server. If the hostname is an IP
-// it will set both the Hostname and IP to the IP.
+// SetHostname sets the hostname to use for the server. If the hostname is an IP it will set both
+// Server.hostname and Server.ip to the IP and set Server.useIP to true.
 func (s *Server) SetHostname(hostname string) error {
 	if hostname == "" {
-		return fmt.Errorf("connections.Server.SetHostname: expected valid hostname, got empty string")
+		return fmt.Errorf("connections.Server.SetHostname: hostname was empty")
 	}
 
+	// If Server.SetIP is successful then hostname is an IP so set the hostname and return.
 	if err := s.SetIP(hostname); err == nil {
 		s.hostname = hostname
 		return nil
 	}
 
+	// Make sure the hostname follows some type of valid format.
 	if err := validate.Var(hostname, "hostname"); err != nil {
 		return err
 	}
 
+	// hostname should be valid at this point so set it.
 	s.hostname = hostname
+
+	// If Server.name is not already set for some reason, set it to hostname.
 	if s.name == "" {
 		s.name = hostname
 	}
@@ -135,20 +166,34 @@ func (s *Server) SetIP(ip string) error {
 		return fmt.Errorf("connections.Server.SetIP: expected valid IPv4 string, got empty string")
 	}
 
+	// Let the net package tell us if ip is a valid IP or not and convert it to net.IP.
 	if i := net.ParseIP(ip); i != nil {
 		s.ip = i
 		s.useIP = true
+
+		// If Server.hostname is not already set for some reason, set it now.
 		if s.hostname == "" {
+			// Use net.IP.String() to guarantee a properly formated IP.
 			s.hostname = i.String()
 		}
+
+		// If Server.name is not already set for some reason, set it now.
+		if s.name == "" {
+			// Use net.IP.String() to guarantee a properly formated IP.
+			s.name = i.String()
+		}
+
 		return nil
 	}
 
 	return fmt.Errorf("connections.Server.SetIP: ip not valid: %s", ip)
 }
 
-// SetPort sets the Port to be used when connecting to the server. Empty uses Protocol default.
+// SetPort sets the Port to be used when connecting to the server. Setting port to 0 will cause
+// Connector.DefaultPort() to be used when a connection string is created.
 func (s *Server) SetPort(port int) error {
+	// Negative port numbers are not valid so return an error. We could use uint16 to guarantee a
+	// valid port number but using int makes things easier elsewhere. Fewer conversions needed.
 	if port < 0 || port > 65535 {
 		return fmt.Errorf("connections.Server.SetPort: port must be between 0 and 65535")
 	}
@@ -157,15 +202,14 @@ func (s *Server) SetPort(port int) error {
 	return nil
 }
 
-// SetHandler sets the Handler interface to be used for connecting to the server.
-func (s *Server) SetHandler(handler Connector) error {
-	if handler == nil {
-		return errors.New("connections.Server.SetHandler: provided handler was nil")
-	}
-	if handler.IsEmpty() {
-		return errors.New("connections.Server.SetHandler: provided handler was empty")
+// SetConnector sets the Connector interface to be used for connecting to the server.
+// MockConnector, SSHConnector, etc. server.SetConnector(&SSHConnector{})
+func (s *Server) SetConnector(connector Connector) error {
+	// Setting a nil Connector could get us in trouble elsewhere.
+	if connector == nil {
+		return errors.New("connections.Server.SetHandler: Connector was nil")
 	}
 
-	s.Connector = handler
+	s.Connector = connector
 	return nil
 }
