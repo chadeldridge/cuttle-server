@@ -89,6 +89,7 @@ func (c *SSHConnector) Open(server Server) error {
 	c.isConnected = true
 	c.Client = client
 	// log.Print("done.")
+	// INCOMPLETE: Add a keepalive later.
 	return nil
 }
 
