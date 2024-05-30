@@ -8,7 +8,7 @@ import (
 
 func testStringToProtocol(t *testing.T, in string, want Protocol) {
 	got := StringToProtocol(in)
-	require.Equal(t, want, got, "recieved wrong Protocol back")
+	require.Equal(t, want, got, "connections.testStringToProtocol: returned Protocol did not match")
 }
 
 func TestProtocolsStringToProtocol(t *testing.T) {
