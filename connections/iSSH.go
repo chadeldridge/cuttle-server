@@ -11,45 +11,45 @@ import (
 
 // iSSH contains the implementation of the Connector interface for SSH Connections.
 
-func (h *SSHConnector) IsConnected() bool  { return h.isConnected }
-func (h *SSHConnector) IsActive() bool     { return h.hasSession }
-func (h *SSHConnector) Protocol() Protocol { return SSHProtocol }
-func (h *SSHConnector) User() string       { return h.user }
-func (h *SSHConnector) DefaultPort() int   { return SSHDefaultPort }
-func (h *SSHConnector) IsEmpty() bool      { return h.user == "" }
-func (h *SSHConnector) IsValid() bool      { return h.user != "" && len(h.auth) > 0 }
+func (c *SSHConnector) IsConnected() bool  { return c.isConnected }
+func (c *SSHConnector) IsActive() bool     { return c.hasSession }
+func (c *SSHConnector) Protocol() Protocol { return SSHProtocol }
+func (c *SSHConnector) User() string       { return c.user }
+func (c *SSHConnector) DefaultPort() int   { return SSHDefaultPort }
+func (c *SSHConnector) IsEmpty() bool      { return c.user == "" }
+func (c *SSHConnector) IsValid() bool      { return c.user != "" && len(c.auth) > 0 }
 
-func (h *SSHConnector) TestConnection(server Server) error {
+func (c *SSHConnector) TestConnection(server Server) error {
 	hostLocal, err := os.Hostname()
 	if err != nil {
 		return fmt.Errorf("connections.SSHHandler.TestConnection: error retrieving local hostname: %s", err)
 	}
 
 	expect := fmt.Sprintf("cuttle from %s ok", hostLocal)
-	return h.run(server, fmt.Sprintf("echo '%s'", expect), expect)
+	return c.run(server, fmt.Sprintf("echo '%s'", expect), expect)
 }
 
-func (h *SSHConnector) Run(server Server, cmd string, exp string) error {
+func (c *SSHConnector) Run(server Server, cmd string, exp string) error {
 	// Replace command variables before s.run()
-	return h.run(server, cmd, exp)
+	return c.run(server, cmd, exp)
 }
 
-func (h *SSHConnector) run(server Server, cmd string, exp string) error {
-	err := h.OpenSession(server)
+func (c *SSHConnector) run(server Server, cmd string, exp string) error {
+	err := c.OpenSession(server)
 	if err != nil {
 		return err
 	}
 
 	// We have to close the session each time or it will block further command execution.
-	defer h.CloseSession()
+	defer c.CloseSession()
 
 	// Set ssh.Session.Stdout so we capture the output
 	var b bytes.Buffer
-	h.Session.Stdout = &b
+	c.Session.Stdout = &b
 	eventTime := time.Now()
 
 	// log.Print("   - Running cmd...")
-	err = h.Session.Run(cmd)
+	err = c.Session.Run(cmd)
 	if err != nil {
 		server.Log(eventTime, err.Error())
 		server.PrintResults(eventTime, "error", err)
@@ -71,11 +71,11 @@ func (h *SSHConnector) run(server Server, cmd string, exp string) error {
 	return nil
 }
 
-func (h *SSHConnector) Open(server Server) error {
+func (c *SSHConnector) Open(server Server) error {
 	config := &ssh.ClientConfig{
-		User:            h.user,
+		User:            c.user,
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		Auth:            h.auth,
+		Auth:            c.auth,
 	}
 
 	// log.Print("Dialing server...")
@@ -86,23 +86,23 @@ func (h *SSHConnector) Open(server Server) error {
 		return err
 	}
 
-	h.isConnected = true
-	h.Client = client
+	c.isConnected = true
+	c.Client = client
 	// log.Print("done.")
 	return nil
 }
 
-func (h *SSHConnector) Close(force bool) error {
-	if h.hasSession {
+func (c *SSHConnector) Close(force bool) error {
+	if c.hasSession {
 		// If we don't want to foce close the connection return an error.
 		if !force {
 			return ErrSessionActive
 		}
 
 		// Otherwise force the session closed.
-		h.CloseSession()
+		c.CloseSession()
 	}
 
-	h.isConnected = false
-	return h.Client.Close()
+	c.isConnected = false
+	return c.Client.Close()
 }
