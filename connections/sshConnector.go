@@ -23,8 +23,8 @@ type SSHConnector struct {
 	*ssh.Session
 }
 
-// NewSSH creates an SSHConnector struct to be used to connect via SSH to a server.
-func NewSSH(username string) (SSHConnector, error) {
+// NewSSHConnector creates an SSHConnector struct to be used to connect via SSH to a server.
+func NewSSHConnector(username string) (SSHConnector, error) {
 	s := SSHConnector{}
 
 	err := s.SetUser(username)
