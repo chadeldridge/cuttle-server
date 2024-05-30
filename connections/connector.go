@@ -5,7 +5,10 @@ import "errors"
 var ErrSessionActive = errors.New("cannot close connection, session active")
 
 type Connector interface {
+	// IsConnected returns true if there is a connection established to the server.
 	IsConnected() bool
+	// IsActive returns true if the Connector is being used such as if there's an open session
+	// with the SSHConnector.
 	IsActive() bool
 	// Protocol returns the Protocol enum for this Connector type.
 	Protocol() Protocol
