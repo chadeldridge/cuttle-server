@@ -11,6 +11,7 @@ const (
 type MockConnector struct {
 	user        string
 	isConnected bool
+	hasSession  bool
 }
 
 // NewMockConnector creates a MockConnector to simulate connecting to a server.
