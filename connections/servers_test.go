@@ -62,7 +62,7 @@ var (
 
 func testNewServer(t *testing.T, input serverInputs) Server {
 	got, err := NewServer(input.Hostname, input.Port, &results, &logs)
-	t.Run("new server", func(t *testing.T) {
+	t.Run("new Server", func(t *testing.T) {
 		got.SetName(input.Name)
 
 		require.Nil(t, err, "error recieved for NewServer", err)
