@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"log"
-	"os"
 
 	"github.com/chadeldridge/cuttle/connections"
 	"github.com/chadeldridge/cuttle/profiles"
@@ -13,6 +12,10 @@ import (
 var (
 	results bytes.Buffer
 	logs    bytes.Buffer
+
+	host = "localhost"
+	user = "bob"
+	pass = "testUserP@ssw0rd"
 )
 
 func main() {
@@ -20,18 +23,18 @@ func main() {
 	defer connections.Pool.CloseAll()
 
 	// Setup server
-	server, err := connections.NewServer("test.home", 0, &results, &logs)
+	server, err := connections.NewServer(host, 0, &results, &logs)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	conn, err := connections.NewSSHConnector("debian")
+	conn, err := connections.NewSSHConnector(user)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	server.SetConnector(&conn)
-	conn.AddPasswordAuth(getPassword())
+	conn.AddPasswordAuth(pass)
 
 	err = server.TestConnection()
 	if err != nil {
@@ -61,13 +64,4 @@ func main() {
 
 	fmt.Printf("--- Results ---\n%s\n", results.String())
 	fmt.Printf("\n--- Logs ---\n%s\n", logs.String())
-}
-
-func getPassword() string {
-	if p, ok := os.LookupEnv("PASSWORD"); ok {
-		return p
-	}
-
-	log.Fatal("failed to get env PASSWORD")
-	return ""
 }
