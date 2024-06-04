@@ -1,8 +1,9 @@
 package connections
 
 import (
-	"bytes"
 	"errors"
+	"log"
+	"regexp"
 	"time"
 
 	"golang.org/x/crypto/ssh"
@@ -42,6 +43,11 @@ func (c *SSHConnector) SetUser(username string) error {
 	return nil
 }
 
+// AddPasswordAuth adds an AuthMethod using a password.
+func (c *SSHConnector) AddPasswordAuth(password string) {
+	c.auth = append(c.auth, ssh.Password(password))
+}
+
 // AddKeyAuth adds an AuthMethod using the ssh private key.
 func (c *SSHConnector) AddKeyAuth(key ssh.Signer) {
 	c.auth = append(c.auth, ssh.PublicKeys(key))
@@ -60,8 +66,8 @@ func (c *SSHConnector) ParseKey(privateKey []byte) error {
 
 // ParseKeyWithPassphrase parses a passhphrase protected private key into a key signer
 // and sends it to SSHConnector.SetKey().
-func (c *SSHConnector) ParseKeyWithPassphrase(privateKey, passphrase []byte) error {
-	key, err := ssh.ParsePrivateKeyWithPassphrase(privateKey, passphrase)
+func (c *SSHConnector) ParseKeyWithPassphrase(privateKey []byte, passphrase string) error {
+	key, err := ssh.ParsePrivateKeyWithPassphrase(privateKey, []byte(passphrase))
 	if err != nil {
 		return err
 	}
@@ -70,14 +76,13 @@ func (c *SSHConnector) ParseKeyWithPassphrase(privateKey, passphrase []byte) err
 	return nil
 }
 
-// AddPasswordAuth adds an AuthMethod using a password.
-func (c *SSHConnector) AddPasswordAuth(password string) {
-	c.auth = append(c.auth, ssh.Password(password))
-}
-
 // OpenSession creates a new single command session.
 func (c *SSHConnector) OpenSession(server Server) error {
 	// log.Print(" - Creating session...")
+	if !c.isConnected {
+		return errors.New("connections.SSHConnector.OpenSession: not connected")
+	}
+
 	sess, err := c.NewSession()
 	if err != nil {
 		server.Log(time.Now(), err.Error())
@@ -87,11 +92,17 @@ func (c *SSHConnector) OpenSession(server Server) error {
 
 	c.hasSession = true
 	c.Session = sess
+	// log.Print("done.\n")
 	return nil
 }
 
 // CloseSession closes an open session.
 func (c *SSHConnector) CloseSession() error {
+	// If hasSession is false and there's not Session ref then we have nothing to do.
+	if !c.hasSession && c.Session == nil {
+		return nil
+	}
+
 	c.hasSession = false
 	if c.Session != nil {
 		return c.Session.Close()
@@ -102,6 +113,12 @@ func (c *SSHConnector) CloseSession() error {
 
 // foundExpect returns true if expect matches anywhere in the byte array.
 func foundExpect(data []byte, expect string) bool {
-	m := bytes.Index(data, []byte(expect))
-	return m > -1
+	matched, err := regexp.MatchString(expect, string(data))
+	if err != nil {
+		log.Printf("connections.SSHConnector.foundExpect: %s", err)
+	}
+
+	return matched
+	// m := bytes.Index(data, []byte(expect))
+	// return m > -1
 }
