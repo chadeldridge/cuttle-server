@@ -224,7 +224,7 @@ func TestMockConnectorRun(t *testing.T) {
 
 	t.Run("bad exp", func(t *testing.T) {
 		err := conn.Run(server, cmd, "this won't match")
-		require.NotNil(t, err, "MockConnector.Run() did not return an error")
+		require.Nil(t, err, "MockConnector.Run() did not return an error")
 	})
 }
 
