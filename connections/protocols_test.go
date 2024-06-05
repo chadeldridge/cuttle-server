@@ -25,4 +25,16 @@ func TestProtocolsStringToProtocol(t *testing.T) {
 	testStringToProtocol(t, "TELNET", TELNET)
 	testStringToProtocol(t, "", INVALID)
 	testStringToProtocol(t, "bad", INVALID)
+
+	for s, p := range stop {
+		got := StringToProtocol(s)
+		require.Equal(t, p, got, "Protocol.StringToProtocol() output did not match expected value")
+	}
+}
+
+func TestProtocolString(t *testing.T) {
+	for p, s := range ptos {
+		got := p.String()
+		require.Equal(t, s, got, "Protocol.String() output did not match expected value")
+	}
 }
