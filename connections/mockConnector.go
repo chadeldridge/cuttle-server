@@ -3,7 +3,6 @@ package connections
 import (
 	"errors"
 	"fmt"
-	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -69,12 +68,7 @@ func (c *MockConnector) Open(server Server) error {
 }
 
 func (c MockConnector) TestConnection(server Server) error {
-	localhost, err := os.Hostname()
-	if err != nil {
-		return fmt.Errorf("connections.SSHConnector.TestConnection: error retrieving local hostname: %s", err)
-	}
-
-	expect := fmt.Sprintf("cuttle from %s ok", localhost)
+	expect := "cuttle ok"
 	return c.Run(server, fmt.Sprintf("echo '%s'", expect), expect)
 }
 
