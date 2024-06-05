@@ -51,38 +51,49 @@ func (c *SSHConnector) AddPasswordAuth(password string) {
 }
 
 // AddKeyAuth adds an AuthMethod using the ssh private key.
-func (c *SSHConnector) AddKeyAuth(key ssh.Signer) {
+func (c *SSHConnector) AddKeyAuth(key ssh.Signer) error {
+	if key == nil {
+		return errors.New("connections.SSHConnector.AddKeyAuth: key was nil")
+	}
+
 	c.auth = append(c.auth, ssh.PublicKeys(key))
+	return nil
 }
 
 // ParseKey parses the private key into a key signer and sends it to SSHConnector.AddKeyAuth().
 func (c *SSHConnector) ParseKey(privateKey []byte) error {
+	if privateKey == nil || len(privateKey) < 1 {
+		return errors.New("connections.SSHConnector.ParseKey: privateKey was empty")
+	}
+
 	key, err := ssh.ParsePrivateKey(privateKey)
 	if err != nil {
 		return err
 	}
 
-	c.AddKeyAuth(key)
-	return nil
+	return c.AddKeyAuth(key)
 }
 
 // ParseKeyWithPassphrase parses a passhphrase protected private key into a key signer
 // and sends it to SSHConnector.SetKey().
 func (c *SSHConnector) ParseKeyWithPassphrase(privateKey []byte, passphrase string) error {
+	if privateKey == nil || len(privateKey) < 1 {
+		return errors.New("connections.SSHConnector.ParseKeyWithPassphrase: privateKey was empty")
+	}
+
 	key, err := ssh.ParsePrivateKeyWithPassphrase(privateKey, []byte(passphrase))
 	if err != nil {
 		return err
 	}
 
-	c.AddKeyAuth(key)
-	return nil
+	return c.AddKeyAuth(key)
 }
 
 // OpenSession creates a new single command session.
 func (c *SSHConnector) OpenSession(server Server) error {
 	// log.Print(" - Creating session...")
 	if !c.isConnected {
-		return errors.New("connections.SSHConnector.OpenSession: not connected")
+		return ErrNotConnected
 	}
 
 	sess, err := c.NewSession()
@@ -106,11 +117,11 @@ func (c *SSHConnector) CloseSession() error {
 	}
 
 	c.hasSession = false
-	if c.Session != nil {
-		return c.Session.Close()
+	if c.Session == nil {
+		return errors.New("connections.SSHConnector.CloseSession: no session avaiable")
 	}
 
-	return errors.New("connections.SSHConnector.CloseSession: no session avaiable")
+	return c.Session.Close()
 }
 
 // foundExpect returns true if expect matches anywhere in the byte array.
@@ -191,10 +202,6 @@ func (c *SSHConnector) run(server Server, cmd string, exp string) error {
 
 	if exp == "" {
 		return ErrEmtpyExp
-	}
-
-	if !c.isConnected {
-		return ErrNotConnected
 	}
 
 	err := c.OpenSession(server)
