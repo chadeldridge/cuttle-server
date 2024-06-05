@@ -5,13 +5,13 @@ import "strings"
 type Protocol int
 
 const (
-	INVALID Protocol = iota
-	SSH              // SSH with Key
-	RDP
-	TELNET
-	REST
-	K8S
-	MOCK
+	INVALID Protocol = 0
+	SSH     Protocol = 1
+	RDP     Protocol = 2
+	TELNET  Protocol = 3
+	REST    Protocol = 4
+	K8S     Protocol = 5
+	MOCK    Protocol = 6
 )
 
 var (
