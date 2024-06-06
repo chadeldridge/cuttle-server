@@ -2,7 +2,7 @@ package connections
 
 import (
 	"errors"
-	"log"
+	"fmt"
 	"time"
 )
 
@@ -26,13 +26,19 @@ func init() {
 	TTL = 2 // Two minute default TTL
 }
 
+func (p ConnectionPool) Count() int { return len(p) }
+
 // Open creates a new Connection and adds it to the ConnectionPool.
 func (p ConnectionPool) Open(server *Server) (*Connection, error) {
+	conn := &Connection{Server: server}
+	if server.hostname == "" {
+		return conn, errors.New("connections.Pool.Open: hostname was empty")
+	}
+
 	if conn, ok := p[server.hostname]; ok {
 		return conn, nil
 	}
 
-	conn := &Connection{Server: server}
 	conn.killAt = time.Now().Add(time.Minute * time.Duration(TTL))
 	err := conn.Connector.Open(*server)
 	if err != nil {
@@ -53,6 +59,12 @@ func (p ConnectionPool) GetConnection(server Server) *Connection {
 	return conn
 }
 
+// Expires returns the Connection.killAt time.
+func (c Connection) Expires() time.Time { return c.killAt }
+
+// Expired returns true if it is currently past the Connection.killAt time.
+func (c Connection) Expired() bool { return c.killAt.Before(time.Now()) }
+
 // Extend add the specified number of minutes to the killAt time.
 func (c *Connection) Extend(minutes int) {
 	c.killAt = c.killAt.Add(time.Minute * time.Duration(minutes))
@@ -67,43 +79,50 @@ func (c *Connection) Close(force bool) error {
 	}
 
 	err := c.Server.Close(force)
-	if err != nil {
+	if err != nil && err == ErrSessionActive {
 		return err
 	}
 
 	delete(Pool, c.hostname)
-	return nil
+	return err
 }
 
 // CloseAll will force close all connections in the ConnectionPool. This means it will try to close
 // the connection if it it has an active session.
-func (p ConnectionPool) CloseAll() {
+func (p ConnectionPool) CloseAll() error {
+	var errs error
 	for _, c := range p {
 		err := c.Close(true)
 		if err != nil {
-			log.Printf("connections.ConnectionPool.CloseAll: %s", err)
+			errs = errors.Join(errs, fmt.Errorf("connections.ConnectionPool.CloseAll: %s", err))
 		}
 
 		delete(p, c.hostname)
 	}
+
+	return errs
 }
 
 // TimeOut checks the connection to see if it is passed its killAt time. If so it will attempt to
 // close the connection. If a connection is active TimeOut will extend the killAt time by the TTL.
-func (c *Connection) TimeOut() {
-	now := time.Now()
-	if now.Before(c.killAt) {
-		return
+func (c *Connection) TimeOut() error {
+	if !c.Expired() {
+		return nil
 	}
 
 	err := c.Close(false)
 	if err != nil {
 		if err != ErrSessionActive {
-			log.Printf("connections.Pool.TimeOut: error closing connection: %s", err)
-			return
+			return fmt.Errorf(
+				"connections.Pool.TimeOut: error closing connection %s: %s",
+				c.hostname, err,
+			)
 		}
 
 		// If the connection was active, extend the time by the TTL.
 		c.Extend(TTL)
+		return err
 	}
+
+	return nil
 }
