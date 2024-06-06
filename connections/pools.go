@@ -3,7 +3,6 @@ package connections
 import (
 	"errors"
 	"fmt"
-	"log"
 	"time"
 )
 
@@ -85,7 +84,6 @@ func (c *Connection) Close(force bool) error {
 	}
 
 	err := c.Server.Close(force)
-	log.Printf("c.Server.Close(false): %s", err)
 	if err != nil && err == ErrSessionActive {
 		return err
 	}
