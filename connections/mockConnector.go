@@ -140,12 +140,12 @@ func (c *MockConnector) Close(force bool) error {
 		return ErrNotConnected
 	}
 
-	if c.hasSession {
+	if c.hasSession && !force {
 		return ErrSessionActive
 	}
 
 	if c.connCloseErr {
-		return errors.New("error closing session because you asked me to")
+		return errors.New("error closing connection because you asked me to")
 	}
 
 	c.isConnected = false
