@@ -66,7 +66,7 @@ func (s Server) IsEmpty() bool { return s.hostname == "" }
 // Connector.IsValid returns true. If IsValid returns true you should be able to make a connection
 // to the server assuming good values have been set.
 func (s Server) IsValid() bool {
-	return s.hostname != "" && s.Connector.IsValid() && s.Results != nil && s.Logs != nil
+	return s.hostname != "" && s.Connector != nil && s.Connector.IsValid() && s.Results != nil && s.Logs != nil
 }
 
 // Run passes cmd(command) and exp(expect), along with itself, on to Connector.Run to be executed.
