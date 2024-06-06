@@ -7,8 +7,9 @@ import (
 )
 
 var (
-	Pool ConnectionPool // Our shared connection pool
-	TTL  int            // Time To Live in number of minutes
+	Pool               ConnectionPool // Our shared connection pool
+	TTL                int            // Time To Live in number of minutes
+	ErrConnectionFound = errors.New("connection found in pool")
 )
 
 // ConnectionPool holds an array of connections used to setup our shared pool.
@@ -31,27 +32,27 @@ func (p ConnectionPool) Count() int { return len(p) }
 // Open creates a new Connection and adds it to Pool.
 func (p ConnectionPool) Open(server *Server) (*Connection, error) {
 	conn := &Connection{Server: server}
-	if server.hostname == "" {
-		return conn, errors.New("connections.Pool.Open: hostname was empty")
-	}
-
-	err := conn.Open(p)
-	return conn, err
+	return conn.Open(p)
 }
 
-func (c *Connection) Open(pool ConnectionPool) error {
-	if conn, ok := pool[c.Server.hostname]; ok {
-		c = conn
+func (c *Connection) Open(pool ConnectionPool) (*Connection, error) {
+	if c.Server.hostname == "" {
+		return c, errors.New("connections.Pool.Open: hostname was empty")
+	}
+
+	if conn, exists := pool[c.Server.hostname]; exists {
+		conn.killAt = time.Now().Add(time.Minute * time.Duration(TTL))
+		return conn, nil
 	}
 
 	c.killAt = time.Now().Add(time.Minute * time.Duration(TTL))
 	err := c.Connector.Open(*c.Server)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	pool[c.Server.hostname] = c
-	return nil
+	return c, nil
 }
 
 // GetConnection returns a connection for the server if one exists. Returns nil if no connection is found.
@@ -75,11 +76,20 @@ func (c *Connection) Extend(minutes int) {
 	c.killAt = c.killAt.Add(time.Minute * time.Duration(minutes))
 }
 
+func (p *ConnectionPool) Close(hostname string, force bool) error {
+	conn, exists := Pool[hostname]
+	if !exists {
+		return nil
+	}
+
+	return conn.Close(force)
+}
+
 // Close closes the connection and removes it from the Pool. If the connection is not in the
 // Pool, Close will return an error and will NOT try to close the connection.
 func (c *Connection) Close(force bool) error {
-	_, ok := Pool[c.hostname]
-	if !ok {
+	_, exists := Pool[c.hostname]
+	if !exists {
 		return errors.New("connections.Connection.Close: Connection not found in Pool")
 	}
 
