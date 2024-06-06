@@ -3,6 +3,7 @@ package connections
 import (
 	"errors"
 	"fmt"
+	"log"
 	"time"
 )
 
@@ -28,25 +29,30 @@ func init() {
 
 func (p ConnectionPool) Count() int { return len(p) }
 
-// Open creates a new Connection and adds it to the ConnectionPool.
+// Open creates a new Connection and adds it to Pool.
 func (p ConnectionPool) Open(server *Server) (*Connection, error) {
 	conn := &Connection{Server: server}
 	if server.hostname == "" {
 		return conn, errors.New("connections.Pool.Open: hostname was empty")
 	}
 
-	if conn, ok := p[server.hostname]; ok {
-		return conn, nil
+	err := conn.Open(p)
+	return conn, err
+}
+
+func (c *Connection) Open(pool ConnectionPool) error {
+	if conn, ok := pool[c.Server.hostname]; ok {
+		c = conn
 	}
 
-	conn.killAt = time.Now().Add(time.Minute * time.Duration(TTL))
-	err := conn.Connector.Open(*server)
+	c.killAt = time.Now().Add(time.Minute * time.Duration(TTL))
+	err := c.Connector.Open(*c.Server)
 	if err != nil {
-		return conn, err
+		return err
 	}
 
-	p[server.hostname] = conn
-	return conn, nil
+	pool[c.Server.hostname] = c
+	return nil
 }
 
 // GetConnection returns a connection for the server if one exists. Returns nil if no connection is found.
@@ -79,6 +85,7 @@ func (c *Connection) Close(force bool) error {
 	}
 
 	err := c.Server.Close(force)
+	log.Printf("c.Server.Close(false): %s", err)
 	if err != nil && err == ErrSessionActive {
 		return err
 	}
