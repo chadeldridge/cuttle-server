@@ -47,6 +47,62 @@ func TestMockConnectorSetUser(t *testing.T) {
 	})
 }
 
+func TestMockConnectorOpenSession(t *testing.T) {
+	var res bytes.Buffer
+	var logs bytes.Buffer
+
+	server, err := NewServer(testHost, 0, &res, &logs)
+	require.Nil(t, err, "NewServer() returned an error: ", err)
+
+	conn := testNewMockConnector(t)
+
+	t.Run("not connected", func(t *testing.T) {
+		err := conn.OpenSession(server)
+		require.NotNil(t, err, "did not get error with no connection")
+		require.False(t, conn.hasSession, "MockConnector.hasSession was true")
+	})
+
+	err = conn.Open(server)
+	require.Nil(t, err, "Connector.Open() returned an error: ", err)
+	defer conn.Close(false)
+
+	t.Run("good session", func(t *testing.T) {
+		err := conn.OpenSession(server)
+		require.Nil(t, err, "MockConnector.OpenSession() returned an error")
+		require.True(t, conn.isConnected, "MockConnector.isConnected was false")
+		conn.CloseSession()
+	})
+}
+
+func TestMockConnectorCloseSession(t *testing.T) {
+	var res bytes.Buffer
+	var logs bytes.Buffer
+
+	server, err := NewServer(testHost, 0, &res, &logs)
+	require.Nil(t, err, "NewServer() returned an error: ", err)
+
+	conn := testNewMockConnector(t)
+	conn.Open(server)
+	defer conn.Close(false)
+
+	t.Run("err on close", func(t *testing.T) {
+		err := conn.OpenSession(server)
+		require.Nil(t, err, "Connection.OpenSession() returned an error")
+		conn.ErrOnSessionClose(true)
+
+		err = conn.CloseSession()
+		require.NotNil(t, err, "Connection.CloseSession() did not return an error")
+		require.True(t, conn.hasSession, "MockConnector.hasSession was false")
+		conn.ErrOnSessionClose(false)
+	})
+
+	t.Run("good close", func(t *testing.T) {
+		err = conn.CloseSession()
+		require.Nil(t, err, "Connection.CloseSession() returned an error")
+		require.False(t, conn.hasSession, "MockConnector.hasSession was true")
+	})
+}
+
 // Test Connector{}
 func TestMockConnectorIsConnected(t *testing.T) {
 	got := testNewMockConnector(t)
