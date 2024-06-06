@@ -154,15 +154,6 @@ func TestPoolsClose(t *testing.T) {
 	pConn, err := Pool.Open(&server)
 	require.Nil(t, err, "Pool.Open() returned an error: ", err)
 
-	t.Run("connection close error", func(t *testing.T) {
-		conn.ErrOnConnectionClose(true)
-		err = pConn.Close(false)
-		require.NotNil(t, err, "Pool.Close() did not return an error")
-		_, ok := Pool[server.hostname]
-		require.True(t, ok, "Connection not found after failed Pool.Close()")
-		conn.ErrOnConnectionClose(false)
-	})
-
 	t.Run("session active", func(t *testing.T) {
 		conn.OpenSession(server)
 		err = pConn.Close(false)
@@ -171,6 +162,18 @@ func TestPoolsClose(t *testing.T) {
 		require.True(t, ok, "Connection not found after failed Pool.Close()")
 		conn.CloseSession()
 	})
+
+	t.Run("connection close error", func(t *testing.T) {
+		conn.ErrOnConnectionClose(true)
+		err = pConn.Close(false)
+		require.NotNil(t, err, "Pool.Close() did not return an error")
+		_, ok := Pool[server.hostname]
+		require.False(t, ok, "Connection found after Pool.Close()")
+		conn.ErrOnConnectionClose(false)
+	})
+
+	err = pConn.Open(Pool)
+	require.Nil(t, err, "Pool.Open() returned an error: ", err)
 
 	t.Run("close connection", func(t *testing.T) {
 		err = pConn.Close(false)
@@ -187,9 +190,8 @@ func TestPoolsClose(t *testing.T) {
 	})
 }
 
-func TestPoolsCloseAll(t *testing.T) {
-	hostCount := 5
-	for i := range hostCount {
+func createPool(t *testing.T, count int) {
+	for i := range count {
 		var res bytes.Buffer
 		var logs bytes.Buffer
 
@@ -203,8 +205,13 @@ func TestPoolsCloseAll(t *testing.T) {
 		_, err = Pool.Open(&server)
 		require.Nil(t, err, "Pool.Open() returned an error: ", err)
 	}
+}
 
-	t.Run("one connection error", func(t *testing.T) {
+func TestPoolsCloseAll(t *testing.T) {
+	hostCount := 5
+	createPool(t, hostCount)
+
+	t.Run("connection error", func(t *testing.T) {
 		conn4 := Pool["host4"].Server.Connector.(*MockConnector)
 		conn4.ErrOnConnectionClose(true)
 
@@ -216,7 +223,8 @@ func TestPoolsCloseAll(t *testing.T) {
 		conn4.ErrOnConnectionClose(false)
 	})
 
-	t.Run("close remainder", func(t *testing.T) {
+	createPool(t, hostCount)
+	t.Run("no errors", func(t *testing.T) {
 		err := Pool.CloseAll()
 		require.Nil(t, err, "Pool.Close() returned an error: ", err)
 		require.Equal(t, 0, Pool.Count(), "Pool.Count() did not match expected count")
