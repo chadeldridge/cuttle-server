@@ -39,9 +39,8 @@ func TestPoolsOpen(t *testing.T) {
 
 	t.Run("empty connector", func(t *testing.T) {
 		server.SetConnector(&MockConnector{})
-		pConn, err := Pool.Open(&server)
+		_, err := Pool.Open(&server)
 		require.NotNil(t, err, "Pool.Open() did not return an error")
-		pConn.Close(false)
 	})
 
 	t.Run("empty hostname", func(t *testing.T) {
@@ -157,7 +156,7 @@ func TestPoolsClose(t *testing.T) {
 	t.Run("session active", func(t *testing.T) {
 		conn.OpenSession(server)
 		err = pConn.Close(false)
-		require.NotNil(t, err, "Pool.Close() did not return an error")
+		require.NotNil(t, err, "Connection.Close() did not return an error")
 		_, ok := Pool[server.hostname]
 		require.True(t, ok, "Connection not found after failed Pool.Close()")
 		conn.CloseSession()
@@ -166,18 +165,18 @@ func TestPoolsClose(t *testing.T) {
 	t.Run("connection close error", func(t *testing.T) {
 		conn.ErrOnConnectionClose(true)
 		err = pConn.Close(false)
-		require.NotNil(t, err, "Pool.Close() did not return an error")
+		require.NotNil(t, err, "Connection.Close() did not return an error")
 		_, ok := Pool[server.hostname]
 		require.False(t, ok, "Connection found after Pool.Close()")
 		conn.ErrOnConnectionClose(false)
 	})
 
-	err = pConn.Open(Pool)
-	require.Nil(t, err, "Pool.Open() returned an error: ", err)
+	pConn, err = pConn.Open(Pool)
+	require.Nil(t, err, "Connection.Open() returned an error: ", err)
 
 	t.Run("close connection", func(t *testing.T) {
 		err = pConn.Close(false)
-		require.Nil(t, err, "Pool.Close() returned an error: ", err)
+		require.Nil(t, err, "Connection.Close() returned an error: ", err)
 		_, ok := Pool[server.hostname]
 		require.False(t, ok, "Connection found after close")
 	})
@@ -187,6 +186,23 @@ func TestPoolsClose(t *testing.T) {
 		require.NotNil(t, err, "Pool.Close() did not return an error")
 		require.Equal(t, "connections.Connection.Close: Connection not found in Pool",
 			err.Error(), "Did not receive 'not found' error from Connection.Close()")
+	})
+
+	server.SetConnector(&conn)
+	pConn, err = pConn.Open(Pool)
+	require.Nil(t, err, "Connection.Open() returned an error: ", err)
+	t.Run("pool close connection", func(t *testing.T) {
+		err = Pool.Close(server.hostname, false)
+		require.Nil(t, err, "Pool.Close() returned an error: ", err)
+		_, ok := Pool[server.hostname]
+		require.False(t, ok, "Connection found after close")
+	})
+
+	t.Run("pool close no connection", func(t *testing.T) {
+		err = Pool.Close(server.hostname, false)
+		require.Nil(t, err, "Pool.Close() returned an error: ", err)
+		_, ok := Pool[server.hostname]
+		require.False(t, ok, "Connection found after close")
 	})
 }
 
