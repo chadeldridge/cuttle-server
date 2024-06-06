@@ -15,9 +15,11 @@ const (
 
 // MockConnector holds the minimal information needed for creating a mock Connector interface.
 type MockConnector struct {
-	user        string
-	isConnected bool
-	hasSession  bool
+	user         string
+	isConnected  bool
+	hasSession   bool
+	connCloseErr bool
+	sessCloseErr bool
 }
 
 // NewMockConnector creates a MockConnector to simulate connecting to a server.
@@ -29,12 +31,36 @@ func NewMockConnector(username string) (MockConnector, error) {
 }
 
 // SetUser sets the username to be used for the connection credentials.
-func (h *MockConnector) SetUser(username string) error {
+func (c *MockConnector) SetUser(username string) error {
 	if username == "" {
 		return errors.New("connections.MockHandler.SetUser: username was empty")
 	}
 
-	h.user = username
+	c.user = username
+	return nil
+}
+
+func (c *MockConnector) ErrOnConnectionClose(do bool) { c.connCloseErr = do }
+func (c *MockConnector) ErrOnSessionClose(do bool)    { c.sessCloseErr = do }
+
+// OpenSession creates a new single command session.
+func (c *MockConnector) OpenSession(server Server) error {
+	// log.Print(" - Creating session...")
+	if !c.isConnected {
+		return ErrNotConnected
+	}
+
+	c.hasSession = true
+	return nil
+}
+
+// CloseSession closes an open session.
+func (c *MockConnector) CloseSession() error {
+	if c.sessCloseErr {
+		return errors.New("error closing session because you asked me to")
+	}
+
+	c.hasSession = false
 	return nil
 }
 
@@ -112,6 +138,14 @@ func (c MockConnector) Run(server Server, cmd, exp string) error {
 func (c *MockConnector) Close(force bool) error {
 	if !c.isConnected {
 		return ErrNotConnected
+	}
+
+	if c.hasSession {
+		return ErrSessionActive
+	}
+
+	if c.connCloseErr {
+		return errors.New("error closing session because you asked me to")
 	}
 
 	c.isConnected = false
