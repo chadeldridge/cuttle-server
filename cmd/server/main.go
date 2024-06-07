@@ -13,22 +13,29 @@ var (
 	results bytes.Buffer
 	logs    bytes.Buffer
 
-	host = "localhost"
-	user = "bob"
-	pass = "testUserP@ssw0rd"
+	remoateHost = "localhost"
+	remoteUser  = "bob"
+	pass        = "testUserP@ssw0rd"
 )
 
 func main() {
+	/*
+		u, err := user.Current()
+		if err != nil {
+			log.Fatal(err)
+		}
+	*/
+
 	profile := profiles.NewProfile("My Profile")
 	defer connections.Pool.CloseAll()
 
 	// Setup server
-	server, err := connections.NewServer(host, 0, &results, &logs)
+	server, err := connections.NewServer(remoateHost, 0, &results, &logs)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	conn, err := connections.NewSSHConnector(user)
+	conn, err := connections.NewSSHConnector(remoteUser)
 	if err != nil {
 		log.Fatal(err)
 	}
