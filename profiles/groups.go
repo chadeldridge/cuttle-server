@@ -24,9 +24,6 @@ func NewGroup(name string, servers ...connections.Server) Group {
 // Count returns the number of servers in the Group.Servers array. Shorthand for Group.ServerCount.
 func (g Group) Count() int { return len(g.Servers) }
 
-// ServerCount returns the number of servers in the Group.Servers array.
-func (g Group) ServerCount() int { return len(g.Servers) }
-
 // SetName sets the name in Group.
 func (g *Group) SetName(name string) error {
 	if name == "" {
