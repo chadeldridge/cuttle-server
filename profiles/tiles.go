@@ -75,9 +75,14 @@ func (t *Tile) SetHideCmd(hide bool) { t.hideCmd = hide }
 func (t *Tile) SetHideExp(hide bool) { t.hideCmd = hide }
 
 // SetName validates and sets Tile.name.
-func (t *Tile) SetName(name string) {
+func (t *Tile) SetName(name string) error {
+	if name == "" {
+		return errors.New("profiles.Tile.SetName: name cannot be empty")
+	}
+
 	// INCOMPLETE: Add html safe validation for name here.
 	t.name = name
+	return nil
 }
 
 // SetSize takes a multiplier and sets the Tile.DisplaySize to smallestTileSize * multiplier.
