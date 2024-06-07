@@ -1,8 +1,14 @@
 // [x]: Comment all functions.
 // [x]: Change all errors to start with "package.Struct.FuncName: " so we are consistent.
+// [x]: Write full tests for all existing packages.
+// [x]: Change Server testing to use MockHandler.
 
-// [ ]: Write full tests for all existing packages.
-// [ ]: Change Server testing to use MockHandler.
+// [ ]: Add special character replacement in Profiles for {{Server}}, etc.
+// [ ]: Add sqlite db for storing profiles.
+// [ ]: Add RBAC.
+// [ ]: Add logging.
+// [ ]: Add CLI frontend.
+// [ ]: Add API frontend.
 
 // [ ]: Allow multiple users. Store Connector as map["user@Protocol"]Connector. Require selection
 //       in Profile? I don't know exactly how to make this work but I could see specific users tied
