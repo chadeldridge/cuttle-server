@@ -18,6 +18,8 @@ type MockConnector struct {
 	user         string
 	isConnected  bool
 	hasSession   bool
+	connOpenErr  bool
+	sessOpenErr  bool
 	connCloseErr bool
 	sessCloseErr bool
 }
@@ -40,6 +42,8 @@ func (c *MockConnector) SetUser(username string) error {
 	return nil
 }
 
+func (c *MockConnector) ErrOnConnectionOpen(do bool)  { c.connOpenErr = do }
+func (c *MockConnector) ErrOnSessionOpen(do bool)     { c.sessOpenErr = do }
 func (c *MockConnector) ErrOnConnectionClose(do bool) { c.connCloseErr = do }
 func (c *MockConnector) ErrOnSessionClose(do bool)    { c.sessCloseErr = do }
 
@@ -48,6 +52,10 @@ func (c *MockConnector) OpenSession(server Server) error {
 	// log.Print(" - Creating session...")
 	if !c.isConnected {
 		return ErrNotConnected
+	}
+
+	if c.sessOpenErr {
+		return errors.New("error opening session because you asked me to")
 	}
 
 	c.hasSession = true
@@ -87,6 +95,10 @@ func (c MockConnector) Validate() error {
 func (c *MockConnector) Open(server Server) error {
 	if err := c.Validate(); err != nil {
 		return err
+	}
+
+	if c.connOpenErr {
+		return errors.New("error opening connection because you asked me to")
 	}
 
 	c.isConnected = true
