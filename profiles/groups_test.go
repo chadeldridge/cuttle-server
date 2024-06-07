@@ -15,28 +15,40 @@ const (
 
 var (
 	testServers []connections.Server
-	results     *bytes.Buffer
-	logs        *bytes.Buffer
+	results     bytes.Buffer
+	logs        bytes.Buffer
 
 	serverInputs = []string{
-		"test.home",
-		"internal1",
-		"internal2",
+		"host1",
+		"host2",
+		"host3",
 	}
 )
 
-func initGroupTest(t *testing.T) {
+func initGroupTest(t *testing.T, errConn bool) {
 	testServers = []connections.Server{}
 	for _, h := range serverInputs {
-		testServers = append(testServers, createNewServer(t, h))
+		testServers = append(testServers, createNewServer(t, h, errConn))
 	}
 }
 
-func createNewServer(t *testing.T, host string) connections.Server {
-	s, err := connections.NewServer(host, 0, results, logs)
+func createNewServer(t *testing.T, host string, errConn bool) connections.Server {
+	s, err := connections.NewServer(host, 0, &results, &logs)
 	if err != nil {
 		t.Fatal("profiles.TestGroupsNewServer: server creation failed: ", err)
 	}
+
+	conn, err := connections.NewMockConnector("test")
+	if err != nil {
+		t.Fatalf("failed to create mock connector: %s", err)
+	}
+	conn.ErrOnConnectionOpen(errConn)
+
+	err = s.SetConnector(&conn)
+	if err != nil {
+		t.Fatalf("failed to add connector to server: %s", err)
+	}
+
 	return s
 }
 
@@ -56,7 +68,7 @@ func testNewGroup(t *testing.T, servers ...connections.Server) {
 }
 
 func TestGroupsNewGroup(t *testing.T) {
-	initGroupTest(t)
+	initGroupTest(t, false)
 	t.Run("single server", func(t *testing.T) {
 		testNewGroup(t, testServers[0])
 	})
@@ -71,7 +83,7 @@ func TestGroupsNewGroup(t *testing.T) {
 }
 
 func TestGroupsCount(t *testing.T) {
-	initGroupTest(t)
+	initGroupTest(t, false)
 	t.Run("single server", func(t *testing.T) {
 		got := NewGroup(name1, testServers[0])
 		require.Equal(t, 1, got.Count(),
@@ -95,7 +107,7 @@ func TestGroupsCount(t *testing.T) {
 }
 
 func TestGroupsSetName(t *testing.T) {
-	initGroupTest(t)
+	initGroupTest(t, false)
 	got := NewGroup(name1, testServers...)
 
 	t.Run("name2", func(t *testing.T) {
@@ -112,7 +124,7 @@ func TestGroupsSetName(t *testing.T) {
 }
 
 func TestGroupsAddServers(t *testing.T) {
-	initGroupTest(t)
+	initGroupTest(t, false)
 	got := NewGroup(name1, testServers[0], testServers[1])
 	require.Equal(t, 2, len(got.Servers), "profiles.TestGroupsAddServers: missing servers in group")
 
@@ -138,7 +150,7 @@ func TestGroupsAddServers(t *testing.T) {
 }
 
 func TestGroupsReset(t *testing.T) {
-	initGroupTest(t)
+	initGroupTest(t, false)
 	got := NewGroup(name1, testServers...)
 	require.Equal(t, len(testServers), len(got.Servers), "profiles.TestGroupsReset: missing servers in group")
 
@@ -156,7 +168,7 @@ func TestGroupsReset(t *testing.T) {
 }
 
 func TestGroupsNext(t *testing.T) {
-	initGroupTest(t)
+	initGroupTest(t, false)
 	got := NewGroup(name1, testServers...)
 	require.Equal(t, len(testServers), len(got.Servers), "profiles.TestGroupsNext: missing servers in group")
 
@@ -173,7 +185,7 @@ func TestGroupsNext(t *testing.T) {
 }
 
 func TestGroupsUniq(t *testing.T) {
-	initGroupTest(t)
+	initGroupTest(t, false)
 	got := NewGroup(name1, testServers...)
 	require.Equal(t, len(testServers), len(got.Servers), "profiles.TestGroupsUniq: missing servers in group")
 
