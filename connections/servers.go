@@ -1,6 +1,7 @@
 package connections
 
 import (
+	"bufio"
 	"bytes"
 	"errors"
 	"fmt"
@@ -212,4 +213,14 @@ func (s *Server) SetConnector(connector Connector) error {
 
 	s.Connector = connector
 	return nil
+}
+
+func GetLastBufferLine(buf *bytes.Buffer) string {
+	var b []string
+	s := bufio.NewScanner(buf)
+	for s.Scan() {
+		b = append(b, s.Text())
+	}
+
+	return b[len(b)-1]
 }

@@ -1,7 +1,6 @@
 package connections
 
 import (
-	"bufio"
 	"bytes"
 	"testing"
 
@@ -521,7 +520,7 @@ func TestSSHConnectorRun(t *testing.T) {
 	t.Run("bad exp", func(t *testing.T) {
 		err := conn.Run(server, cmd, "this won't match")
 		require.Nil(t, err, "SSHConnector.Run() return an error")
-		require.Contains(t, getLastLine(server.Results), "failed", "SSHConnector.Run() did not fail match")
+		require.Contains(t, GetLastBufferLine(server.Results), "failed", "SSHConnector.Run() did not fail match")
 	})
 
 	conn.Close(true)
@@ -552,14 +551,4 @@ func TestSSHConnectorTestConnection(t *testing.T) {
 
 	conn.Close(true)
 	require.False(t, conn.isConnected, "failed to close SSHConnector")
-}
-
-func getLastLine(buf *bytes.Buffer) string {
-	var b []string
-	s := bufio.NewScanner(buf)
-	for s.Scan() {
-		b = append(b, s.Text())
-	}
-
-	return b[len(b)-1]
 }
