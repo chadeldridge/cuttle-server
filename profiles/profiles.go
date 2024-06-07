@@ -3,7 +3,6 @@ package profiles
 import (
 	"errors"
 	"fmt"
-	"log"
 
 	"github.com/chadeldridge/cuttle/connections"
 )
@@ -50,16 +49,20 @@ func (p *Profile) AddTiles(tiles ...Tile) error {
 		return errors.New("profiles.Profile.AddTiles: no tiles provided")
 	}
 
+	var errs error
 	for _, tile := range tiles {
 		// If the Tile already exists, skip to the next one.
 		if _, ok := p.Tiles[tile.Name()]; ok {
+			errs = errors.Join(errs,
+				fmt.Errorf("profiles.Profile.AddTiles: tile already exists for '%s'", tile.Name()),
+			)
 			continue
 		}
 
 		p.Tiles[tile.Name()] = tile
 	}
 
-	return nil
+	return errs
 }
 
 // AddGroups adds a list of Group to Profile.Groups.
@@ -69,57 +72,18 @@ func (p *Profile) AddGroups(groups ...Group) error {
 		return errors.New("profiles.Profile.AddGroups: no groups provided")
 	}
 
+	var errs error
 	for _, group := range groups {
 		// If the Group already exists, skip to the next one.
 		if _, ok := p.Groups[group.Name]; ok {
+			errs = errors.Join(
+				errs,
+				fmt.Errorf("profiles.Profile.AddGroups: group already exists for '%s'", group.Name),
+			)
 			continue
 		}
 
 		p.Groups[group.Name] = group
-	}
-
-	return nil
-}
-
-// Execute runs the Tile command against each server in the selected group. Execute also replaces
-// special variables in the command and expect with the appropriate values.
-func (p Profile) Execute(tileName, groupName string) error {
-	tile, err := p.GetTile(tileName)
-	if err != nil {
-		return fmt.Errorf("profiles.Profile.Execute: %s", err)
-	}
-
-	group, err := p.GetGroup(groupName)
-	if err != nil {
-		return fmt.Errorf("profiles.Profile.Execute: %s", err)
-	}
-
-	var errs error
-	for {
-		server, err := group.Next()
-		if err != nil {
-			if err == ErrEndOfList {
-				break
-			}
-
-			return err
-		}
-
-		// INCOMPLETE: Add special variable replacement in the command and expect strings.
-
-		// Make sure we have an open connection to the server.
-		_, err = connections.Pool.Open(server)
-		if err != nil {
-			log.Printf("profiles.Profile.Execute: failed to open connection to %s: %s", server.Hostname(), err)
-			errs = errors.Join(errs, err)
-			continue
-		}
-
-		err = server.Run(tile.cmd, tile.exp)
-		if err != nil {
-			errs = errors.Join(errs, err)
-			continue
-		}
 	}
 
 	return errs
@@ -153,4 +117,48 @@ func (p Profile) GetGroup(name string) (Group, error) {
 	}
 
 	return g, nil
+}
+
+// Execute runs the Tile command against each server in the selected group. Execute also replaces
+// special variables in the command and expect with the appropriate values.
+func (p Profile) Execute(tileName, groupName string) error {
+	tile, err := p.GetTile(tileName)
+	if err != nil {
+		return fmt.Errorf("profiles.Profile.Execute: %s", err)
+	}
+
+	group, err := p.GetGroup(groupName)
+	if err != nil {
+		return fmt.Errorf("profiles.Profile.Execute: %s", err)
+	}
+
+	var errs error
+	for {
+		server, err := group.Next()
+		if err != nil {
+			if err == ErrEndOfList {
+				break
+			}
+
+			errs = errors.Join(errs, err)
+			return errs
+		}
+
+		// INCOMPLETE: Add special variable replacement in the command and expect strings.
+
+		// Make sure we have an open connection to the server.
+		_, err = connections.Pool.Open(server)
+		if err != nil {
+			errs = errors.Join(errs, err)
+			continue
+		}
+
+		err = server.Run(tile.cmd, tile.exp)
+		if err != nil {
+			errs = errors.Join(errs, err)
+			continue
+		}
+	}
+
+	return errs
 }
