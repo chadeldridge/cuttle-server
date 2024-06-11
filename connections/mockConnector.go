@@ -43,8 +43,8 @@ func (c *MockConnector) SetUser(username string) error {
 }
 
 func (c *MockConnector) ErrOnConnectionOpen(do bool)  { c.connOpenErr = do }
-func (c *MockConnector) ErrOnSessionOpen(do bool)     { c.sessOpenErr = do }
 func (c *MockConnector) ErrOnConnectionClose(do bool) { c.connCloseErr = do }
+func (c *MockConnector) ErrOnSessionOpen(do bool)     { c.sessOpenErr = do }
 func (c *MockConnector) ErrOnSessionClose(do bool)    { c.sessCloseErr = do }
 
 // OpenSession creates a new single command session.
