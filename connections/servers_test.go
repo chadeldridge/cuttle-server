@@ -3,6 +3,7 @@ package connections
 import (
 	"bytes"
 	"fmt"
+	"net"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -25,303 +26,444 @@ type serverWants struct {
 }
 
 var (
-	results bytes.Buffer
-	logs    bytes.Buffer
-
-	goodInputs = serverInputs{
-		Name:     "test.home Test Server",
-		Hostname: "test.home",
-		IP:       "192.168.50.105",
-		Protocol: "ssh",
-		Port:     22,
+	testServerInputs = map[string]serverInputs{
+		"good": {
+			Name:     "test.home Test Server",
+			Hostname: "test.home",
+			IP:       "10.0.0.1",
+			Protocol: "ssh",
+			Port:     22,
+		},
+		"bad": {
+			Name:     "test.home Test Server",
+			Hostname: "89ey*(#@F*)89023r",
+			IP:       "192.168.501.105",
+			Protocol: "blah",
+			Port:     -1,
+		},
 	}
 
-	badInputs = serverInputs{
-		Name:     "test.home Test Server",
-		Hostname: "89ey*(#@F*)89023r",
-		IP:       "192.168.501.105",
-		Protocol: "blah",
-		Port:     -1,
-	}
-
-	goodWant = serverWants{
-		Name:     goodInputs.Name,
-		Hostname: goodInputs.Hostname,
-		IP:       "192.168.50.105",
-		Protocol: SSH,
-		Port:     22,
-	}
-
-	badWant = serverWants{
-		Name:     "", // Change this when exploit validation is added for Name
-		Hostname: "",
-		IP:       "<nil>",
-		Protocol: INVALID,
-		Port:     0,
+	testServerWants = map[string]serverWants{
+		"good": {
+			Name:     "test.home Test Server",
+			Hostname: "test.home",
+			IP:       "10.0.0.1",
+			Protocol: SSH,
+			Port:     22,
+		},
+		"bad": {
+			Name:     "", // Change this when exploit validation is added for Name
+			Hostname: "",
+			IP:       "<nil>",
+			Protocol: INVALID,
+			Port:     0,
+		},
 	}
 )
 
-func testNewServer(t *testing.T, input serverInputs) Server {
-	got, err := NewServer(input.Hostname, input.Port, &results, &logs)
-	require.Nil(t, err, "NewServer() returned an error: ", err)
-	got.SetName(input.Name)
+func testNewServer(inputName string) Server {
+	var res bytes.Buffer
+	var log bytes.Buffer
 
-	return got
+	return Server{
+		name:     testServerInputs[inputName].Name,
+		hostname: testServerInputs[inputName].Hostname,
+		port:     testServerInputs[inputName].Port,
+		Results:  &res,
+		Logs:     &log,
+	}
 }
 
 func TestServersNewServer(t *testing.T) {
+	var res bytes.Buffer
+	var log bytes.Buffer
+
+	require := require.New(t)
+
 	t.Run("good hostname", func(t *testing.T) {
-		got, err := NewServer(goodInputs.Hostname, goodInputs.Port, &results, &logs)
-		require.Nil(t, err, "NewServer() returned an error: ", err)
-		require.Equal(t, goodWant.Hostname, got.Hostname())
-		require.Equal(t, goodWant.Hostname, got.Name())
-		require.Equal(t, goodWant.Port, got.Port())
+		server, err := NewServer(
+			testServerInputs["good"].Hostname,
+			testServerInputs["good"].Port,
+			&res,
+			&log,
+		)
+		require.NoError(err, "NewServer() returned an error: %s", err)
+		require.Equal(testServerWants["good"].Hostname, server.Hostname(), "hostname did not match")
+		require.Equal(testServerWants["good"].Hostname, server.Name(), "name did not match")
+		require.Equal(testServerWants["good"].Port, server.Port(), "port did not match")
 	})
 
 	t.Run("bad hostname", func(t *testing.T) {
-		got, err := NewServer(badInputs.Hostname, goodInputs.Port, &results, &logs)
-		require.NotNil(t, err, "did not receive error when creating Server with bad hostname", err)
-		require.Equal(t, badWant.Hostname, got.Hostname())
-		require.Equal(t, badWant.Name, got.Name())
-		require.Equal(t, badWant.Port, got.Port())
+		server, err := NewServer(
+			testServerInputs["bad"].Hostname,
+			testServerInputs["good"].Port,
+			&res,
+			&log,
+		)
+		require.Error(err, "NewServer() did not return an error")
+		require.Equal(testServerWants["bad"].Hostname, server.Hostname())
+		require.Equal(testServerWants["bad"].Name, server.Name())
+		require.Equal(testServerWants["bad"].Port, server.Port())
 	})
 
 	t.Run("bad port", func(t *testing.T) {
-		got, err := NewServer(goodInputs.Hostname, badInputs.Port, &results, &logs)
-		require.NotNil(t, err, "did not receive error when creating Server with bad port", err)
-		require.Equal(t, goodWant.Hostname, got.Hostname())
-		require.Equal(t, goodWant.Hostname, got.Name())
-		require.Equal(t, badWant.Port, got.Port())
+		server, err := NewServer(
+			testServerInputs["good"].Hostname,
+			testServerInputs["bad"].Port,
+			&res,
+			&log,
+		)
+		require.Error(err, "NewServer() did not return an error")
+		require.Equal(testServerWants["good"].Hostname, server.Hostname())
+		require.Equal(testServerWants["good"].Hostname, server.Name())
+		require.Equal(testServerWants["bad"].Port, server.Port())
 	})
 }
 
 func TestServersName(t *testing.T) {
-	got := testNewServer(t, goodInputs)
-	require.Equal(t, goodWant.Name, got.Name(), "Server.name did not match expected name")
+	require := require.New(t)
+	server := testNewServer("good")
+	require.Equal(testServerWants["good"].Name, server.Name(), "Server.name did not match expected name")
 }
 
 func TestServersHostname(t *testing.T) {
-	got := testNewServer(t, goodInputs)
-	require.Equal(t, goodWant.Hostname, got.Hostname(), "Server.hostname did not match expected hostname")
+	require := require.New(t)
+	server := testNewServer("good")
+	require.Equal(
+		testServerWants["good"].Hostname,
+		server.Hostname(),
+		"Server.hostname did not match expected hostname",
+	)
 }
 
 func TestServersIP(t *testing.T) {
-	got := testNewServer(t, goodInputs)
-	require.Equal(t, "<nil>", got.IP(), "Server.ip did not match <nil> when Server.ip not set")
+	require := require.New(t)
+	server := testNewServer("good")
+	require.Equal("<nil>", server.IP(), "Server.ip did not match <nil> when Server.ip not set")
 
-	err := got.SetIP(goodInputs.IP)
-	require.Nil(t, err, "Server.SetIP() returned an error: ", err)
-	require.Equal(t, goodWant.IP, got.IP(), "Server.ip did not match expected ip")
+	server.ip = net.IPv4(10, 0, 0, 1)
+	require.Equal(testServerWants["good"].IP, server.IP(), "Server.ip did not match expected ip")
 }
 
 func TestServersPort(t *testing.T) {
-	got := testNewServer(t, goodInputs)
-	require.Equal(t, goodWant.Port, got.Port(), "Server.port did not match expected port")
+	require := require.New(t)
+	server := testNewServer("good")
+	require.Equal(testServerWants["good"].Port, server.Port(), "Server.port did not match expected port")
 }
 
 func TestServersUseIP(t *testing.T) {
-	got := testNewServer(t, goodInputs)
+	require := require.New(t)
+	server := testNewServer("good")
+
 	t.Run("false", func(t *testing.T) {
-		require.False(t, got.UseIP(), "Server.UseIP returned true")
+		require.False(server.UseIP(), "Server.UseIP returned true")
 	})
 
 	t.Run("true", func(t *testing.T) {
-		got.useIP = true
-		require.True(t, got.UseIP(), "Server.UseIP returned false")
+		server.useIP = true
+		require.True(server.UseIP(), "Server.UseIP returned false")
 	})
 }
 
 func TestServersIsEmpty(t *testing.T) {
-	got := testNewServer(t, goodInputs)
-	require.Equal(t, goodWant.Name, got.Name())
+	require := require.New(t)
+	server := testNewServer("good")
 
 	t.Run("not empty", func(t *testing.T) {
-		require.False(t, got.IsEmpty(), "Server.IsEmpty() returned true")
+		require.False(server.IsEmpty(), "Server.IsEmpty() returned true")
 	})
 
 	t.Run("empty", func(t *testing.T) {
-		got = Server{}
-		require.True(t, got.IsEmpty(), "Server.IsEmpty() returned false")
+		server = Server{}
+		require.True(server.IsEmpty(), "Server.IsEmpty() returned false")
 	})
 }
 
 func TestServersIsValid(t *testing.T) {
-	got := testNewServer(t, goodInputs)
+	require := require.New(t)
+	server := testNewServer("good")
 	// Should not be valid because we have not added a Connector yet.
-	require.False(t, got.IsValid(), "Server.IsValid() returned true")
+	require.False(server.IsValid(), "Server.IsValid() returned true")
 
-	conn, err := NewMockConnector(testUser)
-	require.Nil(t, err, "NewMockConnector returned an error: ", err)
-	got.SetConnector(&conn)
+	server.Connector = &MockConnector{user: testUser}
+	require.True(server.IsValid(), "Server.IsValid() returned false")
+}
 
-	require.True(t, got.IsValid(), "Server.IsValid() returned false")
+func TestServersValidate(t *testing.T) {
+	require := require.New(t)
+	server := testNewServer("good")
+	server.Connector = &MockConnector{user: testUser}
+
+	t.Run("valid", func(t *testing.T) {
+		err := server.Validate()
+		require.NoError(err, "Server.Validate() returned an error: %s", err)
+	})
+
+	t.Run("empty hostname", func(t *testing.T) {
+		s := server
+		s.hostname = ""
+		require.Error(s.Validate(), "Server.Validate() did not return an error")
+	})
+
+	t.Run("nil Results", func(t *testing.T) {
+		s := server
+		s.Results = nil
+		require.Error(s.Validate(), "Server.Validate() did not return an error")
+	})
+
+	t.Run("nil Logs", func(t *testing.T) {
+		s := server
+		s.Logs = nil
+		require.Error(s.Validate(), "Server.Validate() did not return an error")
+	})
+
+	t.Run("nil connector", func(t *testing.T) {
+		s := server
+		s.Connector = nil
+		require.Error(s.Validate(), "Server.Validate() did not return an error")
+	})
+
+	t.Run("empty connector", func(t *testing.T) {
+		s := server
+		s.hostname = ""
+		require.Error(s.Validate(), "Server.Validate() did not return an error")
+	})
 }
 
 func TestServersRun(t *testing.T) {
-	server := testNewServer(t, goodInputs)
-	conn, err := NewMockConnector(testUser)
-	require.Nil(t, err, "NewMockConnector() returned an error: ", err)
-
-	server.SetConnector(&conn)
-	err = server.Open(server)
-	require.Nil(t, err, "Server.Connector.Run() returned an error: ", err)
-	defer server.Close(false)
+	require := require.New(t)
+	server := testNewServer("good")
+	conn := MockConnector{user: testUser}
+	server.Connector = &conn
+	conn.isConnected = true
 
 	exp := "my test message"
-	err = server.Run(fmt.Sprintf("echo '%s'", exp), exp)
-	require.Nil(t, err, "Server.Run() returned an error: ", err)
+	err := server.Run(fmt.Sprintf("echo '%s'", exp), exp)
+	require.NoError(err, "Server.Run() returned an error: %s", err)
 }
 
 func TestServersTestConnection(t *testing.T) {
-	server := testNewServer(t, goodInputs)
-	conn, err := NewMockConnector(testUser)
-	require.Nil(t, err, "NewMockConnector() returned an error: ", err)
+	require := require.New(t)
+	server := testNewServer("good")
+	conn := MockConnector{user: testUser}
+	server.Connector = &conn
 
-	server.SetConnector(&conn)
-	err = server.Open(server)
-	require.Nil(t, err, "Server.Connector.Run() returned an error: ", err)
-	defer server.Close(false)
+	t.Run("open error", func(t *testing.T) {
+		conn.connOpenErr = true
+		err := server.TestConnection()
+		require.Error(err, "Server.Run() did not return an error")
+		conn.connOpenErr = false
+	})
 
 	t.Run("connected", func(t *testing.T) {
 		err := server.TestConnection()
-		require.Nil(t, err, "Server.Run() returned an error: ", err)
+		require.NoError(err, "Server.Run() returned an error: %s", err)
 	})
 }
 
 func TestServersGetAddr(t *testing.T) {
-	server := testNewServer(t, goodInputs)
-	conn, err := NewMockConnector(testUser)
-	require.Nil(t, err, "NewMockConnector() returned an error: ", err)
-
-	server.SetConnector(&conn)
+	require := require.New(t)
+	server := testNewServer("good")
 
 	t.Run("hostname", func(t *testing.T) {
 		addr := server.GetAddr()
-		require.Equal(t, fmt.Sprintf("%s:%d", server.hostname, server.Port()), addr,
+		require.Equal(fmt.Sprintf("%s:%d", server.hostname, server.Port()), addr,
 			"Server.GetAddr() output did not match expected value")
 	})
 
 	t.Run("ip", func(t *testing.T) {
-		server.SetIP(goodInputs.IP)
+		server.ip = net.IPv4(10, 0, 0, 1)
+		server.useIP = true
 		addr := server.GetAddr()
-		require.Equal(t, fmt.Sprintf("%s:%d", server.IP(), server.Port()), addr,
+		require.Equal(fmt.Sprintf("%s:%d", server.IP(), server.Port()), addr,
 			"Server.GetAddr() output did not match expected value")
 	})
 }
 
 func TestServersSetUseIP(t *testing.T) {
-	server := testNewServer(t, goodInputs)
-	conn, err := NewMockConnector(testUser)
-	require.Nil(t, err, "NewMockConnector() returned an error: ", err)
+	require := require.New(t)
+	server := testNewServer("good")
+	server.ip = net.IPv4(10, 0, 0, 1)
 
-	server.SetConnector(&conn)
+	t.Run("true", func(t *testing.T) {
+		server.SetUseIP(true)
+		require.True(server.UseIP(), "Server.UseIP() did not return true")
+	})
 
-	server.SetIP(goodInputs.IP)
-	server.SetUseIP(false)
-	addr := server.GetAddr()
-	require.Equal(t, fmt.Sprintf("%s:%d", server.hostname, server.Port()), addr,
-		"Server.GetAddr() output did not match expected value")
+	t.Run("false", func(t *testing.T) {
+		server.SetUseIP(false)
+		require.False(server.UseIP(), "Server.UseIP() did not return false")
+	})
+}
+
+func TestServersSetName(t *testing.T) {
+	require := require.New(t)
+
+	t.Run("good name", func(t *testing.T) {
+		server := testNewServer("good")
+		err := server.SetName(testServerInputs["good"].Name)
+		require.NoError(
+			err,
+			"Server.SetName(%s) returned an error: %s", testServerInputs["good"].Name, err,
+		)
+		require.Equal(testServerWants["good"].Name, server.name, "name did not match")
+		// ip should be empty because we are not be setting an IP hostname here.
+		require.Equal(
+			testServerWants["bad"].IP, server.IP(),
+			"server.IP() was not <nil> when setting a good hostname",
+		)
+	})
+
+	// INCOMPLETE: Add test for name validation after it is implemented.
 }
 
 func TestServersSetHostname(t *testing.T) {
-	got := testNewServer(t, goodInputs)
+	require := require.New(t)
+
 	t.Run("good hostname", func(t *testing.T) {
-		err := got.SetHostname(goodInputs.Hostname)
-		require.Nil(t, err, "Server.SetHostname() returned an error: ", err, goodInputs.Hostname)
-		require.Equal(t, goodWant.Hostname, got.Hostname(), "hostname did not match")
-		// IP should be empty because we should not be resolving a non-IP hostname here.
-		require.Equal(t, badWant.IP, got.IP(), "got.IP() was not <nil> when setting a good hostname")
+		server := testNewServer("good")
+		err := server.SetHostname(testServerInputs["good"].Hostname)
+		require.NoError(
+			err,
+			"Server.SetHostname(%s) returned an error: %s", testServerInputs["good"].Hostname, err,
+		)
+		require.Equal(testServerWants["good"].Hostname, server.hostname, "hostname did not match")
+		// ip should be empty because we are not be setting an IP hostname here.
+		require.Equal(
+			testServerWants["bad"].IP, server.IP(),
+			"server.IP() was not <nil> when setting a good hostname",
+		)
 	})
 
 	t.Run("good ip hostname", func(t *testing.T) {
-		got, _ = NewServer(goodInputs.Name, goodInputs.Port, &results, &logs)
-		err := got.SetHostname(goodInputs.IP)
-		require.Nil(t, err, "error recieved when setting a good IP hostname", err, goodInputs.IP)
-		require.Equal(t, goodInputs.IP, got.Hostname(), "ip hostname did not match")
-		require.Equal(t, goodWant.IP, got.IP(), "got.IP() did not match expected ip")
+		server := testNewServer("good")
+		err := server.SetHostname(testServerInputs["good"].IP)
+		require.NoError(err, "error recieved when setting a good IP hostname", err, testServerInputs["good"].IP)
+		require.Equal(testServerInputs["good"].IP, server.hostname, "ip hostname did not match")
+		require.Equal(testServerWants["good"].IP, server.IP(), "server.IP() did not match expected ip")
 	})
 
-	got, _ = NewServer(goodInputs.Name, goodInputs.Port, &results, &logs)
 	t.Run("empty hostname", func(t *testing.T) {
-		err := got.SetHostname("")
-		require.NotNil(t, err, "did not recieve error when setting an empty hostname")
-		require.Equal(t, badWant.Hostname, got.Hostname(), "hostname was not empty when setting an empty hostname")
-		require.Equal(t, badWant.IP, got.IP(), "got.IP() was not <nil> when setting an empty hostname")
+		server := testNewServer("good")
+		err := server.SetHostname("")
+		require.Error(err, "did not recieve error when setting an empty hostname")
+		require.Equal(
+			testServerWants["good"].Hostname,
+			server.hostname,
+			"hostname was not empty when setting an empty hostname",
+		)
+		require.Equal(
+			testServerWants["bad"].IP,
+			server.IP(),
+			"server.IP() was not <nil> when setting an empty hostname",
+		)
 	})
 
-	got, _ = NewServer(goodInputs.Name, goodInputs.Port, &results, &logs)
 	t.Run("bad hostname", func(t *testing.T) {
-		err := got.SetHostname(badInputs.Hostname)
-		require.NotNil(t, err, "did not recieve error when setting a bad hostname", badInputs.Hostname)
-		require.Equal(t, badWant.IP, got.IP(), "got.IP() was not <nil> when setting a bad hostname")
+		server := testNewServer("good")
+		err := server.SetHostname(testServerInputs["bad"].Hostname)
+		require.Error(
+			err,
+			"Server.SetHostname(%s) did not return an error", testServerInputs["bad"].Hostname,
+		)
+		require.Equal(testServerWants["good"].Hostname, server.hostname, "hostname not set for bad IP")
+		require.Equal(
+			testServerWants["bad"].IP,
+			server.IP(),
+			"server.IP() was not %s when setting a bad hostname", testServerWants["bad"].IP,
+		)
 	})
 
-	got, _ = NewServer(goodInputs.Name, goodInputs.Port, &results, &logs)
 	t.Run("bad ip hostname", func(t *testing.T) {
-		err := got.SetHostname(badInputs.IP)
-		require.NotNil(t, err, "did not recieve error when setting a bad IP hostname", badInputs.IP)
-		require.Equal(t, badWant.Hostname, got.Hostname(), "hostname not set for bad IP")
-		require.Equal(t, badWant.IP, got.IP(), "got.IP() was not <nil> when setting a bad IP hostname")
+		server := testNewServer("good")
+		err := server.SetHostname(testServerInputs["bad"].IP)
+		require.Error(
+			err,
+			"Server.SetHostname(%s) did not return an error", testServerInputs["bad"].IP,
+		)
+		require.Equal(testServerWants["good"].Hostname, server.hostname, "hostname not set for bad IP")
+		require.Equal(
+			testServerWants["bad"].IP,
+			server.IP(),
+			"server.IP() was not <nil> when setting a bad IP hostname",
+		)
 	})
 }
 
 func TestServersSetIP(t *testing.T) {
-	got := testNewServer(t, goodInputs)
+	require := require.New(t)
+
 	t.Run("good ip", func(t *testing.T) {
-		err := got.SetIP(goodInputs.IP)
-		require.Nil(t, err, "error recieved when setting good IP", goodInputs.IP)
-		require.Equal(t, goodWant.IP, got.IP(), "got.IP() did not match expected ip")
+		server := testNewServer("good")
+		err := server.SetIP(testServerInputs["good"].IP)
+		require.NoError(err, "Server.SetIP(%s) returned an error: %s", testServerInputs["good"].IP, err)
+		require.Equal(testServerWants["good"].IP, server.IP(), "server.IP() did not match expected ip")
 	})
 
-	got, _ = NewServer(goodInputs.Name, goodInputs.Port, &results, &logs)
+	t.Run("empty server", func(t *testing.T) {
+		server := Server{}
+		err := server.SetIP(testServerInputs["good"].IP)
+		require.NoError(err, "Server.SetIP(%s) returned an error: %s", testServerInputs["good"].IP, err)
+		require.Equal(testServerWants["good"].IP, server.IP(), "server.IP() did not match expected ip")
+		require.Equal(testServerWants["good"].IP, server.hostname, "server.hostname did not match expected ip")
+		require.Equal(testServerWants["good"].IP, server.name, "server.name did not match expected ip")
+	})
+
 	t.Run("empty ip", func(t *testing.T) {
-		err := got.SetIP("")
-		require.NotNil(t, err, "did not recieve error when setting an empty IP")
-		require.Equal(t, badWant.IP, got.IP(), "got.IP() was not <nil> when setting a empty IP")
+		server := testNewServer("good")
+		err := server.SetIP("")
+		require.Error(err, "Server.SetIP() did not return an error when setting an empty IP")
+		require.Equal(
+			testServerWants["bad"].IP,
+			server.IP(),
+			"server.IP() was not <nil> when setting a empty IP",
+		)
 	})
 
-	got, _ = NewServer(goodInputs.Name, goodInputs.Port, &results, &logs)
 	t.Run("bad ip", func(t *testing.T) {
-		err := got.SetIP(badInputs.IP)
-		require.NotNil(t, err, "did not recieve error when setting a bad IP", badInputs.IP)
-		require.Equal(t, badWant.IP, got.IP(), "got.IP() was not <nil> when setting a bad IP")
+		server := testNewServer("good")
+		err := server.SetIP(testServerInputs["bad"].IP)
+		require.Error(err, "Server.SetIP(%s) did not return an error", testServerInputs["bad"].IP)
+		require.Equal(testServerWants["bad"].IP, server.IP(), "server.IP() was not <nil> when setting a bad IP")
 	})
 }
 
 func TestServersSetPort(t *testing.T) {
-	got := testNewServer(t, goodInputs)
+	require := require.New(t)
 	t.Run("good port", func(t *testing.T) {
-		err := got.SetPort(goodInputs.Port)
-		require.Nil(t, err, "error recieved when setting good Port", goodInputs.Port)
-		require.Equal(t, goodWant.Port, got.Port(), "got.Port() did not match expected port")
+		server := testNewServer("good")
+		err := server.SetPort(testServerInputs["good"].Port)
+		require.NoError(err, "Server.SetPort(%s) returned an error: %s", testServerInputs["good"].Port, err)
+		require.Equal(testServerWants["good"].Port, server.Port(), "server.Port() did not match expected port")
 	})
 
-	got, _ = NewServer(goodInputs.Name, goodInputs.Port, &results, &logs)
 	t.Run("bad port", func(t *testing.T) {
-		err := got.SetPort(badInputs.Port)
-		require.NotNil(t, err, "did not recieve error when setting a bad Port", badInputs.Port)
-		require.Equal(t, badWant.Port, got.Port(), "got.Port() was not 0 when setting a bad port", got.Port())
+		server := testNewServer("good")
+		err := server.SetPort(testServerInputs["bad"].Port)
+		require.Error(err, "Server.SetPort(%s) did not return an error", testServerInputs["bad"].Port)
 	})
 }
 
 func TestServersSetConnector(t *testing.T) {
-	got := testNewServer(t, goodInputs)
+	require := require.New(t)
 	t.Run("full connector", func(t *testing.T) {
-		conn, err := NewMockConnector(testUser)
-		require.Nil(t, err, "NewMockConnector() returned an error: ", err)
-		err = got.SetConnector(&conn)
-		require.Nil(t, err, "Server.SetConnector() returned an error: ", err)
-		require.Equal(t, testUser, got.Connector.User(), "Server.Connector.User() did not match expected user")
+		server := testNewServer("good")
+		conn := MockConnector{user: testUser}
+		err := server.SetConnector(&conn)
+		require.NoError(err, "Server.SetConnector() returned an error: %s", err)
+		require.Equal(testUser, server.Connector.User(), "Server.Connector.User() did not match expected user")
 	})
 
 	t.Run("empty connector", func(t *testing.T) {
-		err := got.SetConnector(&MockConnector{})
-		require.Nil(t, err, "Server.SetConnector() returned an error: ", err)
-		require.Equal(t, "", got.Connector.User(), "Server.Connector.User() did not match expected user")
+		server := testNewServer("good")
+		err := server.SetConnector(&MockConnector{})
+		require.NoError(err, "Server.SetConnector() returned an error: %s", err)
+		require.Equal("", server.Connector.User(), "Server.Connector.User() did not match expected user")
 	})
 
 	t.Run("nil connector", func(t *testing.T) {
-		err := got.SetConnector(nil)
-		require.NotNil(t, err, "Server.SetConnector() did not return an error: ", err)
+		server := testNewServer("good")
+		err := server.SetConnector(nil)
+		require.Error(err, "Server.SetConnector() did not return an error: %s", err)
 	})
 }
