@@ -134,7 +134,7 @@ func (c *Connection) TimeOut() error {
 			)
 		}
 
-		// If the connection was active, extend the time by the TTL.
+		// If the session was active, extend the time by the TTL.
 		c.Extend(TTL)
 		return err
 	}
