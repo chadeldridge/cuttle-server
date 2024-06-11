@@ -63,11 +63,28 @@ func (s Server) UseIP() bool { return s.useIP }
 // IsEmpty returns true of Server.hostname is not set.
 func (s Server) IsEmpty() bool { return s.hostname == "" }
 
-// IsValid retuns true if all fields needed to connect to a server are not empty and if
-// Connector.IsValid returns true. If IsValid returns true you should be able to make a connection
-// to the server assuming good values have been set.
-func (s Server) IsValid() bool {
-	return s.hostname != "" && s.Connector != nil && s.Connector.IsValid() && s.Results != nil && s.Logs != nil
+// IsValid retuns true if all fields needed to connect to a server are not nil or empty.
+func (s Server) IsValid() bool { err := s.Validate(); return err == nil }
+
+// IsValid retuns an error if a field needed to connect to a server is nil or empty.
+func (s Server) Validate() error {
+	if s.hostname == "" {
+		return errors.New("connections.Server.Validate: hostname is empty")
+	}
+
+	if s.Results == nil {
+		return errors.New("connections.Server.Validate: Results buffer is nil")
+	}
+
+	if s.Logs == nil {
+		return errors.New("connections.Server.Validate: Logs buffer is nil")
+	}
+
+	if s.Connector == nil {
+		return errors.New("connections.Server.Validate: Connector is nil")
+	}
+
+	return s.Connector.Validate()
 }
 
 // Run passes cmd(command) and exp(expect), along with itself, on to Connector.Run to be executed.

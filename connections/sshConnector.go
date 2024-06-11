@@ -161,14 +161,15 @@ func (c SSHConnector) Validate() error {
 }
 
 func (c *SSHConnector) Open(server Server) error {
-	if err := c.Validate(); err != nil {
+	if err := server.Validate(); err != nil {
 		return err
 	}
 
 	config := &ssh.ClientConfig{
 		User:            c.user,
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(), // INCOMPLETE: Find a way to add host key checking.
 		Auth:            c.auth,
+		// TODO: Add a timeout to the connection.
 	}
 
 	// log.Print("Dialing server...")
@@ -182,7 +183,7 @@ func (c *SSHConnector) Open(server Server) error {
 	c.isConnected = true
 	c.Client = client
 	// log.Print("done.")
-	// INCOMPLETE: Add a keepalive later.
+	// INCOMPLETE: Add a keepalive later. Make sure keepalive is cancelled when the connection is closed.
 	return nil
 }
 
