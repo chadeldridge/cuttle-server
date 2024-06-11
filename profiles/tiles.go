@@ -39,6 +39,7 @@ func DefaultTile() Tile {
 // NewTile creates a new Tile object with a name, cmd(command), and exp(expect) string.
 func NewTile(name string, cmd string, exp string) Tile {
 	t := DefaultTile()
+	// INCOMPLETE: Add html safe validation for name, cmd, and exp here.
 	t.name = name
 	t.cmd = cmd
 	t.exp = exp
@@ -72,7 +73,7 @@ func (t *Tile) DisplaySize() int { return t.displaySize }
 func (t *Tile) SetHideCmd(hide bool) { t.hideCmd = hide }
 
 // SetHideExp sets the Tile.hideExp field.
-func (t *Tile) SetHideExp(hide bool) { t.hideCmd = hide }
+func (t *Tile) SetHideExp(hide bool) { t.hideExp = hide }
 
 // SetName validates and sets Tile.name.
 func (t *Tile) SetName(name string) error {
@@ -88,7 +89,7 @@ func (t *Tile) SetName(name string) error {
 // SetSize takes a multiplier and sets the Tile.DisplaySize to smallestTileSize * multiplier.
 // Passing 0 will default to defaultSizeMultiplier.
 func (t *Tile) SetSize(multiplier int) {
-	if multiplier == 0 {
+	if multiplier <= 0 {
 		multiplier = defaultSizeMultiplier
 	}
 
