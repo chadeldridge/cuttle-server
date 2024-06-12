@@ -77,7 +77,7 @@ func TestSSHConnectorAddPasswordAuth(t *testing.T) {
 	conn := SSHConnector{user: testUser}
 
 	conn.AddPasswordAuth(testPass)
-	require.Equal(1, len(conn.auth), "missing AuthMethod after AddKeyAuth")
+	require.Len(conn.auth, 1, "missing AuthMethod after AddKeyAuth")
 }
 
 func TestSSHConnectorAddKeyAuth(t *testing.T) {
@@ -90,7 +90,7 @@ func TestSSHConnectorAddKeyAuth(t *testing.T) {
 	t.Run("good key", func(t *testing.T) {
 		err = conn.AddKeyAuth(key)
 		require.NoError(err, "SSHConnector.AddKeyAuth() returned an error: %s", err)
-		require.Equal(1, len(conn.auth), "missing AuthMethod after AddKeyAuth")
+		require.Len(conn.auth, 1, "missing AuthMethod after AddKeyAuth")
 	})
 
 	// Reset auth so we get the right count.
@@ -98,7 +98,7 @@ func TestSSHConnectorAddKeyAuth(t *testing.T) {
 	t.Run("nil key", func(t *testing.T) {
 		err = conn.AddKeyAuth(nil)
 		require.Error(err, "SSHConnector.AddKeyAuth() did not return an error")
-		require.Equal(0, len(conn.auth), "AuthMethod found")
+		require.Len(conn.auth, 0, "AuthMethod found")
 	})
 }
 
@@ -109,28 +109,28 @@ func TestSSHConnectorParseKey(t *testing.T) {
 	t.Run("good key", func(t *testing.T) {
 		err := conn.ParseKey(keyNoPass)
 		require.NoError(err, "SSHConnector.ParseKey() returned an error: %s", err)
-		require.Equal(1, len(conn.auth), "missing AuthMethod after AddKeyAuth")
+		require.Len(conn.auth, 1, "missing AuthMethod after AddKeyAuth")
 	})
 
 	t.Run("bad key", func(t *testing.T) {
 		conn.auth = []ssh.AuthMethod{}
 		err := conn.ParseKey([]byte("not a real key"))
 		require.Error(err, "SSHConnector.ParseKey() did not return an error")
-		require.Equal(0, len(conn.auth), "AuthMethod found")
+		require.Len(conn.auth, 0, "AuthMethod found")
 	})
 
 	t.Run("empty key", func(t *testing.T) {
 		conn.auth = []ssh.AuthMethod{}
 		err := conn.ParseKey([]byte{})
 		require.Error(err, "SSHConnector.ParseKey() did not return an error")
-		require.Equal(0, len(conn.auth), "AuthMethod found")
+		require.Len(conn.auth, 0, "AuthMethod found")
 	})
 
 	t.Run("nil key", func(t *testing.T) {
 		conn.auth = []ssh.AuthMethod{}
 		err := conn.ParseKey(nil)
 		require.Error(err, "SSHConnector.ParseKey() did not return an error")
-		require.Equal(0, len(conn.auth), "AuthMethod found")
+		require.Len(conn.auth, 0, "AuthMethod found")
 	})
 }
 
@@ -146,28 +146,28 @@ func TestSSHConnectorParseKeyWithPassphrase(t *testing.T) {
 	t.Run("good passphrase", func(t *testing.T) {
 		err := conn.ParseKeyWithPassphrase(keyPass, testPass)
 		require.NoError(err, "SSHConnector.ParseKeyWithPassphrase() returned an error: %s", err)
-		require.Equal(1, len(conn.auth), "missing AuthMethod after AddKeyAuth")
+		require.Len(conn.auth, 1, "missing AuthMethod after AddKeyAuth")
 	})
 
 	t.Run("bad passphrase", func(t *testing.T) {
 		conn.auth = []ssh.AuthMethod{}
 		err := conn.ParseKeyWithPassphrase(keyPass, "")
 		require.Error(err, "SSHConnector.ParseKeyWithPassphrase() did not return an error")
-		require.Equal(0, len(conn.auth), "AuthMethod found")
+		require.Len(conn.auth, 0, "AuthMethod found")
 	})
 
 	t.Run("empty key", func(t *testing.T) {
 		conn.auth = []ssh.AuthMethod{}
 		err := conn.ParseKeyWithPassphrase([]byte{}, testPass)
 		require.Error(err, "SSHConnector.ParseKeyWithPassphrase() did not return an error")
-		require.Equal(0, len(conn.auth), "AuthMethod found")
+		require.Len(conn.auth, 0, "AuthMethod found")
 	})
 
 	t.Run("nil key", func(t *testing.T) {
 		conn.auth = []ssh.AuthMethod{}
 		err := conn.ParseKeyWithPassphrase(nil, testPass)
 		require.Error(err, "SSHConnector.ParseKeyWithPassphrase() did not return an error")
-		require.Equal(0, len(conn.auth), "AuthMethod found")
+		require.Len(conn.auth, 0, "AuthMethod found")
 	})
 }
 
