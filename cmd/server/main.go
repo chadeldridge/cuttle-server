@@ -26,7 +26,10 @@ func main() {
 		}
 	*/
 
-	profile := profiles.NewProfile("My Profile")
+	profile, err := profiles.NewProfile("My Profile")
+	if err != nil {
+		log.Fatal(err)
+	}
 	defer connections.Pool.CloseAll()
 
 	// Setup server
