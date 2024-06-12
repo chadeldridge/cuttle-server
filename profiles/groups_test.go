@@ -35,7 +35,7 @@ func initGroupTest(t *testing.T, errConn bool) {
 func createNewServer(t *testing.T, host string, errConn bool) connections.Server {
 	s, err := connections.NewServer(host, 0, &results, &logs)
 	if err != nil {
-		t.Fatal("profiles.TestGroupsNewServer: server creation failed: ", err)
+		t.Fatal("", err)
 	}
 
 	conn, err := connections.NewMockConnector("test")
@@ -53,22 +53,19 @@ func createNewServer(t *testing.T, host string, errConn bool) connections.Server
 }
 
 func testNewGroup(t *testing.T, servers ...connections.Server) {
-	got := NewGroup(name1, servers...)
-	require.Equal(t, name1, got.Name, "profiles.TestGroupsNewGroup: group name does not match")
-	require.Equal(t, len(servers), len(got.Servers), "profiles.TestGroupsNewGroup: missing servers in group")
+	require := require.New(t)
+	group := NewGroup(name1, servers...)
+	require.Equal(name1, group.Name, "group name does not match expected name")
+	require.Len(group.Servers, len(servers), "missing servers in group")
 
-	for i := range got.Count() {
-		require.Equal(
-			t,
-			servers[i].Name(),
-			got.Servers[i].Name(),
-			"profiles.TestGroupsNewGroup: server name did not match",
-		)
+	for i := range group.Count() {
+		require.Equal(servers[i].Name(), group.Servers[i].Name(), "server name did not match")
 	}
 }
 
 func TestGroupsNewGroup(t *testing.T) {
 	initGroupTest(t, false)
+
 	t.Run("single server", func(t *testing.T) {
 		testNewGroup(t, testServers[0])
 	})
@@ -84,123 +81,116 @@ func TestGroupsNewGroup(t *testing.T) {
 
 func TestGroupsCount(t *testing.T) {
 	initGroupTest(t, false)
+	require := require.New(t)
+
 	t.Run("single server", func(t *testing.T) {
-		got := NewGroup(name1, testServers[0])
-		require.Equal(t, 1, got.Count(),
-			"profiles.TestGroupsNewGroup: missing servers in group",
-		)
+		group := Group{Name: name1, Servers: testServers[:1]}
+		require.Equal(1, group.Count(), "missing server in group")
 	})
 
 	t.Run("all servers", func(t *testing.T) {
-		got := NewGroup(name1, testServers...)
-		require.Equal(t, len(testServers), got.Count(),
-			"profiles.TestGroupsNewGroup: missing servers in group",
-		)
+		group := Group{Name: name1, Servers: testServers}
+		require.Equal(3, group.Count(), "missing servers in group")
 	})
 
 	t.Run("no servers", func(t *testing.T) {
-		got := NewGroup(name1)
-		require.Equal(t, 0, got.Count(),
-			"profiles.TestGroupsNewGroup: missing servers in group",
-		)
+		group := Group{Name: name1}
+		require.Equal(0, group.Count(), "servers found in group")
 	})
 }
 
 func TestGroupsSetName(t *testing.T) {
 	initGroupTest(t, false)
-	got := NewGroup(name1, testServers...)
+	require := require.New(t)
+	group := Group{Name: name1}
 
 	t.Run("name2", func(t *testing.T) {
-		err := got.SetName(name2)
-		require.Nil(t, err, "profiles.TestGroupsSetName: Group.SetName() returned an error: ", err)
-		require.Equal(t, name2, got.Name, "profiles.TestGroupsSetName: group name does nto match")
+		err := group.SetName(name2)
+		require.NoError(err, "Group.SetName() returned an error: %s", err)
+		require.Equal(name2, group.Name, "group name does not match")
 	})
 
 	t.Run("empty name", func(t *testing.T) {
-		err := got.SetName("")
-		require.NotNil(t, err, "profiles.TestGroupsSetName: Group.SetName() did not return an error")
-		require.Equal(t, name2, got.Name, "profiles.TestGroupsSetName: group name does nto match")
+		err := group.SetName("")
+		require.Error(err, "Group.SetName() did not return an error")
+		require.Equal(name2, group.Name, "group name does nto match")
 	})
 }
 
 func TestGroupsAddServers(t *testing.T) {
 	initGroupTest(t, false)
-	got := NewGroup(name1, testServers[0], testServers[1])
-	require.Equal(t, 2, len(got.Servers), "profiles.TestGroupsAddServers: missing servers in group")
+	require := require.New(t)
 
-	t.Run("add server", func(t *testing.T) {
-		got.AddServers(testServers[2])
-		require.Equal(t, 3, len(got.Servers), "profiles.TestGroupsAddServers: missing servers in group")
-		for i := range got.Count() {
-			require.Equal(
-				t,
-				testServers[i].Name(),
-				got.Servers[i].Name(),
-				"profiles.TestGroupsAddServers: server name did not match",
-			)
-		}
+	t.Run("add one", func(t *testing.T) {
+		group := Group{Name: name1}
+		group.AddServers(testServers[0])
+		require.Len(group.Servers, 1, "missing servers in group")
 	})
 
-	got = NewGroup(name1, testServers[0], testServers[1])
-	require.Equal(t, 2, len(got.Servers), "profiles.TestGroupsAddServers: missing servers in group")
-	t.Run("empty list", func(t *testing.T) {
-		got.AddServers()
-		require.Equal(t, 2, len(got.Servers), "profiles.TestGroupsAddServers: missing servers in group")
+	t.Run("add multiple", func(t *testing.T) {
+		group := Group{Name: name1}
+		group.AddServers(testServers[:2]...)
+		require.Len(group.Servers, 2, "missing servers in group")
+	})
+
+	t.Run("add duplicate", func(t *testing.T) {
+		group := Group{Name: name1, Servers: testServers}
+		group.AddServers(testServers[0])
+		require.Len(group.Servers, 3, "missing servers in group")
+	})
+
+	t.Run("add none", func(t *testing.T) {
+		group := Group{Name: name1, Servers: testServers}
+		group.AddServers()
+		require.Len(group.Servers, 3, "missing servers in group")
 	})
 }
 
 func TestGroupsReset(t *testing.T) {
 	initGroupTest(t, false)
-	got := NewGroup(name1, testServers...)
-	require.Equal(t, len(testServers), len(got.Servers), "profiles.TestGroupsReset: missing servers in group")
+	require := require.New(t)
+	group := Group{Name: name1, Servers: testServers}
 
 	for i := 0; i < 2; i++ {
-		_, err := got.Next()
-		if err != nil {
-			t.Fatalf("profiles.TestGroupsReset: error getting next server: %s", err)
-		}
+		_, err := group.Next()
+		require.NoError(err, "Group.Next() returned an error: %s", err)
 	}
 
-	got.Reset()
-	s, err := got.Next()
-	require.Nil(t, err, "Group.Next() returned an error: ", err)
-	require.Equal(t, testServers[0].Name(), s.Name(), "profiles.TestGroupsReset: server name did not match")
+	group.Reset()
+	s, err := group.Next()
+	require.NoError(err, "Group.Next() returned an error: %s", err)
+	require.Equal(testServers[0].Name(), s.Name(), "server name did not match")
 }
 
 func TestGroupsNext(t *testing.T) {
 	initGroupTest(t, false)
-	got := NewGroup(name1, testServers...)
-	require.Equal(t, len(testServers), len(got.Servers), "profiles.TestGroupsNext: missing servers in group")
+	require := require.New(t)
+	group := Group{Name: name1, Servers: testServers}
 
-	for i := 0; i <= got.Count(); i++ {
-		s, err := got.Next()
-		if i == got.Count() {
-			require.Equal(t, ErrEndOfList, err, "profiles.TestGroupsNext: did not get 'end of list' error")
+	for i := 0; i <= group.Count(); i++ {
+		s, err := group.Next()
+		if i == group.Count() {
+			require.Equal(ErrEndOfList, err, "did not get 'end of list' error")
 			return
 		}
 
-		require.Nil(t, err, "Group.Next() returned an error: ", err)
-		require.Equal(t, testServers[i].Name(), s.Name(), "profiles.TestGroupsNext: server name did not match")
+		require.NoError(err, "Group.Next() returned an error: %s", err)
+		require.Equal(testServers[i].Name(), s.Name(), "server name did not match")
 	}
 }
 
 func TestGroupsUniq(t *testing.T) {
+	require := require.New(t)
 	initGroupTest(t, false)
-	got := NewGroup(name1, testServers...)
-	require.Equal(t, len(testServers), len(got.Servers), "profiles.TestGroupsUniq: missing servers in group")
+	group := Group{Name: name1, Servers: testServers}
 
-	got.Servers = append(got.Servers, testServers[0])
-	require.Equal(t, len(testServers)+1, len(got.Servers), "profiles.TestGroupsUniq: added server missing")
+	group.Servers = append(group.Servers, testServers[0])
+	require.Len(group.Servers, 4, "added server missing")
 
-	got.uniq()
-	require.Equal(t, len(testServers), len(got.Servers), "profiles.TestGroupsUniq: duplicate servers not removed")
+	group.uniq()
+	require.Len(group.Servers, 3, "duplicate servers not removed")
 
-	for i := range got.Count() {
-		require.Equal(
-			t,
-			testServers[i].Name(),
-			got.Servers[i].Name(),
-			"profiles.TestGroupsUniq: server name did not match",
-		)
+	for i := range group.Count() {
+		require.Equal(testServers[i].Name(), group.Servers[i].Name(), "server name did not match")
 	}
 }

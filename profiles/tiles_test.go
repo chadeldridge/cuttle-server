@@ -6,152 +6,227 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDefaultTile(t *testing.T) {
+func TestTilesDefaultTile(t *testing.T) {
 	require := require.New(t)
 	tile := DefaultTile()
 
-	require.False(tile.hideCmd, "Expected hideCmd to be false")
-	require.False(tile.hideExp, "Expected hideExp to be false")
-	require.Empty(tile.name, "Expected name to be empty")
-	require.Empty(tile.cmd, "Expected cmd to be empty")
-	require.Empty(tile.exp, "Expected exp to be empty")
-	require.Equal(40, tile.displaySize, "Expected displaySize to be 40")
+	require.False(tile.hideCmd, "hideCmd returned true")
+	require.False(tile.hideExp, "hideExp returned true")
+	require.Empty(tile.name, "name was not empty")
+	require.Empty(tile.cmd, "cmd was not empty")
+	require.Empty(tile.exp, "exp was not empty")
+	require.Equal(40, tile.displaySize, "displaySize did not match")
 }
 
-func TestNewTile(t *testing.T) {
+func TestTilesNewTile(t *testing.T) {
 	require := require.New(t)
-
 	name := "Ping"
 	cmd := "ping google.com"
 	exp := "64 bytes from"
 
-	tile := NewTile(name, cmd, exp)
-
-	require.False(tile.hideCmd, "Expected hideCmd to be false")
-	require.False(tile.hideExp, "Expected hideExp to be false")
-	require.Equal(name, tile.name, "Expected name to be %s", name)
-	require.Equal(cmd, tile.cmd, "Expected cmd to be %s", cmd)
-	require.Equal(exp, tile.exp, "Expected exp to be %s", exp)
-	require.Equal(40, tile.displaySize, "Expected displaySize to be 40")
+	t.Run("valid", func(t *testing.T) {
+		tile := NewTile(name, cmd, exp)
+		require.False(tile.hideCmd, "hideCmd returned true")
+		require.False(tile.hideExp, "hideExp returned true")
+		require.Equal(name, tile.name, "name did not match")
+		require.Equal(cmd, tile.cmd, "cmd did not match")
+		require.Equal(exp, tile.exp, "exp did not match")
+		require.Equal(40, tile.displaySize, "displaySize did not match")
+	})
+	// TODO: Add test cases for invalid name, cmd, and exp after validation is added to NewTile.
 }
 
-func TestTileHideCmd(t *testing.T) {
+func TestTilesHideCmd(t *testing.T) {
 	require := require.New(t)
+	tile := Tile{}
 
-	tile := DefaultTile()
-	require.False(tile.HideCmd(), "Expected HideCmd to return false")
+	t.Run("default", func(t *testing.T) {
+		require.False(tile.HideCmd(), "Tile.HideCmd() returned true")
+	})
 
-	tile.SetHideCmd(true)
-	require.True(tile.HideCmd(), "Expected HideCmd to return true")
+	t.Run("true", func(t *testing.T) {
+		tile.hideCmd = true
+		require.True(tile.HideCmd(), "Tile.HideCmd() returned false")
+	})
+
+	t.Run("false", func(t *testing.T) {
+		tile.hideCmd = false
+		require.False(tile.HideCmd(), "Tile.HideCmd() returned true")
+	})
 }
 
-func TestTileHideExp(t *testing.T) {
+func TestTilesHideExp(t *testing.T) {
 	require := require.New(t)
+	tile := Tile{}
 
-	tile := DefaultTile()
-	require.False(tile.HideExp(), "Expected HideExp to return false")
+	t.Run("default", func(t *testing.T) {
+		require.False(tile.HideExp(), "Tile.HideExp() returned true")
+	})
 
-	tile.SetHideExp(true)
-	require.True(tile.HideExp(), "Expected HideExp to return true")
+	t.Run("true", func(t *testing.T) {
+		tile.hideCmd = true
+		require.True(tile.HideExp(), "Tile.HideExp() returned false")
+	})
+
+	t.Run("false", func(t *testing.T) {
+		tile.hideCmd = false
+		require.False(tile.HideExp(), "Tile.HideExp() returned true")
+	})
 }
 
-func TestTileName(t *testing.T) {
+func TestTilesName(t *testing.T) {
 	require := require.New(t)
 	name := "Ping"
-
-	tile := NewTile(name, "", "")
-	require.Equal(name, tile.Name(), "Expected Name to return %s", name)
+	tile := Tile{name: name}
+	require.Equal(name, tile.Name(), "name did not match")
 }
 
-func TestTileCmd(t *testing.T) {
+func TestTilesCmd(t *testing.T) {
 	require := require.New(t)
 	cmd := "ping google.com"
-
-	tile := NewTile("", cmd, "")
-	require.Equal(cmd, tile.Cmd(), "Expected Cmd to return %s", cmd)
+	tile := Tile{cmd: cmd}
+	require.Equal(cmd, tile.Cmd(), "cmd did not match")
 }
 
-func TestTileExp(t *testing.T) {
+func TestTilesExp(t *testing.T) {
 	require := require.New(t)
 	exp := "64 bytes from"
-
-	tile := NewTile("", "", exp)
-	require.Equal(exp, tile.Exp(), "Expected Exp to return %s", exp)
+	tile := Tile{exp: exp}
+	require.Equal(exp, tile.Exp(), "exp did not match")
 }
 
-func TestTileDisplaySize(t *testing.T) {
+func TestTilesDisplaySize(t *testing.T) {
 	require := require.New(t)
-
-	tile := DefaultTile()
-	require.Equal(40, tile.DisplaySize(), "Expected DisplaySize to return 40")
-
-	tile.SetSize(3)
-	require.Equal(60, tile.DisplaySize(), "Expected DisplaySize to return 60")
+	tile := Tile{displaySize: 40}
+	require.Equal(40, tile.DisplaySize(), "DisplaySize did not match")
 }
 
-func TestTileSetName(t *testing.T) {
+func TestTilesSetHideCmd(t *testing.T) {
+	require := require.New(t)
+	tile := Tile{}
+
+	t.Run("default", func(t *testing.T) {
+		require.False(tile.hideCmd, "hideCmd returned true")
+	})
+
+	t.Run("true", func(t *testing.T) {
+		tile.SetHideCmd(true)
+		require.True(tile.hideCmd, "hideCmd returned false")
+	})
+
+	t.Run("false", func(t *testing.T) {
+		tile.SetHideCmd(false)
+		require.False(tile.hideCmd, "hideCmd returned true")
+	})
+}
+
+func TestTilesSetHideExp(t *testing.T) {
+	require := require.New(t)
+	tile := Tile{}
+
+	t.Run("default", func(t *testing.T) {
+		require.False(tile.hideExp, "hideExp returned true")
+	})
+
+	t.Run("true", func(t *testing.T) {
+		tile.SetHideExp(true)
+		require.True(tile.hideExp, "hideExp returned false")
+	})
+
+	t.Run("false", func(t *testing.T) {
+		tile.SetHideExp(false)
+		require.False(tile.hideExp, "hideExp returned true")
+	})
+}
+
+func TestTilesSetName(t *testing.T) {
 	require := require.New(t)
 	tile := NewTile("OldName", "", "")
+	name := "NewName"
 
-	// Test case 1: Valid name
-	err := tile.SetName("NewName")
-	require.NoError(err, "Expected SetName to return nil")
-	require.Equal("NewName", tile.name, "Expected Exp to return NewName")
+	t.Run("valid name", func(t *testing.T) {
+		err := tile.SetName(name)
+		require.NoError(err, "SetName() returned an error: %s", err)
+		require.Equal(name, tile.name, "name did not match")
+	})
 
-	// Test case 2: Invalid name
 	// INCOMPLETE: Change to require.Error after SetName checks for valid name.
-	// err = tile.SetName("invalid name")
-	// require.Error(err, "Expected SetName to return an error")
-	// require.Equal("NewName", tile.name, "Expected Exp to return NewName")
+	/*
+		t.Run("invalid name", func(t *testing.T) {
+			err = tile.SetName("invalid name")
+			require.Error(err, "SetName() did not return an error")
+			require.Equal(name, tile.name, "name did not match")
+		})
+	*/
 
-	// Test case 3: Empty name
-	err = tile.SetName("")
-	require.Error(err, "Expected SetName to return an error")
-	require.Equal("NewName", tile.name, "Expected Exp to return NewName")
+	t.Run("empty name", func(t *testing.T) {
+		err := tile.SetName("")
+		require.Error(err, "SetName() did not return an error")
+		require.Equal(name, tile.name, "name did not match")
+	})
 }
 
-func TestTileSetSize(t *testing.T) {
+func TestTilesSetSize(t *testing.T) {
 	require := require.New(t)
 	tile := DefaultTile()
 
-	tile.SetSize(0)
-	require.Equal(40, tile.displaySize, "Expected displaySize to be 40")
+	t.Run("default", func(t *testing.T) {
+		tile.SetSize(0)
+		require.Equal(40, tile.displaySize, "displaySize did not match")
+	})
 
-	tile.SetSize(4)
-	require.Equal(80, tile.displaySize, "Expected displaySize to be 80")
+	t.Run("positive", func(t *testing.T) {
+		tile.SetSize(4)
+		require.Equal(80, tile.displaySize, "displaySize did not match")
+	})
+
+	t.Run("negative", func(t *testing.T) {
+		tile.SetSize(-4)
+		require.Equal(40, tile.displaySize, "displaySize did not match")
+	})
 }
 
-func TestTileSetCmd(t *testing.T) {
+func TestTilesSetCmd(t *testing.T) {
 	require := require.New(t)
 	tile := DefaultTile()
 
-	// Test case 1: Valid command
-	err := tile.SetCmd("ping google.com")
-	require.NoError(err, "Expected SetCmd to return nil")
+	t.Run("valid", func(t *testing.T) {
+		err := tile.SetCmd("ping google.com")
+		require.NoError(err, "SetCmd() returned an error: %s", err)
+	})
 
-	// Test case 2: Invalid command
-	err = tile.SetCmd("invalid command")
 	// INCOMPLETE: Update after SetCmd checks for valid command.
-	// require.Error(err, "Expected SetCmd to return an error")
-	require.NoError(err, "Expected SetCmd to return nil")
+	/*
+		t.Run("invalid", func(t *testing.T) {
+			err := tile.SetCmd("invalid command")
+			require.Error(err, "SetCmd() did not return an error")
+		})
+	*/
 
-	// Test case 3: Empty command
-	err = tile.SetCmd("")
-	require.Error(err, "Expected SetCmd to return an error")
+	t.Run("empty", func(t *testing.T) {
+		err := tile.SetCmd("")
+		require.Error(err, "SetCmd() did not return an error")
+	})
 }
 
-func TestTileSetExp(t *testing.T) {
+func TestTilesSetExp(t *testing.T) {
 	require := require.New(t)
 	tile := DefaultTile()
 
-	err := tile.SetExp("invalid expect string")
-	// INCOMPLETE: Update after SetCmd checks for valid command.
-	// require.Error(err, "Expected SetExp to return an error")
-	require.NoError(err, "Expected SetExp to return nil")
+	t.Run("valid", func(t *testing.T) {
+		err := tile.SetExp("64 bytes from")
+		require.NoError(err, "SetExp() returned an error: %s", err)
+	})
 
-	err = tile.SetExp("64 bytes from")
-	require.NoError(err, "Expected SetExp to return nil")
+	/*
+		t.Run("invalid", func(t *testing.T) {
+			err := tile.SetExp("invalid expect string")
+			require.Error(err, "SetExp() did not return an error")
+		})
+	*/
 
-	err = tile.SetExp("")
-	require.Error(err, "Expected SetExp to return an error")
+	t.Run("empty", func(t *testing.T) {
+		err := tile.SetExp("")
+		require.Error(err, "SetExp() did not return an error")
+	})
 }
