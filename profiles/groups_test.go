@@ -38,7 +38,7 @@ func createNewServer(t *testing.T, host string, errConn bool) connections.Server
 		t.Fatal("", err)
 	}
 
-	conn, err := connections.NewMockConnector("test")
+	conn, err := connections.NewMockConnector("my connector", "test")
 	if err != nil {
 		t.Fatalf("failed to create mock connector: %s", err)
 	}

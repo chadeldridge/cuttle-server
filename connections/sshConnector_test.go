@@ -40,16 +40,43 @@ func TestSSHConnectorNewSSHConnector(t *testing.T) {
 	require := require.New(t)
 
 	t.Run("good username", func(t *testing.T) {
-		conn, err := NewSSHConnector(testUser)
+		conn, err := NewSSHConnector("my connector", testUser)
 		require.NoError(err, "NewSSHConnector() returned an error: %s", err)
-		require.Equal(testUser, conn.User, "user did not match username after SSHConnector creation")
+		require.Equal("my connector", conn.Name, "SSHConnector.Name did not match")
+		require.Equal(testUser, conn.User, "SSHConnector.User did not match")
+	})
+
+	t.Run("empty name", func(t *testing.T) {
+		conn, err := NewSSHConnector("", testUser)
+		require.Error(err, "NewSSHConnector() did not return an error")
+		require.Empty(conn.Name, "SSHConnector.Name was not empty")
+		require.Empty(conn.User, "SSHConnector.User was not empty")
+	})
+
+	t.Run("empty username", func(t *testing.T) {
+		conn, err := NewSSHConnector("my connector", "")
+		require.Error(err, "NewSSHConnector() did not return an error")
+		require.Equal("my connector", conn.Name, "SSHConnector.Name did not match")
+		require.Empty(conn.User, "SSHConnector.User was not empty")
+	})
+}
+
+func TestSSHConnectorSetName(t *testing.T) {
+	require := require.New(t)
+	conn := testNewSSHConnector()
+	newName := "george"
+
+	t.Run("good", func(t *testing.T) {
+		err := conn.SetName(newName)
+		require.NoError(err, "SSHConnector.SetName() returned an error: %s", err)
+		require.Equal(newName, conn.Name, "user did not match expected username")
 	})
 
 	// Test empty username
-	t.Run("empty username", func(t *testing.T) {
-		conn, err := NewSSHConnector("")
-		require.Error(err, "NewSSHConnector() did not return an error")
-		require.Empty(conn.User, "SSHConnector.user was not empty after empty username given")
+	t.Run("empty", func(t *testing.T) {
+		err := conn.SetName("")
+		require.Error(err, "SSHConnector.SetName() did not return an error")
+		require.Equal(newName, conn.Name, "SSHConnector.user changed after empty username given")
 	})
 }
 
@@ -58,14 +85,14 @@ func TestSSHConnectorSetUser(t *testing.T) {
 	conn := testNewSSHConnector()
 	newUser := "george"
 
-	t.Run("good username", func(t *testing.T) {
+	t.Run("good", func(t *testing.T) {
 		err := conn.SetUser(newUser)
 		require.NoError(err, "SSHConnector.SetUser() returned an error: %s", err)
 		require.Equal(newUser, conn.User, "user did not match expected username")
 	})
 
 	// Test empty username
-	t.Run("empty username", func(t *testing.T) {
+	t.Run("empty", func(t *testing.T) {
 		err := conn.SetUser("")
 		require.Error(err, "SSHConnector.SetUser() did not return an error")
 		require.Equal(newUser, conn.User, "SSHConnector.user changed after empty username given")

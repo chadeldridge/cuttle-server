@@ -14,13 +14,13 @@ func testNewMockConnector() MockConnector {
 func TestMockConnectorNewMockConnector(t *testing.T) {
 	require := require.New(t)
 	t.Run("new MockConnector", func(t *testing.T) {
-		conn, err := NewMockConnector(testUser)
+		conn, err := NewMockConnector("my connector", testUser)
 		require.NoError(err, "conn error when creating MockConnector")
 		require.Equal(testUser, conn.user, "user did not match username after MockConnector creation")
 	})
 
 	t.Run("empty username", func(t *testing.T) {
-		conn, err := NewMockConnector("")
+		conn, err := NewMockConnector("my connector", "")
 		require.Error(err, "did not get error when creating MockConnector with empty username")
 		require.Equal("", conn.user, "MockConnector.user was not empty after empty username given")
 	})

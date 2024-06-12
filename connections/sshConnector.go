@@ -18,6 +18,7 @@ const (
 
 // SSHConnector impletments the Connector interface for SSH connectivity.
 type SSHConnector struct {
+	Name        string           // A unique name for the connector to make it easier to add to a server.
 	isConnected bool             // Track if we have an active connection to the server.
 	hasSession  bool             // Indicates there's an active session so we don't close the connection on it.
 	Auth        []ssh.AuthMethod // Each auth method will be tried in turn until one works or all fail.
@@ -27,14 +28,28 @@ type SSHConnector struct {
 }
 
 // NewSSHConnector creates an SSHConnector struct to be used to connect via SSH to a server.
-func NewSSHConnector(username string) (SSHConnector, error) {
+func NewSSHConnector(name, username string) (SSHConnector, error) {
 	s := SSHConnector{}
 
-	err := s.SetUser(username)
-	return s, err
+	if err := s.SetName(name); err != nil {
+		return s, err
+	}
+
+	return s, s.SetUser(username)
 }
 
-// SetUser sets the username to be used for connection credentials.
+// SetName sets a unique Name to make it easier to add to a server.
+func (c *SSHConnector) SetName(name string) error {
+	if name == "" {
+		return errors.New("connections.SSHConnector.SetName: username was empty")
+	}
+
+	// INCOMPLETE: Add name validation here
+	c.Name = name
+	return nil
+}
+
+// SetUser sets the User to be used for connection credentials.
 func (c *SSHConnector) SetUser(username string) error {
 	if username == "" {
 		return errors.New("connections.SSHConnector.SetUser: username was empty")

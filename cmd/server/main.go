@@ -38,7 +38,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	conn, err := connections.NewSSHConnector(remoteUser)
+	conn, err := connections.NewSSHConnector("my connector", remoteUser)
 	if err != nil {
 		log.Fatal(err)
 	}

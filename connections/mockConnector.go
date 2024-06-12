@@ -25,7 +25,7 @@ type MockConnector struct {
 }
 
 // NewMockConnector creates a MockConnector to simulate connecting to a server.
-func NewMockConnector(username string) (MockConnector, error) {
+func NewMockConnector(name, username string) (MockConnector, error) {
 	m := MockConnector{}
 
 	err := m.SetUser(username)
