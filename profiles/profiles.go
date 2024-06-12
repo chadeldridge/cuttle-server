@@ -56,14 +56,14 @@ func (p *Profile) AddTiles(tiles ...Tile) error {
 	var errs error
 	for _, tile := range tiles {
 		// If the Tile already exists, skip to the next one.
-		if _, ok := p.Tiles[tile.Name()]; ok {
+		if _, ok := p.Tiles[tile.Name]; ok {
 			errs = errors.Join(errs,
-				fmt.Errorf("profiles.Profile.AddTiles: tile already exists for '%s'", tile.Name()),
+				fmt.Errorf("profiles.Profile.AddTiles: tile already exists for '%s'", tile.Name),
 			)
 			continue
 		}
 
-		p.Tiles[tile.Name()] = tile
+		p.Tiles[tile.Name] = tile
 	}
 
 	return errs
@@ -152,7 +152,7 @@ func (p Profile) Execute(tileName, groupName string) error {
 			continue
 		}
 
-		err = server.Run(tile.cmd, tile.exp)
+		err = server.Run(tile.Cmd, tile.Exp)
 		if err != nil {
 			errs = errors.Join(errs, err)
 			continue

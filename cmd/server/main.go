@@ -67,7 +67,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	err = profile.Execute(tile.Name(), group.Name)
+	err = profile.Execute(tile.Name, group.Name)
 	if err != nil {
 		log.Printf("Execute error: %s\n", err)
 	}

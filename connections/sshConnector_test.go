@@ -33,7 +33,7 @@ AAAECwBTmJkCxA2UyiNnP5Mh3ampIMnZt+wegxE5jqySmfAvingJrKdq5sXfmHM5wReDp7
 )
 
 func testNewSSHConnector() SSHConnector {
-	return SSHConnector{user: testUser, auth: []ssh.AuthMethod{ssh.Password(testPass)}}
+	return SSHConnector{User: testUser, Auth: []ssh.AuthMethod{ssh.Password(testPass)}}
 }
 
 func TestSSHConnectorNewSSHConnector(t *testing.T) {
@@ -42,14 +42,14 @@ func TestSSHConnectorNewSSHConnector(t *testing.T) {
 	t.Run("good username", func(t *testing.T) {
 		conn, err := NewSSHConnector(testUser)
 		require.NoError(err, "NewSSHConnector() returned an error: %s", err)
-		require.Equal(testUser, conn.user, "user did not match username after SSHConnector creation")
+		require.Equal(testUser, conn.User, "user did not match username after SSHConnector creation")
 	})
 
 	// Test empty username
 	t.Run("empty username", func(t *testing.T) {
 		conn, err := NewSSHConnector("")
 		require.Error(err, "NewSSHConnector() did not return an error")
-		require.Empty(conn.user, "SSHConnector.user was not empty after empty username given")
+		require.Empty(conn.User, "SSHConnector.user was not empty after empty username given")
 	})
 }
 
@@ -61,28 +61,28 @@ func TestSSHConnectorSetUser(t *testing.T) {
 	t.Run("good username", func(t *testing.T) {
 		err := conn.SetUser(newUser)
 		require.NoError(err, "SSHConnector.SetUser() returned an error: %s", err)
-		require.Equal(newUser, conn.user, "user did not match expected username")
+		require.Equal(newUser, conn.User, "user did not match expected username")
 	})
 
 	// Test empty username
 	t.Run("empty username", func(t *testing.T) {
 		err := conn.SetUser("")
 		require.Error(err, "SSHConnector.SetUser() did not return an error")
-		require.Equal(newUser, conn.user, "SSHConnector.user changed after empty username given")
+		require.Equal(newUser, conn.User, "SSHConnector.user changed after empty username given")
 	})
 }
 
 func TestSSHConnectorAddPasswordAuth(t *testing.T) {
 	require := require.New(t)
-	conn := SSHConnector{user: testUser}
+	conn := SSHConnector{User: testUser}
 
 	conn.AddPasswordAuth(testPass)
-	require.Len(conn.auth, 1, "missing AuthMethod after AddKeyAuth")
+	require.Len(conn.Auth, 1, "missing AuthMethod after AddKeyAuth")
 }
 
 func TestSSHConnectorAddKeyAuth(t *testing.T) {
 	require := require.New(t)
-	conn := SSHConnector{user: testUser}
+	conn := SSHConnector{User: testUser}
 
 	key, err := ssh.ParsePrivateKey(keyNoPass)
 	require.NoError(err, "ssh.ParsePrivateKey() returned an error: %s", err)
@@ -90,53 +90,53 @@ func TestSSHConnectorAddKeyAuth(t *testing.T) {
 	t.Run("good key", func(t *testing.T) {
 		err = conn.AddKeyAuth(key)
 		require.NoError(err, "SSHConnector.AddKeyAuth() returned an error: %s", err)
-		require.Len(conn.auth, 1, "missing AuthMethod after AddKeyAuth")
+		require.Len(conn.Auth, 1, "missing AuthMethod after AddKeyAuth")
 	})
 
 	// Reset auth so we get the right count.
-	conn.auth = []ssh.AuthMethod{}
+	conn.Auth = []ssh.AuthMethod{}
 	t.Run("nil key", func(t *testing.T) {
 		err = conn.AddKeyAuth(nil)
 		require.Error(err, "SSHConnector.AddKeyAuth() did not return an error")
-		require.Len(conn.auth, 0, "AuthMethod found")
+		require.Len(conn.Auth, 0, "AuthMethod found")
 	})
 }
 
 func TestSSHConnectorParseKey(t *testing.T) {
 	require := require.New(t)
-	conn := SSHConnector{user: testUser}
+	conn := SSHConnector{User: testUser}
 
 	t.Run("good key", func(t *testing.T) {
 		err := conn.ParseKey(keyNoPass)
 		require.NoError(err, "SSHConnector.ParseKey() returned an error: %s", err)
-		require.Len(conn.auth, 1, "missing AuthMethod after AddKeyAuth")
+		require.Len(conn.Auth, 1, "missing AuthMethod after AddKeyAuth")
 	})
 
 	t.Run("bad key", func(t *testing.T) {
-		conn.auth = []ssh.AuthMethod{}
+		conn.Auth = []ssh.AuthMethod{}
 		err := conn.ParseKey([]byte("not a real key"))
 		require.Error(err, "SSHConnector.ParseKey() did not return an error")
-		require.Len(conn.auth, 0, "AuthMethod found")
+		require.Len(conn.Auth, 0, "AuthMethod found")
 	})
 
 	t.Run("empty key", func(t *testing.T) {
-		conn.auth = []ssh.AuthMethod{}
+		conn.Auth = []ssh.AuthMethod{}
 		err := conn.ParseKey([]byte{})
 		require.Error(err, "SSHConnector.ParseKey() did not return an error")
-		require.Len(conn.auth, 0, "AuthMethod found")
+		require.Len(conn.Auth, 0, "AuthMethod found")
 	})
 
 	t.Run("nil key", func(t *testing.T) {
-		conn.auth = []ssh.AuthMethod{}
+		conn.Auth = []ssh.AuthMethod{}
 		err := conn.ParseKey(nil)
 		require.Error(err, "SSHConnector.ParseKey() did not return an error")
-		require.Len(conn.auth, 0, "AuthMethod found")
+		require.Len(conn.Auth, 0, "AuthMethod found")
 	})
 }
 
 func TestSSHConnectorParseKeyWithPassphrase(t *testing.T) {
 	require := require.New(t)
-	conn := SSHConnector{user: testUser}
+	conn := SSHConnector{User: testUser}
 
 	/*
 		raw, err := os.ReadFile(keyFileWithPass)
@@ -146,28 +146,28 @@ func TestSSHConnectorParseKeyWithPassphrase(t *testing.T) {
 	t.Run("good passphrase", func(t *testing.T) {
 		err := conn.ParseKeyWithPassphrase(keyPass, testPass)
 		require.NoError(err, "SSHConnector.ParseKeyWithPassphrase() returned an error: %s", err)
-		require.Len(conn.auth, 1, "missing AuthMethod after AddKeyAuth")
+		require.Len(conn.Auth, 1, "missing AuthMethod after AddKeyAuth")
 	})
 
 	t.Run("bad passphrase", func(t *testing.T) {
-		conn.auth = []ssh.AuthMethod{}
+		conn.Auth = []ssh.AuthMethod{}
 		err := conn.ParseKeyWithPassphrase(keyPass, "")
 		require.Error(err, "SSHConnector.ParseKeyWithPassphrase() did not return an error")
-		require.Len(conn.auth, 0, "AuthMethod found")
+		require.Len(conn.Auth, 0, "AuthMethod found")
 	})
 
 	t.Run("empty key", func(t *testing.T) {
-		conn.auth = []ssh.AuthMethod{}
+		conn.Auth = []ssh.AuthMethod{}
 		err := conn.ParseKeyWithPassphrase([]byte{}, testPass)
 		require.Error(err, "SSHConnector.ParseKeyWithPassphrase() did not return an error")
-		require.Len(conn.auth, 0, "AuthMethod found")
+		require.Len(conn.Auth, 0, "AuthMethod found")
 	})
 
 	t.Run("nil key", func(t *testing.T) {
-		conn.auth = []ssh.AuthMethod{}
+		conn.Auth = []ssh.AuthMethod{}
 		err := conn.ParseKeyWithPassphrase(nil, testPass)
 		require.Error(err, "SSHConnector.ParseKeyWithPassphrase() did not return an error")
-		require.Len(conn.auth, 0, "AuthMethod found")
+		require.Len(conn.Auth, 0, "AuthMethod found")
 	})
 }
 
@@ -177,7 +177,7 @@ func TestSSHConnectorOpenSession(t *testing.T) {
 
 	require := require.New(t)
 	conn := testNewSSHConnector()
-	server := Server{hostname: testHost, Connector: &conn, Results: &res, Logs: &log}
+	server := Server{Hostname: testHost, Connector: &conn, Results: &res, Logs: &log}
 
 	err := conn.Open(server)
 	require.NoError(err, "SSHConnector.Open() returned an error: %s", err)
@@ -213,7 +213,7 @@ func TestSSHConnectorCloseSession(t *testing.T) {
 
 	require := require.New(t)
 	conn := testNewSSHConnector()
-	server := Server{hostname: testHost, Connector: &conn, Results: &res, Logs: &logs}
+	server := Server{Hostname: testHost, Connector: &conn, Results: &res, Logs: &logs}
 
 	err := conn.Open(server)
 	require.NoError(err, "SSHConnector.Open() returned an error: %s", err)
@@ -321,7 +321,7 @@ func TestSSHConnectorProtocol(t *testing.T) {
 func TestSSHConnectorUser(t *testing.T) {
 	require := require.New(t)
 	conn := testNewSSHConnector()
-	require.Equal(testUser, conn.User(), "SSHConnector.User() did not match testUser")
+	require.Equal(testUser, conn.GetUser(), "SSHConnector.User() did not match testUser")
 }
 
 func TestSSHConnectorDefaultPort(t *testing.T) {
@@ -374,7 +374,7 @@ func TestSSHConnectorValidate(t *testing.T) {
 	})
 
 	t.Run("no auth", func(t *testing.T) {
-		conn := SSHConnector{user: testUser}
+		conn := SSHConnector{User: testUser}
 		require.Error(conn.Validate(), "SSHConnector.Validate() did not return an error")
 	})
 }
@@ -385,7 +385,7 @@ func TestSSHConnectorOpen(t *testing.T) {
 
 	require := require.New(t)
 	conn := testNewSSHConnector()
-	server := Server{hostname: testHost, Connector: &conn, Results: &res, Logs: &log}
+	server := Server{Hostname: testHost, Connector: &conn, Results: &res, Logs: &log}
 
 	t.Run("valid", func(t *testing.T) {
 		err := conn.Open(server)
@@ -410,7 +410,7 @@ func TestSSHConnectorOpen(t *testing.T) {
 
 	t.Run("dial err", func(t *testing.T) {
 		conn := testNewSSHConnector()
-		server := Server{hostname: "not.likely", Connector: &conn, Results: &res, Logs: &log}
+		server := Server{Hostname: "not.likely", Connector: &conn, Results: &res, Logs: &log}
 		require.Error(conn.Open(server), "SSHConnector.Open() did not return an error")
 		require.False(conn.isConnected, "SSHConnector openned despite invalid state")
 	})
@@ -422,7 +422,7 @@ func TestSSHConnectorTestConnection(t *testing.T) {
 
 	require := require.New(t)
 	conn := testNewSSHConnector()
-	server := Server{hostname: testHost, Connector: &conn, Results: &res, Logs: &log}
+	server := Server{Hostname: testHost, Connector: &conn, Results: &res, Logs: &log}
 
 	err := conn.Open(server)
 	require.NoError(err, "SSHConnector.Open() returned an error: %s", err)
@@ -442,7 +442,7 @@ func TestSSHConnectorRun(t *testing.T) {
 
 	require := require.New(t)
 	conn := testNewSSHConnector()
-	server := Server{hostname: testHost, Connector: &conn, Results: &res, Logs: &log}
+	server := Server{Hostname: testHost, Connector: &conn, Results: &res, Logs: &log}
 	cmd := "echo testing | grep testing"
 	exp := "testing"
 
@@ -493,7 +493,7 @@ func TestSSHConnectorClose(t *testing.T) {
 
 	require := require.New(t)
 	conn := testNewSSHConnector()
-	server := Server{hostname: testHost, Connector: &conn, Results: &res, Logs: &log}
+	server := Server{Hostname: testHost, Connector: &conn, Results: &res, Logs: &log}
 
 	err := conn.Open(server)
 	require.NoError(err, "SSHConnector.Open() returned an error: %s", err)

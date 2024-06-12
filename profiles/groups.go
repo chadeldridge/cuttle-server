@@ -71,11 +71,11 @@ func (g *Group) uniq() {
 	f := make(map[string]bool)
 
 	for _, s := range g.Servers {
-		if _, ok := f[s.Name()]; ok {
+		if _, ok := f[s.Name]; ok {
 			continue
 		}
 
-		f[s.Name()] = true
+		f[s.Name] = true
 		newGroup = append(newGroup, s)
 	}
 

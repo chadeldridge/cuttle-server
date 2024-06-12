@@ -59,7 +59,7 @@ func testNewGroup(t *testing.T, servers ...connections.Server) {
 	require.Len(group.Servers, len(servers), "missing servers in group")
 
 	for i := range group.Count() {
-		require.Equal(servers[i].Name(), group.Servers[i].Name(), "server name did not match")
+		require.Equal(servers[i].Name, group.Servers[i].Name, "server name did not match")
 	}
 }
 
@@ -106,13 +106,13 @@ func TestGroupsSetName(t *testing.T) {
 
 	t.Run("name2", func(t *testing.T) {
 		err := group.SetName(name2)
-		require.NoError(err, "Group.SetName() returned an error: %s", err)
+		require.NoError(err, "Group.SetName returned an error: %s", err)
 		require.Equal(name2, group.Name, "group name does not match")
 	})
 
 	t.Run("empty name", func(t *testing.T) {
 		err := group.SetName("")
-		require.Error(err, "Group.SetName() did not return an error")
+		require.Error(err, "Group.SetName did not return an error")
 		require.Equal(name2, group.Name, "group name does nto match")
 	})
 }
@@ -159,7 +159,7 @@ func TestGroupsReset(t *testing.T) {
 	group.Reset()
 	s, err := group.Next()
 	require.NoError(err, "Group.Next() returned an error: %s", err)
-	require.Equal(testServers[0].Name(), s.Name(), "server name did not match")
+	require.Equal(testServers[0].Name, s.Name, "server name did not match")
 }
 
 func TestGroupsNext(t *testing.T) {
@@ -175,7 +175,7 @@ func TestGroupsNext(t *testing.T) {
 		}
 
 		require.NoError(err, "Group.Next() returned an error: %s", err)
-		require.Equal(testServers[i].Name(), s.Name(), "server name did not match")
+		require.Equal(testServers[i].Name, s.Name, "server name did not match")
 	}
 }
 
@@ -191,6 +191,6 @@ func TestGroupsUniq(t *testing.T) {
 	require.Len(group.Servers, 3, "duplicate servers not removed")
 
 	for i := range group.Count() {
-		require.Equal(testServers[i].Name(), group.Servers[i].Name(), "server name did not match")
+		require.Equal(testServers[i].Name, group.Servers[i].Name, "server name did not match")
 	}
 }

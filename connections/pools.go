@@ -36,11 +36,11 @@ func (p ConnectionPool) Open(server *Server) (*Connection, error) {
 }
 
 func (c *Connection) Open(pool ConnectionPool) (*Connection, error) {
-	if c.Server.hostname == "" {
+	if c.Server.Hostname == "" {
 		return c, errors.New("connections.Pool.Open: hostname was empty")
 	}
 
-	if conn, exists := pool[c.Server.hostname]; exists {
+	if conn, exists := pool[c.Server.Hostname]; exists {
 		conn.killAt = time.Now().Add(time.Minute * time.Duration(TTL))
 		return conn, nil
 	}
@@ -51,13 +51,13 @@ func (c *Connection) Open(pool ConnectionPool) (*Connection, error) {
 		return nil, err
 	}
 
-	pool[c.Server.hostname] = c
+	pool[c.Server.Hostname] = c
 	return c, nil
 }
 
 // GetConnection returns a connection for the server if one exists. Returns nil if no connection is found.
 func (p ConnectionPool) GetConnection(server Server) *Connection {
-	conn, ok := p[server.hostname]
+	conn, ok := p[server.Hostname]
 	if !ok {
 		return nil
 	}
@@ -88,7 +88,7 @@ func (p *ConnectionPool) Close(hostname string, force bool) error {
 // Close closes the connection and removes it from the Pool. If the connection is not in the
 // Pool, Close will return an error and will NOT try to close the connection.
 func (c *Connection) Close(force bool) error {
-	_, exists := Pool[c.hostname]
+	_, exists := Pool[c.Hostname]
 	if !exists {
 		return errors.New("connections.Connection.Close: Connection not found in Pool")
 	}
@@ -98,7 +98,7 @@ func (c *Connection) Close(force bool) error {
 		return err
 	}
 
-	delete(Pool, c.hostname)
+	delete(Pool, c.Hostname)
 	return err
 }
 
@@ -112,7 +112,7 @@ func (p ConnectionPool) CloseAll() error {
 			errs = errors.Join(errs, fmt.Errorf("connections.ConnectionPool.CloseAll: %s", err))
 		}
 
-		delete(p, c.hostname)
+		delete(p, c.Hostname)
 	}
 
 	return errs
@@ -130,7 +130,7 @@ func (c *Connection) TimeOut() error {
 		if err != ErrSessionActive {
 			return fmt.Errorf(
 				"connections.Pool.TimeOut: error closing connection %s: %s",
-				c.hostname, err,
+				c.Hostname, err,
 			)
 		}
 

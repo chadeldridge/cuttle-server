@@ -20,8 +20,8 @@ const (
 type SSHConnector struct {
 	isConnected bool             // Track if we have an active connection to the server.
 	hasSession  bool             // Indicates there's an active session so we don't close the connection on it.
-	auth        []ssh.AuthMethod // Each auth method will be tried in turn until one works or all fail.
-	user        string           // The username to login to the server with.
+	Auth        []ssh.AuthMethod // Each auth method will be tried in turn until one works or all fail.
+	User        string           // The username to login to the server with.
 	*ssh.Client
 	*ssh.Session
 }
@@ -41,13 +41,13 @@ func (c *SSHConnector) SetUser(username string) error {
 	}
 
 	// INCOMPLETE: Add username validation here
-	c.user = username
+	c.User = username
 	return nil
 }
 
 // AddPasswordAuth adds an AuthMethod using a password.
 func (c *SSHConnector) AddPasswordAuth(password string) {
-	c.auth = append(c.auth, ssh.Password(password))
+	c.Auth = append(c.Auth, ssh.Password(password))
 }
 
 // AddKeyAuth adds an AuthMethod using the ssh private key.
@@ -56,7 +56,7 @@ func (c *SSHConnector) AddKeyAuth(key ssh.Signer) error {
 		return errors.New("connections.SSHConnector.AddKeyAuth: key was nil")
 	}
 
-	c.auth = append(c.auth, ssh.PublicKeys(key))
+	c.Auth = append(c.Auth, ssh.PublicKeys(key))
 	return nil
 }
 
@@ -143,17 +143,17 @@ func foundExpect(data []byte, expect string) bool {
 func (c *SSHConnector) IsConnected() bool  { return c.isConnected }
 func (c *SSHConnector) IsActive() bool     { return c.hasSession }
 func (c *SSHConnector) Protocol() Protocol { return SSHProtocol }
-func (c *SSHConnector) User() string       { return c.user }
+func (c *SSHConnector) GetUser() string    { return c.User }
 func (c *SSHConnector) DefaultPort() int   { return SSHDefaultPort }
-func (c *SSHConnector) IsEmpty() bool      { return c.user == "" }
+func (c *SSHConnector) IsEmpty() bool      { return c.User == "" }
 func (c *SSHConnector) IsValid() bool      { err := c.Validate(); return err == nil }
 
 func (c SSHConnector) Validate() error {
-	if c.user == "" {
+	if c.User == "" {
 		return ErrInvalidEmtpyUser
 	}
 
-	if len(c.auth) < 1 {
+	if len(c.Auth) < 1 {
 		return ErrInvalidNoAuthMethod
 	}
 
@@ -166,9 +166,9 @@ func (c *SSHConnector) Open(server Server) error {
 	}
 
 	config := &ssh.ClientConfig{
-		User:            c.user,
+		User:            c.User,
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(), // INCOMPLETE: Find a way to add host key checking.
-		Auth:            c.auth,
+		Auth:            c.Auth,
 		// TODO: Add a timeout to the connection.
 	}
 

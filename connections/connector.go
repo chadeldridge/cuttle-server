@@ -26,8 +26,8 @@ type Connector interface {
 	IsActive() bool
 	// Protocol returns the Protocol enum for this Connector type.
 	Protocol() Protocol
-	// User returns the username used by this Connector.
-	User() string
+	// GetUser returns the username used by this Connector.
+	GetUser() string
 	// DefaultPort returns the default port number used by this Connector type.
 	DefaultPort() int
 	// IsEmpty checks that fields populated by New contain data.

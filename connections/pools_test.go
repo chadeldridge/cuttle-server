@@ -16,7 +16,7 @@ func TestPoolsOpen(t *testing.T) {
 	require := require.New(t)
 	conn := MockConnector{user: testUser}
 	server := Server{
-		hostname:  testHost,
+		Hostname:  testHost,
 		Results:   &res,
 		Logs:      &log,
 		Connector: &conn,
@@ -28,7 +28,7 @@ func TestPoolsOpen(t *testing.T) {
 		require.True(time.Now().Before(pConn.killAt), "killAt was before time.Now()")
 
 		conn.isConnected = false
-		delete(Pool, server.hostname)
+		delete(Pool, server.Hostname)
 	})
 
 	t.Run("already open", func(t *testing.T) {
@@ -40,7 +40,7 @@ func TestPoolsOpen(t *testing.T) {
 		require.Equal(pConn, pConn2, "Connection refs were not the same")
 
 		conn.isConnected = false
-		delete(Pool, server.hostname)
+		delete(Pool, server.Hostname)
 	})
 
 	t.Run("empty connector", func(t *testing.T) {
@@ -50,12 +50,12 @@ func TestPoolsOpen(t *testing.T) {
 	})
 
 	t.Run("empty hostname", func(t *testing.T) {
-		server = Server{hostname: ""}
+		server = Server{Hostname: ""}
 		_, err := Pool.Open(&server)
 		require.Error(err, "Pool.Open() returned an error: ", err)
 
 		conn.isConnected = false
-		delete(Pool, server.hostname)
+		delete(Pool, server.Hostname)
 	})
 }
 
@@ -66,20 +66,20 @@ func TestPoolsGetConnection(t *testing.T) {
 	require := require.New(t)
 	conn := MockConnector{user: testUser}
 	server := Server{
-		hostname:  testHost,
+		Hostname:  testHost,
 		Results:   &res,
 		Logs:      &log,
 		Connector: &conn,
 	}
 
 	t.Run("existing connection", func(t *testing.T) {
-		Pool = ConnectionPool{server.hostname: &Connection{Server: &server}}
+		Pool = ConnectionPool{server.Hostname: &Connection{Server: &server}}
 
 		got := Pool.GetConnection(server)
 		require.NotNil(got, "Pool.GetConnection() returned nil Connection")
 
 		conn.isConnected = false
-		delete(Pool, server.hostname)
+		delete(Pool, server.Hostname)
 	})
 
 	t.Run("no connection", func(t *testing.T) {
@@ -95,7 +95,7 @@ func TestPoolsExpires(t *testing.T) {
 	require := require.New(t)
 	conn := MockConnector{user: testUser}
 	server := Server{
-		hostname:  testHost,
+		Hostname:  testHost,
 		Results:   &res,
 		Logs:      &log,
 		Connector: &conn,
@@ -119,7 +119,7 @@ func TestPoolsExpired(t *testing.T) {
 	require := require.New(t)
 	conn := MockConnector{user: testUser}
 	server := Server{
-		hostname:  testHost,
+		Hostname:  testHost,
 		Results:   &res,
 		Logs:      &log,
 		Connector: &conn,
@@ -148,7 +148,7 @@ func TestPoolsExtend(t *testing.T) {
 	require := require.New(t)
 	conn := MockConnector{user: testUser}
 	server := Server{
-		hostname:  testHost,
+		Hostname:  testHost,
 		Results:   &res,
 		Logs:      &log,
 		Connector: &conn,
@@ -183,7 +183,7 @@ func TestPoolsConnectionClose(t *testing.T) {
 	require := require.New(t)
 	conn := MockConnector{user: testUser}
 	server := Server{
-		hostname:  testHost,
+		Hostname:  testHost,
 		Results:   &res,
 		Logs:      &log,
 		Connector: &conn,
@@ -191,13 +191,13 @@ func TestPoolsConnectionClose(t *testing.T) {
 
 	t.Run("session active", func(t *testing.T) {
 		pConn := Connection{Server: &server}
-		Pool = ConnectionPool{server.hostname: &pConn}
+		Pool = ConnectionPool{server.Hostname: &pConn}
 		conn.isConnected = true
 		conn.hasSession = true
 
 		err := pConn.Close(false)
 		require.Error(err, "Connection.Close() did not return an error")
-		_, ok := Pool[server.hostname]
+		_, ok := Pool[server.Hostname]
 		require.True(ok, "Connection not found after failed Pool.Close()")
 
 		conn.hasSession = false
@@ -205,13 +205,13 @@ func TestPoolsConnectionClose(t *testing.T) {
 
 	t.Run("connection close error", func(t *testing.T) {
 		pConn := Connection{Server: &server}
-		Pool = ConnectionPool{server.hostname: &pConn}
+		Pool = ConnectionPool{server.Hostname: &pConn}
 		conn.isConnected = true
 		conn.connCloseErr = true
 
 		err := pConn.Close(false)
 		require.Error(err, "Connection.Close() did not return an error")
-		_, ok := Pool[server.hostname]
+		_, ok := Pool[server.Hostname]
 		require.False(ok, "Connection found after Connection.Close()")
 
 		conn.connCloseErr = false
@@ -232,12 +232,12 @@ func TestPoolsConnectionClose(t *testing.T) {
 
 	t.Run("close connection", func(t *testing.T) {
 		pConn := Connection{Server: &server}
-		Pool = ConnectionPool{server.hostname: &pConn}
+		Pool = ConnectionPool{server.Hostname: &pConn}
 		conn.isConnected = true
 
 		err := pConn.Close(false)
 		require.NoError(err, "Connection.Close() returned an error: %s", err)
-		_, ok := Pool[server.hostname]
+		_, ok := Pool[server.Hostname]
 		require.False(ok, "Connection found after close")
 	})
 }
@@ -249,27 +249,27 @@ func TestPoolsConnectionPoolClose(t *testing.T) {
 	require := require.New(t)
 	conn := MockConnector{user: testUser}
 	server := Server{
-		hostname:  testHost,
+		Hostname:  testHost,
 		Results:   &res,
 		Logs:      &log,
 		Connector: &conn,
 	}
 
 	pConn := Connection{Server: &server}
-	Pool = ConnectionPool{server.hostname: &pConn}
+	Pool = ConnectionPool{server.Hostname: &pConn}
 	conn.isConnected = true
 
 	t.Run("close connection", func(t *testing.T) {
-		err := Pool.Close(server.hostname, false)
+		err := Pool.Close(server.Hostname, false)
 		require.NoError(err, "Pool.Close() returned an error: %s", err)
-		_, ok := Pool[server.hostname]
+		_, ok := Pool[server.Hostname]
 		require.False(ok, "Connection found after close")
 	})
 
 	t.Run("no connection", func(t *testing.T) {
-		err := Pool.Close(server.hostname, false)
+		err := Pool.Close(server.Hostname, false)
 		require.NoError(err, "Pool.Close() returned an error: %s", err)
-		_, ok := Pool[server.hostname]
+		_, ok := Pool[server.Hostname]
 		require.False(ok, "Connection found after close")
 	})
 }
@@ -281,14 +281,14 @@ func createPool(count int) {
 
 		conn := MockConnector{user: testUser}
 		server := Server{
-			hostname:  fmt.Sprintf("host%d", i),
+			Hostname:  fmt.Sprintf("host%d", i),
 			Results:   &res,
 			Logs:      &log,
 			Connector: &conn,
 		}
 
 		pConn := Connection{Server: &server}
-		Pool[server.hostname] = &pConn
+		Pool[server.Hostname] = &pConn
 		conn.isConnected = true
 	}
 }
@@ -322,20 +322,20 @@ func TestPoolsTimeOut(t *testing.T) {
 	require := require.New(t)
 	conn := MockConnector{user: testUser}
 	server := Server{
-		hostname:  testHost,
+		Hostname:  testHost,
 		Results:   &res,
 		Logs:      &log,
 		Connector: &conn,
 	}
 
 	pConn := Connection{Server: &server, killAt: time.Now().Add(time.Minute * time.Duration(TTL))}
-	Pool = ConnectionPool{server.hostname: &pConn}
+	Pool = ConnectionPool{server.Hostname: &pConn}
 	conn.isConnected = true
 
 	t.Run("not expired", func(t *testing.T) {
 		err := pConn.TimeOut()
 		require.NoError(err, "Connection.TimeOut() returned an error")
-		_, ok := Pool[server.hostname]
+		_, ok := Pool[server.Hostname]
 		require.True(ok, "Connection not found in Pool")
 	})
 
@@ -346,7 +346,7 @@ func TestPoolsTimeOut(t *testing.T) {
 
 		err := pConn.TimeOut()
 		require.Error(err, "Connection.TimeOut() did not return an error")
-		_, ok := Pool[server.hostname]
+		_, ok := Pool[server.Hostname]
 		require.True(ok, "Connection not found in Pool")
 
 		conn.hasSession = false
@@ -357,18 +357,18 @@ func TestPoolsTimeOut(t *testing.T) {
 
 		err := pConn.TimeOut()
 		require.Error(err, "Connection.TimeOut() returned an error")
-		_, ok := Pool[server.hostname]
+		_, ok := Pool[server.Hostname]
 		require.False(ok, "Connection not found in Pool")
 
 		conn.connCloseErr = false
 	})
 
-	Pool = ConnectionPool{server.hostname: &pConn}
+	Pool = ConnectionPool{server.Hostname: &pConn}
 	conn.isConnected = true
 	t.Run("expired", func(t *testing.T) {
 		err := pConn.TimeOut()
 		require.NoError(err, "Connection.TimeOut() returned an error")
-		_, ok := Pool[server.hostname]
+		_, ok := Pool[server.Hostname]
 		require.False(ok, "Connection found in Pool")
 	})
 }

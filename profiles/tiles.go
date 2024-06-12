@@ -19,20 +19,20 @@ const (
 )
 
 type Tile struct {
-	hideCmd     bool   // Whether or not to send the cmd value to the client.
-	hideExp     bool   // Whether or not to send the exp value to the client.
-	name        string // Tile name. ("Ping", "Check Connectivity", etc.)
-	cmd         string // Command to run on a remote server.
-	exp         string // String to match with the results of cmd.
-	displaySize int    // Size is a multiple of the smallest button size. Default 40.
+	HideCmd     bool   // Whether or not to send the cmd value to the client.
+	HideExp     bool   // Whether or not to send the exp value to the client.
+	Name        string // Tile name. ("Ping", "Check Connectivity", etc.)
+	Cmd         string // Command to run on a remote server.
+	Exp         string // String to match with the results of cmd.
+	DisplaySize int    // Size is a multiple of the smallest button size. Default 40.
 }
 
 // DefaultTile creates a new Tile object with several default settings.
 func DefaultTile() Tile {
 	return Tile{
-		hideCmd:     false,
-		hideExp:     false,
-		displaySize: smallestTileSize * defaultSizeMultiplier,
+		HideCmd:     false,
+		HideExp:     false,
+		DisplaySize: smallestTileSize * defaultSizeMultiplier,
 	}
 }
 
@@ -40,40 +40,18 @@ func DefaultTile() Tile {
 func NewTile(name string, cmd string, exp string) Tile {
 	t := DefaultTile()
 	// INCOMPLETE: Add html safe validation for name, cmd, and exp here.
-	t.name = name
-	t.cmd = cmd
-	t.exp = exp
+	t.Name = name
+	t.Cmd = cmd
+	t.Exp = exp
 
 	return t
 }
 
-// HideCmd is used to determine if Tile.cmd can be shown to the client. Tile.cmd will always be
-// available to admins so they can verify or update the commands.
-func (t *Tile) HideCmd() bool { return t.hideCmd }
-
-// HideExp is used to determine if Tile.exp can be shown to the client. Tile.exp will always be
-// available to admins so they can verify or update the expect string.
-func (t *Tile) HideExp() bool { return t.hideCmd }
-
-// Name returns the name set for the Tile.
-func (t *Tile) Name() string { return t.name }
-
-// Cmd returns the command string to be ran on a server.
-func (t *Tile) Cmd() string { return t.cmd }
-
-// Cmd returns the expect string to be matched against the output of the command being ran
-// on a server.
-func (t *Tile) Exp() string { return t.exp }
-
-// DisplaySize retuns the size in pixels to set the Tile to. Default 40 would create a
-// 40 pixel x 40 pixel Tile in the UI.
-func (t *Tile) DisplaySize() int { return t.displaySize }
-
 // SetHideCmd sets the Tile.hideCmd field.
-func (t *Tile) SetHideCmd(hide bool) { t.hideCmd = hide }
+func (t *Tile) SetHideCmd(hide bool) { t.HideCmd = hide }
 
 // SetHideExp sets the Tile.hideExp field.
-func (t *Tile) SetHideExp(hide bool) { t.hideExp = hide }
+func (t *Tile) SetHideExp(hide bool) { t.HideExp = hide }
 
 // SetName validates and sets Tile.name.
 func (t *Tile) SetName(name string) error {
@@ -82,7 +60,7 @@ func (t *Tile) SetName(name string) error {
 	}
 
 	// INCOMPLETE: Add html safe validation for name here.
-	t.name = name
+	t.Name = name
 	return nil
 }
 
@@ -93,7 +71,7 @@ func (t *Tile) SetSize(multiplier int) {
 		multiplier = defaultSizeMultiplier
 	}
 
-	t.displaySize = smallestTileSize * multiplier
+	t.DisplaySize = smallestTileSize * multiplier
 }
 
 // SetCmd sets a command to be ran on a server.
@@ -104,7 +82,7 @@ func (t *Tile) SetCmd(cmd string) error {
 	}
 
 	// INCOMPLETE: Add html safe validation for cmd here.
-	t.cmd = cmd
+	t.Cmd = cmd
 	return nil
 }
 
@@ -117,6 +95,6 @@ func (t *Tile) SetExp(exp string) error {
 	}
 
 	// INCOMPLETE: Add html safe validation for exp here.
-	t.exp = exp
+	t.Exp = exp
 	return nil
 }

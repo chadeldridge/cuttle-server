@@ -50,7 +50,7 @@ func TestMockConnectorErrOnConnectionOpen(t *testing.T) {
 
 	require := require.New(t)
 	conn := testNewMockConnector()
-	server := Server{hostname: testHost, Results: &res, Logs: &log}
+	server := Server{Hostname: testHost, Results: &res, Logs: &log}
 
 	t.Run("default", func(t *testing.T) {
 		err := conn.Open(server)
@@ -102,7 +102,7 @@ func TestMockConnectorErrOnSessionOpen(t *testing.T) {
 
 	require := require.New(t)
 	conn := testNewMockConnector()
-	server := Server{hostname: testHost, Results: &res, Logs: &log}
+	server := Server{Hostname: testHost, Results: &res, Logs: &log}
 
 	conn.isConnected = true
 
@@ -158,7 +158,7 @@ func TestMockConnectorOpenSession(t *testing.T) {
 
 	require := require.New(t)
 	conn := testNewMockConnector()
-	server := Server{hostname: testHost, Results: &res, Logs: &log}
+	server := Server{Hostname: testHost, Results: &res, Logs: &log}
 
 	t.Run("not connected", func(t *testing.T) {
 		err := conn.OpenSession(server)
@@ -277,12 +277,12 @@ func TestMockConnectorUser(t *testing.T) {
 
 	t.Run("default", func(t *testing.T) {
 		conn := MockConnector{}
-		require.Empty(conn.User(), "MockConnector.User() did not return empty username")
+		require.Empty(conn.GetUser(), "MockConnector.User() did not return empty username")
 	})
 
 	t.Run("user set", func(t *testing.T) {
 		conn := testNewMockConnector()
-		require.Equal(testUser, conn.User(), "MockConnector.User() did not match username")
+		require.Equal(testUser, conn.GetUser(), "MockConnector.User() did not match username")
 	})
 }
 
@@ -378,7 +378,7 @@ func TestMockConnectorRun(t *testing.T) {
 
 	require := require.New(t)
 	conn := testNewMockConnector()
-	server := Server{hostname: testHost, Results: &res, Logs: &log}
+	server := Server{Hostname: testHost, Results: &res, Logs: &log}
 	cmd := "echo testing"
 	exp := "testing"
 
@@ -429,7 +429,7 @@ func TestMockConnectorTestConnection(t *testing.T) {
 
 	require := require.New(t)
 	conn := testNewMockConnector()
-	server := Server{hostname: testHost, Results: &res, Logs: &log}
+	server := Server{Hostname: testHost, Results: &res, Logs: &log}
 
 	server.Connector = &conn
 	conn.isConnected = true

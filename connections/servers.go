@@ -16,11 +16,11 @@ import (
 var validate = validator.New()
 
 type Server struct {
-	name     string
-	hostname string
-	ip       net.IP
-	port     int
-	useIP    bool
+	Name     string
+	Hostname string
+	IP       net.IP
+	Port     int
+	UseIP    bool
 	Connector
 	Results *bytes.Buffer
 	Logs    *bytes.Buffer
@@ -45,30 +45,18 @@ func NewServer(hostname string, port int, results, logs *bytes.Buffer) (Server, 
 	return s, nil
 }
 
-// Name returns the value of Server.name.
-func (s Server) Name() string { return s.name }
-
-// Hostname returns the value of Server.hostname.
-func (s Server) Hostname() string { return s.hostname }
-
-// IP returns Server.ip as a string.
-func (s Server) IP() string { return s.ip.String() }
-
-// Port retuns the value of Server.port.
-func (s Server) Port() int { return s.port }
-
-// UseIP returns true if the Connector should use the set Server.ip instead of the hostname.
-func (s Server) UseIP() bool { return s.useIP }
+// GetIP returns Server.ip as a string.
+func (s Server) GetIP() string { return s.IP.String() }
 
 // IsEmpty returns true of Server.hostname is not set.
-func (s Server) IsEmpty() bool { return s.hostname == "" }
+func (s Server) IsEmpty() bool { return s.Hostname == "" }
 
 // IsValid retuns true if all fields needed to connect to a server are not nil or empty.
 func (s Server) IsValid() bool { err := s.Validate(); return err == nil }
 
 // IsValid retuns an error if a field needed to connect to a server is nil or empty.
 func (s Server) Validate() error {
-	if s.hostname == "" {
+	if s.Hostname == "" {
 		return errors.New("connections.Server.Validate: hostname is empty")
 	}
 
@@ -104,30 +92,30 @@ func (s Server) TestConnection() error {
 // PrintResults adds the formated result to the Server.Results buffer.
 func (s Server) PrintResults(eventTime time.Time, result string, err error) {
 	if err != nil {
-		fmt.Fprintf(s.Results, "%s: %s...%s: %s\n", eventTime.Format("2006/01/02 15:04:05"), s.hostname, result, err)
+		fmt.Fprintf(s.Results, "%s: %s...%s: %s\n", eventTime.Format("2006/01/02 15:04:05"), s.Hostname, result, err)
 	}
 
-	fmt.Fprintf(s.Results, "%s: %s...%s\n", eventTime.Format("2006/01/02 15:04:05"), s.hostname, result)
+	fmt.Fprintf(s.Results, "%s: %s...%s\n", eventTime.Format("2006/01/02 15:04:05"), s.Hostname, result)
 }
 
 // Logs sends the returned connection data to the Server.Logs buffer.
 func (s Server) Log(eventTime time.Time, txt string) {
 	txt = strings.TrimSpace(txt)
-	fmt.Fprintf(s.Logs, "%s %s@%s:~ %s\n", eventTime.Format("2006/01/02 15:04:05"), s.User(), s.Hostname(), txt)
+	fmt.Fprintf(s.Logs, "%s %s@%s:~ %s\n", eventTime.Format("2006/01/02 15:04:05"), s.GetUser(), s.Hostname, txt)
 }
 
 // GetAddr determines the address to connect to. Returns "hostname:port" or "ip:port". If port is
 // set to 0, GetAddr uses protocol's default port instead.
 func (s Server) GetAddr() string {
-	host := s.hostname
+	host := s.Hostname
 	// Overwrite hostname with IP if Server.usIP is true. Properly set hostnames are preferred
 	// but there may be times when this is not possible.
-	if s.useIP {
-		host = s.IP()
+	if s.UseIP {
+		host = s.GetIP()
 	}
 
 	// If Server.port is set to 0, use the Connector's default port.
-	p := s.port
+	p := s.Port
 	if p == 0 {
 		p = s.DefaultPort()
 	}
@@ -138,12 +126,12 @@ func (s Server) GetAddr() string {
 
 // SetUseIP sets the useIP field to true or false. This field is used to determine if the ip field
 // should be used instead of the hostname for connecting to the server.
-func (s *Server) SetUseIP(flag bool) { s.useIP = flag }
+func (s *Server) SetUseIP(flag bool) { s.UseIP = flag }
 
 // SetName sets the display name for the server.
 func (s *Server) SetName(name string) error {
 	// INCOMPLETE: Add verification to prevent escape character and other exploits.
-	s.name = name
+	s.Name = name
 	return nil
 }
 
@@ -156,7 +144,7 @@ func (s *Server) SetHostname(hostname string) error {
 
 	// If Server.SetIP is successful then hostname is an IP so set the hostname and return.
 	if err := s.SetIP(hostname); err == nil {
-		s.hostname = hostname
+		s.Hostname = hostname
 		return nil
 	}
 
@@ -166,11 +154,11 @@ func (s *Server) SetHostname(hostname string) error {
 	}
 
 	// hostname should be valid at this point so set it.
-	s.hostname = hostname
+	s.Hostname = hostname
 
 	// If Server.name is not already set for some reason, set it to hostname.
-	if s.name == "" {
-		s.name = hostname
+	if s.Name == "" {
+		s.Name = hostname
 	}
 
 	return nil
@@ -186,19 +174,19 @@ func (s *Server) SetIP(ip string) error {
 
 	// Let the net package tell us if ip is a valid IP or not and convert it to net.IP.
 	if i := net.ParseIP(ip); i != nil {
-		s.ip = i
-		s.useIP = true
+		s.IP = i
+		s.UseIP = true
 
 		// If Server.hostname is not already set for some reason, set it now.
-		if s.hostname == "" {
+		if s.Hostname == "" {
 			// Use net.IP.String() to guarantee a properly formated IP.
-			s.hostname = i.String()
+			s.Hostname = i.String()
 		}
 
 		// If Server.name is not already set for some reason, set it now.
-		if s.name == "" {
+		if s.Name == "" {
 			// Use net.IP.String() to guarantee a properly formated IP.
-			s.name = i.String()
+			s.Name = i.String()
 		}
 
 		return nil
@@ -216,7 +204,7 @@ func (s *Server) SetPort(port int) error {
 		return fmt.Errorf("connections.Server.SetPort: port must be between 0 and 65535")
 	}
 
-	s.port = port
+	s.Port = port
 	return nil
 }
 

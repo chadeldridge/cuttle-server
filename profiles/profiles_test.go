@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func testNewTile(name string) Tile { return Tile{name: name, cmd: "echo Hello", exp: "Hello"} }
+func testNewTile(name string) Tile { return Tile{Name: name, Cmd: "echo Hello", Exp: "Hello"} }
 
 func TestProfilesNewProfile(t *testing.T) {
 	initGroupTest(t, false)
@@ -206,8 +206,8 @@ func TestProfilesGetGroup(t *testing.T) {
 func TestProfilesExecute(t *testing.T) {
 	initGroupTest(t, false)
 	require := require.New(t)
-	tile1 := Tile{name: "Tile1", cmd: "echo Hello", exp: "Hello"}
-	tile2 := Tile{name: "Tile2", cmd: "this is not a command", exp: "Hello"}
+	tile1 := Tile{Name: "Tile1", Cmd: "echo Hello", Exp: "Hello"}
+	tile2 := Tile{Name: "Tile2", Cmd: "this is not a command", Exp: "Hello"}
 	group1 := Group{Name: "Group1", Servers: testServers}
 	profile := Profile{
 		Name:   "TestProfile",

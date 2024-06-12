@@ -79,7 +79,7 @@ func (c *MockConnector) CloseSession() error {
 func (c MockConnector) IsConnected() bool  { return c.isConnected }
 func (c MockConnector) IsActive() bool     { return c.hasSession }
 func (c MockConnector) Protocol() Protocol { return MockProtocol }
-func (c MockConnector) User() string       { return c.user }
+func (c MockConnector) GetUser() string    { return c.user }
 func (c MockConnector) DefaultPort() int   { return MockDefaultPort }
 func (c MockConnector) IsEmpty() bool      { return c.user == "" }
 func (c MockConnector) IsValid() bool      { return c.user != "" }
