@@ -15,20 +15,24 @@ type Profile struct {
 }
 
 // NewProfile creates a new Profile object with a display Name and at least one Group.
-func NewProfile(name string, groups ...Group) Profile {
+func NewProfile(name string, groups ...Group) (Profile, error) {
 	// Make our maps so we don't get errors later.
 	p := Profile{
 		Tiles:  make(map[string]Tile),
 		Groups: make(map[string]Group),
 	}
 
-	p.SetName(name)
+	err := p.SetName(name)
+	if err != nil {
+		return p, err
+	}
+
 	// If ther are no groups then there's no reason to do anything.
 	if len(groups) > 0 {
 		p.AddGroups(groups...)
 	}
 
-	return p
+	return p, nil
 }
 
 // SetName sets the Profile.Name after validating it is safe.
@@ -135,13 +139,8 @@ func (p Profile) Execute(tileName, groupName string) error {
 	var errs error
 	for {
 		server, err := group.Next()
-		if err != nil {
-			if err == ErrEndOfList {
-				break
-			}
-
-			errs = errors.Join(errs, err)
-			return errs
+		if err == ErrEndOfList {
+			break
 		}
 
 		// INCOMPLETE: Add special variable replacement in the command and expect strings.
