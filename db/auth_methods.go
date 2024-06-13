@@ -30,3 +30,14 @@ func (r AuthMethods) migrate() error {
 
 	return nil
 }
+
+func (r AuthMethods) Create() error {
+	/*
+		query := `INSERT INTO auth_methods (name, data) VALUES (?, ?)`
+			if err := r.Exec(query, name, data); err != nil {
+				return fmt.Errorf("db.AuthMethods.Create: %w", err)
+			}
+	*/
+
+	return nil
+}
