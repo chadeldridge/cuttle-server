@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"net"
 	"strconv"
-	"strings"
-	"time"
 
 	validator "github.com/go-playground/validator/v10"
 )
@@ -22,8 +20,7 @@ type Server struct {
 	Port     int
 	UseIP    bool
 	Connector
-	Results *bytes.Buffer
-	Logs    *bytes.Buffer
+	Buffers
 }
 
 // NewServer creates a new Server object with a display name, port, and stores the byte.Buffers to
@@ -39,8 +36,7 @@ func NewServer(hostname string, port int, results, logs *bytes.Buffer) (Server, 
 		return s, err
 	}
 
-	s.Results = results
-	s.Logs = logs
+	s.Buffers = NewBuffers(s.Hostname, results, logs)
 
 	return s, nil
 }
@@ -57,19 +53,19 @@ func (s Server) IsValid() bool { err := s.Validate(); return err == nil }
 // IsValid retuns an error if a field needed to connect to a server is nil or empty.
 func (s Server) Validate() error {
 	if s.Hostname == "" {
-		return errors.New("connections.Server.Validate: hostname is empty")
+		return errors.New("profiles.Server.Validate: hostname is empty")
 	}
 
 	if s.Results == nil {
-		return errors.New("connections.Server.Validate: Results buffer is nil")
+		return errors.New("profiles.Server.Validate: Results buffer is nil")
 	}
 
 	if s.Logs == nil {
-		return errors.New("connections.Server.Validate: Logs buffer is nil")
+		return errors.New("profiles.Server.Validate: Logs buffer is nil")
 	}
 
 	if s.Connector == nil {
-		return errors.New("connections.Server.Validate: Connector is nil")
+		return errors.New("profiles.Server.Validate: Connector is nil")
 	}
 
 	return s.Connector.Validate()
@@ -77,36 +73,20 @@ func (s Server) Validate() error {
 
 // Run passes cmd(command) and exp(expect), along with itself, on to Connector.Run to be executed.
 // See Connector.Run() for more details.
-func (s Server) Run(cmd, exp string) error { return s.Connector.Run(s, cmd, exp) }
+func (s Server) Run(cmd, exp string) error { return s.Connector.Run(s.Buffers, cmd, exp) }
 
 // TestConnection tries to open a connection to the server and sends an echo command to validate
 // connectivity and basic access.
 func (s Server) TestConnection() error {
 	_, err := Pool.Open(&s)
 	if err != nil {
-		return fmt.Errorf("connections.Server.TestConnection: %s", err)
+		return fmt.Errorf("profiles.Server.TestConnection: %s", err)
 	}
-	return s.Connector.TestConnection(s)
+	return s.Connector.TestConnection(s.Buffers)
 }
 
-// PrintResults adds the formated result to the Server.Results buffer.
-func (s Server) PrintResults(eventTime time.Time, result string, err error) {
-	if err != nil {
-		fmt.Fprintf(s.Results, "%s: %s...%s: %s\n", eventTime.Format("2006/01/02 15:04:05"), s.Hostname, result, err)
-	}
-
-	fmt.Fprintf(s.Results, "%s: %s...%s\n", eventTime.Format("2006/01/02 15:04:05"), s.Hostname, result)
-}
-
-// Logs sends the returned connection data to the Server.Logs buffer.
-func (s Server) Log(eventTime time.Time, txt string) {
-	txt = strings.TrimSpace(txt)
-	fmt.Fprintf(s.Logs, "%s %s@%s:~ %s\n", eventTime.Format("2006/01/02 15:04:05"), s.GetUser(), s.Hostname, txt)
-}
-
-// GetAddr determines the address to connect to. Returns "hostname:port" or "ip:port". If port is
-// set to 0, GetAddr uses protocol's default port instead.
-func (s Server) GetAddr() string {
+// GetAddr returns the host address to use, without a port. Returns "hostname" or "ip".
+func (s Server) GetHostAddr() string {
 	host := s.Hostname
 	// Overwrite hostname with IP if Server.usIP is true. Properly set hostnames are preferred
 	// but there may be times when this is not possible.
@@ -114,6 +94,12 @@ func (s Server) GetAddr() string {
 		host = s.GetIP()
 	}
 
+	return host
+}
+
+// GetAddr determines the address to connect to. Returns "hostname:port" or "ip:port". If port is
+// set to 0, GetAddr uses protocol's default port instead.
+func (s Server) GetAddr() string {
 	// If Server.port is set to 0, use the Connector's default port.
 	p := s.Port
 	if p == 0 {
@@ -121,7 +107,7 @@ func (s Server) GetAddr() string {
 	}
 
 	// return "host:port"
-	return net.JoinHostPort(host, strconv.Itoa(p))
+	return net.JoinHostPort(s.GetHostAddr(), strconv.Itoa(p))
 }
 
 // SetUseIP sets the useIP field to true or false. This field is used to determine if the ip field
@@ -139,12 +125,13 @@ func (s *Server) SetName(name string) error {
 // Server.hostname and Server.ip to the IP and set Server.useIP to true.
 func (s *Server) SetHostname(hostname string) error {
 	if hostname == "" {
-		return fmt.Errorf("connections.Server.SetHostname: hostname was empty")
+		return fmt.Errorf("profiles.Server.SetHostname: hostname was empty")
 	}
 
 	// If Server.SetIP is successful then hostname is an IP so set the hostname and return.
 	if err := s.SetIP(hostname); err == nil {
 		s.Hostname = hostname
+		s.Buffers.Hostname = hostname
 		return nil
 	}
 
@@ -155,6 +142,8 @@ func (s *Server) SetHostname(hostname string) error {
 
 	// hostname should be valid at this point so set it.
 	s.Hostname = hostname
+	// Make sure we change the hostname in the Buffers struct as well.
+	s.Buffers.Hostname = hostname
 
 	// If Server.name is not already set for some reason, set it to hostname.
 	if s.Name == "" {
@@ -169,7 +158,7 @@ func (s *Server) SetHostname(hostname string) error {
 // If hostname is unset, hostname will be set to ip.
 func (s *Server) SetIP(ip string) error {
 	if ip == "" {
-		return fmt.Errorf("connections.Server.SetIP: expected valid IPv4 string, got empty string")
+		return fmt.Errorf("profiles.Server.SetIP: expected valid IPv4 string, got empty string")
 	}
 
 	// Let the net package tell us if ip is a valid IP or not and convert it to net.IP.
@@ -192,7 +181,7 @@ func (s *Server) SetIP(ip string) error {
 		return nil
 	}
 
-	return fmt.Errorf("connections.Server.SetIP: ip not valid: %s", ip)
+	return fmt.Errorf("profiles.Server.SetIP: ip not valid: %s", ip)
 }
 
 // SetPort sets the Port to be used when connecting to the server. Setting port to 0 will cause
@@ -201,7 +190,7 @@ func (s *Server) SetPort(port int) error {
 	// Negative port numbers are not valid so return an error. We could use uint16 to guarantee a
 	// valid port number but using int makes things easier elsewhere. Fewer conversions needed.
 	if port < 0 || port > 65535 {
-		return fmt.Errorf("connections.Server.SetPort: port must be between 0 and 65535")
+		return fmt.Errorf("profiles.Server.SetPort: port must be between 0 and 65535")
 	}
 
 	s.Port = port
@@ -213,7 +202,7 @@ func (s *Server) SetPort(port int) error {
 func (s *Server) SetConnector(connector Connector) error {
 	// Setting a nil Connector could get us in trouble elsewhere.
 	if connector == nil {
-		return errors.New("connections.Server.SetHandler: Connector was nil")
+		return errors.New("profiles.Server.SetHandler: Connector was nil")
 	}
 
 	s.Connector = connector

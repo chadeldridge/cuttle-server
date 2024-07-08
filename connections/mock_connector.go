@@ -48,7 +48,7 @@ func (c *MockConnector) ErrOnSessionOpen(do bool)     { c.sessOpenErr = do }
 func (c *MockConnector) ErrOnSessionClose(do bool)    { c.sessCloseErr = do }
 
 // OpenSession creates a new single command session.
-func (c *MockConnector) OpenSession(server Server) error {
+func (c *MockConnector) OpenSession(bufs Buffers) error {
 	// log.Print(" - Creating session...")
 	if !c.isConnected {
 		return ErrNotConnected
@@ -92,7 +92,7 @@ func (c MockConnector) Validate() error {
 	return nil
 }
 
-func (c *MockConnector) Open(server Server) error {
+func (c *MockConnector) Open(addr string, bufs Buffers) error {
 	if err := c.Validate(); err != nil {
 		return err
 	}
@@ -105,12 +105,12 @@ func (c *MockConnector) Open(server Server) error {
 	return nil
 }
 
-func (c MockConnector) TestConnection(server Server) error {
+func (c MockConnector) TestConnection(bufs Buffers) error {
 	expect := "cuttle ok"
-	return c.Run(server, fmt.Sprintf("echo '%s'", expect), expect)
+	return c.Run(bufs, fmt.Sprintf("echo '%s'", expect), expect)
 }
 
-func (c MockConnector) Run(server Server, cmd, exp string) error {
+func (c MockConnector) Run(bufs Buffers, cmd, exp string) error {
 	if !c.isConnected {
 		return ErrNotConnected
 	}
@@ -130,20 +130,20 @@ func (c MockConnector) Run(server Server, cmd, exp string) error {
 	eventTime := time.Now()
 	out, err := exec.Command(parts[0], parts[1]).Output()
 	if err != nil {
-		server.Log(eventTime, err.Error())
-		server.PrintResults(eventTime, "error", err)
+		bufs.Log(eventTime, err.Error())
+		bufs.PrintResults(eventTime, "error", err)
 		return err
 	}
 
 	// Log the full output of the command.
-	server.Log(eventTime, string(out))
+	bufs.Log(eventTime, string(out))
 
 	ok := foundExpect(out, exp)
 	if !ok {
-		server.PrintResults(eventTime, "failed", nil)
+		bufs.PrintResults(eventTime, "failed", nil)
 	}
 
-	server.PrintResults(eventTime, "ok", nil)
+	bufs.PrintResults(eventTime, "ok", nil)
 	return nil
 }
 

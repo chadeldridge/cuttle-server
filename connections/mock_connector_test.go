@@ -46,27 +46,36 @@ func TestMockConnectorSetUser(t *testing.T) {
 
 func TestMockConnectorErrOnConnectionOpen(t *testing.T) {
 	var res bytes.Buffer
-	var log bytes.Buffer
+	var logs bytes.Buffer
 
 	require := require.New(t)
 	conn := testNewMockConnector()
-	server := Server{Hostname: testHost, Results: &res, Logs: &log}
+	server := Server{
+		Hostname:  testHost,
+		Connector: &conn,
+		Buffers: Buffers{
+			User:     testUser,
+			Hostname: testHost,
+			Results:  &res,
+			Logs:     &logs,
+		},
+	}
 
 	t.Run("default", func(t *testing.T) {
-		err := conn.Open(server)
+		err := conn.Open(server.GetAddr(), server.Buffers)
 		require.NoError(err, "MockConnector.Open() returned an error: %s", err)
 	})
 
 	t.Run("true", func(t *testing.T) {
 		conn.ErrOnConnectionOpen(true)
-		err := conn.Open(server)
+		err := conn.Open(server.GetAddr(), server.Buffers)
 		require.Error(err, "MockConnector.Open() did not return an error")
 	})
 
 	t.Run("false", func(t *testing.T) {
 		conn.isConnected = false
 		conn.ErrOnConnectionOpen(false)
-		err := conn.Open(server)
+		err := conn.Open(server.GetAddr(), server.Buffers)
 		require.NoError(err, "MockConnector.Open() returned an error: %s", err)
 	})
 }
@@ -98,29 +107,29 @@ func TestMockConnectorErrOnConnectionClose(t *testing.T) {
 
 func TestMockConnectorErrOnSessionOpen(t *testing.T) {
 	var res bytes.Buffer
-	var log bytes.Buffer
+	var logs bytes.Buffer
 
 	require := require.New(t)
 	conn := testNewMockConnector()
-	server := Server{Hostname: testHost, Results: &res, Logs: &log}
+	server := Server{Hostname: testHost, Buffers: Buffers{Results: &res, Logs: &logs}}
 
 	conn.isConnected = true
 
 	t.Run("default", func(t *testing.T) {
-		err := conn.OpenSession(server)
+		err := conn.OpenSession(server.Buffers)
 		require.NoError(err, "MockConnector.Open() returned an error: %s", err)
 		conn.hasSession = false
 	})
 
 	t.Run("true", func(t *testing.T) {
 		conn.ErrOnSessionOpen(true)
-		err := conn.OpenSession(server)
+		err := conn.OpenSession(server.Buffers)
 		require.Error(err, "MockConnector.Open() did not return an error")
 	})
 
 	t.Run("false", func(t *testing.T) {
 		conn.ErrOnSessionOpen(false)
-		err := conn.OpenSession(server)
+		err := conn.OpenSession(server.Buffers)
 		require.NoError(err, "MockConnector.Open() returned an error: %s", err)
 		conn.hasSession = false
 	})
@@ -158,10 +167,10 @@ func TestMockConnectorOpenSession(t *testing.T) {
 
 	require := require.New(t)
 	conn := testNewMockConnector()
-	server := Server{Hostname: testHost, Results: &res, Logs: &log}
+	server := Server{Hostname: testHost, Buffers: Buffers{Results: &res, Logs: &log}}
 
 	t.Run("not connected", func(t *testing.T) {
-		err := conn.OpenSession(server)
+		err := conn.OpenSession(server.Buffers)
 		require.Error(err, "did not get error with no connection")
 		require.False(conn.hasSession, "MockConnector.hasSession was true")
 	})
@@ -170,7 +179,7 @@ func TestMockConnectorOpenSession(t *testing.T) {
 		conn.isConnected = true
 		conn.sessOpenErr = true
 
-		err := conn.OpenSession(server)
+		err := conn.OpenSession(server.Buffers)
 		require.Error(err, "did not get error with no connection")
 		require.False(conn.hasSession, "MockConnector.hasSession was true")
 
@@ -179,7 +188,7 @@ func TestMockConnectorOpenSession(t *testing.T) {
 
 	t.Run("open success", func(t *testing.T) {
 		conn.isConnected = true
-		err := conn.OpenSession(server)
+		err := conn.OpenSession(server.Buffers)
 		require.NoError(err, "MockConnector.OpenSession() returned an error")
 		require.True(conn.isConnected, "MockConnector.isConnected was false")
 		conn.hasSession = false
@@ -341,14 +350,14 @@ func TestMockConnectorOpen(t *testing.T) {
 
 	t.Run("valid", func(t *testing.T) {
 		conn := testNewMockConnector()
-		err := conn.Open(Server{})
+		err := conn.Open("test:123", Buffers{})
 		require.NoError(err, "MockConnector.Open() returned an error")
 		require.True(conn.isConnected, "failed to open MockConnector")
 	})
 
 	t.Run("invalid", func(t *testing.T) {
 		conn := MockConnector{}
-		err := conn.Open(Server{})
+		err := conn.Open("test:123", Buffers{})
 		require.Error(err, "MockConnector.Open() did not return an error")
 		require.False(conn.isConnected, "MockConnector openned despite invalid state")
 	})
@@ -378,7 +387,7 @@ func TestMockConnectorRun(t *testing.T) {
 
 	require := require.New(t)
 	conn := testNewMockConnector()
-	server := Server{Hostname: testHost, Results: &res, Logs: &log}
+	server := Server{Hostname: testHost, Buffers: Buffers{Results: &res, Logs: &log}}
 	cmd := "echo testing"
 	exp := "testing"
 
@@ -386,13 +395,13 @@ func TestMockConnectorRun(t *testing.T) {
 
 	t.Run("not connected", func(t *testing.T) {
 		conn.isConnected = false
-		err := conn.Run(server, cmd, exp)
+		err := conn.Run(server.Buffers, cmd, exp)
 		require.Error(err, "MockConnector.Run() did not return an error")
 	})
 
 	t.Run("good connector", func(t *testing.T) {
 		conn.isConnected = true
-		err := conn.Run(server, cmd, exp)
+		err := conn.Run(server.Buffers, cmd, exp)
 		require.NoError(err, "MockConnector.Run() returned an error: %s", err)
 		require.NotEmpty(res.String(), "results Buffer was empty")
 		require.NotEmpty(log.String(), "logs Buffer was empty")
@@ -400,25 +409,25 @@ func TestMockConnectorRun(t *testing.T) {
 
 	t.Run("empty cmd", func(t *testing.T) {
 		conn.isConnected = true
-		err := conn.Run(server, "", exp)
+		err := conn.Run(server.Buffers, "", exp)
 		require.Error(err, "MockConnector.Run() did not return an error")
 	})
 
 	t.Run("empty exp", func(t *testing.T) {
 		conn.isConnected = true
-		err := conn.Run(server, cmd, "")
+		err := conn.Run(server.Buffers, cmd, "")
 		require.Error(err, "MockConnector.Run() did not return an error")
 	})
 
 	t.Run("bad cmd", func(t *testing.T) {
 		conn.isConnected = true
-		err := conn.Run(server, "blahIsNotACommand -with args", exp)
+		err := conn.Run(server.Buffers, "blahIsNotACommand -with args", exp)
 		require.Error(err, "MockConnector.Run() did not return an error")
 	})
 
 	t.Run("bad exp", func(t *testing.T) {
 		conn.isConnected = true
-		err := conn.Run(server, cmd, "this won't match")
+		err := conn.Run(server.Buffers, cmd, "this won't match")
 		require.NoError(err, "MockConnector.Run() did not return an error: %s", err)
 	})
 }
@@ -429,12 +438,10 @@ func TestMockConnectorTestConnection(t *testing.T) {
 
 	require := require.New(t)
 	conn := testNewMockConnector()
-	server := Server{Hostname: testHost, Results: &res, Logs: &log}
-
-	server.Connector = &conn
+	server := Server{Buffers: Buffers{Results: &res, Logs: &log}}
 	conn.isConnected = true
 
-	err := conn.TestConnection(server)
+	err := conn.TestConnection(server.Buffers)
 	require.NoError(err, "MockConnector.TestConnection() returned an error: %s", err)
 	require.NotEmpty(res.String(), "res Buffer was empty")
 	require.NotEmpty(log.String(), "log Buffer was empty")

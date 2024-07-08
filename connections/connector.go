@@ -41,7 +41,7 @@ type Connector interface {
 	// TestConnection creates a connection to the server and performs a minimal command test
 	// such as a basic echo for ssh. Logs and Results are handled the same way as with
 	// Connector.Run().
-	TestConnection(server Server) error
+	TestConnection(bufs Buffers) error
 	// Run executes the given cmd(command) against the server, if exp(expect) != "" performs a
 	// match of expect against the output of the command. The output of command is sent to
 	// Server.Log() and the expect is sent to Server.PrintResults(). Results will either be
@@ -52,9 +52,9 @@ type Connector interface {
 	// 2024/05/30 12:15:42 debian@test.home:~ we did it
 	// Results Buffer
 	// 2024/05/30 12:15:42: test.home...ok
-	Run(server Server, cmd string, exp string) error
+	Run(bufs Buffers, cmd string, exp string) error
 	// Open creates a connection to the server.
-	Open(server Server) error
+	Open(addr string, bufs Buffers) error
 	// Close ends the connecton to the server. Setting force to true will close the connection
 	// even if there is an active session.
 	Close(force bool) error

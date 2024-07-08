@@ -16,9 +16,11 @@ func TestPoolsOpen(t *testing.T) {
 	require := require.New(t)
 	conn := MockConnector{user: testUser}
 	server := Server{
-		Hostname:  testHost,
-		Results:   &res,
-		Logs:      &log,
+		Hostname: testHost,
+		Buffers: Buffers{
+			Results: &res,
+			Logs:    &log,
+		},
 		Connector: &conn,
 	}
 
@@ -66,9 +68,11 @@ func TestPoolsGetConnection(t *testing.T) {
 	require := require.New(t)
 	conn := MockConnector{user: testUser}
 	server := Server{
-		Hostname:  testHost,
-		Results:   &res,
-		Logs:      &log,
+		Hostname: testHost,
+		Buffers: Buffers{
+			Results: &res,
+			Logs:    &log,
+		},
 		Connector: &conn,
 	}
 
@@ -95,9 +99,11 @@ func TestPoolsExpires(t *testing.T) {
 	require := require.New(t)
 	conn := MockConnector{user: testUser}
 	server := Server{
-		Hostname:  testHost,
-		Results:   &res,
-		Logs:      &log,
+		Hostname: testHost,
+		Buffers: Buffers{
+			Results: &res,
+			Logs:    &log,
+		},
 		Connector: &conn,
 	}
 
@@ -119,9 +125,11 @@ func TestPoolsExpired(t *testing.T) {
 	require := require.New(t)
 	conn := MockConnector{user: testUser}
 	server := Server{
-		Hostname:  testHost,
-		Results:   &res,
-		Logs:      &log,
+		Hostname: testHost,
+		Buffers: Buffers{
+			Results: &res,
+			Logs:    &log,
+		},
 		Connector: &conn,
 	}
 
@@ -148,9 +156,11 @@ func TestPoolsExtend(t *testing.T) {
 	require := require.New(t)
 	conn := MockConnector{user: testUser}
 	server := Server{
-		Hostname:  testHost,
-		Results:   &res,
-		Logs:      &log,
+		Hostname: testHost,
+		Buffers: Buffers{
+			Results: &res,
+			Logs:    &log,
+		},
 		Connector: &conn,
 	}
 
@@ -183,9 +193,11 @@ func TestPoolsConnectionClose(t *testing.T) {
 	require := require.New(t)
 	conn := MockConnector{user: testUser}
 	server := Server{
-		Hostname:  testHost,
-		Results:   &res,
-		Logs:      &log,
+		Hostname: testHost,
+		Buffers: Buffers{
+			Results: &res,
+			Logs:    &log,
+		},
 		Connector: &conn,
 	}
 
@@ -249,9 +261,11 @@ func TestPoolsConnectionPoolClose(t *testing.T) {
 	require := require.New(t)
 	conn := MockConnector{user: testUser}
 	server := Server{
-		Hostname:  testHost,
-		Results:   &res,
-		Logs:      &log,
+		Hostname: testHost,
+		Buffers: Buffers{
+			Results: &res,
+			Logs:    &log,
+		},
 		Connector: &conn,
 	}
 
@@ -281,9 +295,11 @@ func createPool(count int) {
 
 		conn := MockConnector{user: testUser}
 		server := Server{
-			Hostname:  fmt.Sprintf("host%d", i),
-			Results:   &res,
-			Logs:      &log,
+			Hostname: fmt.Sprintf("host%d", i),
+			Buffers: Buffers{
+				Results: &res,
+				Logs:    &log,
+			},
 			Connector: &conn,
 		}
 
@@ -322,9 +338,11 @@ func TestPoolsTimeOut(t *testing.T) {
 	require := require.New(t)
 	conn := MockConnector{user: testUser}
 	server := Server{
-		Hostname:  testHost,
-		Results:   &res,
-		Logs:      &log,
+		Hostname: testHost,
+		Buffers: Buffers{
+			Results: &res,
+			Logs:    &log,
+		},
 		Connector: &conn,
 	}
 

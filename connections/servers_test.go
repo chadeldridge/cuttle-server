@@ -69,8 +69,12 @@ func testNewServer(inputName string) Server {
 		Name:     testServerInputs[inputName].Name,
 		Hostname: testServerInputs[inputName].Hostname,
 		Port:     testServerInputs[inputName].Port,
-		Results:  &res,
-		Logs:     &log,
+		Buffers: Buffers{
+			User:     testUser,
+			Hostname: testServerInputs[inputName].Hostname,
+			Results:  &res,
+			Logs:     &log,
+		},
 	}
 }
 
@@ -149,14 +153,18 @@ func TestServersIsValid(t *testing.T) {
 	// Should not be valid because we have not added a Connector yet.
 	require.False(server.IsValid(), "Server.IsValid() returned true")
 
-	server.Connector = &MockConnector{user: testUser}
+	conn, err := NewMockConnector("testserver", testUser)
+	require.NoError(err, "NewMockConnector() returned an error: %s", err)
+	server.Connector = &conn
 	require.True(server.IsValid(), "Server.IsValid() returned false")
 }
 
 func TestServersValidate(t *testing.T) {
 	require := require.New(t)
 	server := testNewServer("good")
-	server.Connector = &MockConnector{user: testUser}
+	conn, err := NewMockConnector("testserver", testUser)
+	require.NoError(err, "NewMockConnector() returned an error: %s", err)
+	server.Connector = &conn
 
 	t.Run("valid", func(t *testing.T) {
 		err := server.Validate()
@@ -197,12 +205,13 @@ func TestServersValidate(t *testing.T) {
 func TestServersRun(t *testing.T) {
 	require := require.New(t)
 	server := testNewServer("good")
-	conn := MockConnector{user: testUser}
-	server.Connector = &conn
-	conn.isConnected = true
+	server.Connector = &MockConnector{user: testUser}
+
+	err := server.Connector.Open(server.GetAddr(), server.Buffers)
+	require.NoError(err, "Connector.Open() returned an error: %w", err)
 
 	exp := "my test message"
-	err := server.Run(fmt.Sprintf("echo '%s'", exp), exp)
+	err = server.Run(fmt.Sprintf("echo '%s'", exp), exp)
 	require.NoError(err, "Server.Run() returned an error: %s", err)
 }
 
@@ -213,10 +222,10 @@ func TestServersTestConnection(t *testing.T) {
 	server.Connector = &conn
 
 	t.Run("open error", func(t *testing.T) {
-		conn.connOpenErr = true
+		conn.ErrOnConnectionOpen(true)
 		err := server.TestConnection()
 		require.Error(err, "Server.Run() did not return an error")
-		conn.connOpenErr = false
+		conn.ErrOnConnectionOpen(false)
 	})
 
 	t.Run("connected", func(t *testing.T) {
@@ -412,8 +421,7 @@ func TestServersSetConnector(t *testing.T) {
 	require := require.New(t)
 	t.Run("full connector", func(t *testing.T) {
 		server := testNewServer("good")
-		conn := MockConnector{user: testUser}
-		err := server.SetConnector(&conn)
+		err := server.SetConnector(&MockConnector{user: testUser})
 		require.NoError(err, "Server.SetConnector() returned an error: %s", err)
 		require.Equal(testUser, server.Connector.GetUser(), "Server.Connector.User() did not match expected user")
 	})

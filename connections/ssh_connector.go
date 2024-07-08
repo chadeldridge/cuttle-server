@@ -2,7 +2,6 @@ package connections
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"log"
 	"regexp"
@@ -22,7 +21,8 @@ type SSHConnector struct {
 	isConnected bool             // Track if we have an active connection to the server.
 	hasSession  bool             // Indicates there's an active session so we don't close the connection on it.
 	Auth        []ssh.AuthMethod // Each auth method will be tried in turn until one works or all fail.
-	User        string           // The username to login to the server with.
+	// AuthMethods []AuthMethod     // A list of AuthMethods to be used for authentication.
+	User string // The username to login to the server with.
 	*ssh.Client
 	*ssh.Session
 }
@@ -41,7 +41,7 @@ func NewSSHConnector(name, username string) (SSHConnector, error) {
 // SetName sets a unique Name to make it easier to add to a server.
 func (c *SSHConnector) SetName(name string) error {
 	if name == "" {
-		return errors.New("connections.SSHConnector.SetName: username was empty")
+		return fmt.Errorf("connections.SSHConnector.SetName: username was empty")
 	}
 
 	// INCOMPLETE: Add name validation here
@@ -52,7 +52,7 @@ func (c *SSHConnector) SetName(name string) error {
 // SetUser sets the User to be used for connection credentials.
 func (c *SSHConnector) SetUser(username string) error {
 	if username == "" {
-		return errors.New("connections.SSHConnector.SetUser: username was empty")
+		return fmt.Errorf("connections.SSHConnector.SetUser: username was empty")
 	}
 
 	// INCOMPLETE: Add username validation here
@@ -68,7 +68,7 @@ func (c *SSHConnector) AddPasswordAuth(password string) {
 // AddKeyAuth adds an AuthMethod using the ssh private key.
 func (c *SSHConnector) AddKeyAuth(key ssh.Signer) error {
 	if key == nil {
-		return errors.New("connections.SSHConnector.AddKeyAuth: key was nil")
+		return fmt.Errorf("connections.SSHConnector.AddKeyAuth: key was nil")
 	}
 
 	c.Auth = append(c.Auth, ssh.PublicKeys(key))
@@ -78,7 +78,7 @@ func (c *SSHConnector) AddKeyAuth(key ssh.Signer) error {
 // ParseKey parses the private key into a key signer and sends it to SSHConnector.AddKeyAuth().
 func (c *SSHConnector) ParseKey(privateKey []byte) error {
 	if privateKey == nil || len(privateKey) < 1 {
-		return errors.New("connections.SSHConnector.ParseKey: privateKey was empty")
+		return fmt.Errorf("connections.SSHConnector.ParseKey: privateKey was empty")
 	}
 
 	key, err := ssh.ParsePrivateKey(privateKey)
@@ -91,9 +91,9 @@ func (c *SSHConnector) ParseKey(privateKey []byte) error {
 
 // ParseKeyWithPassphrase parses a passhphrase protected private key into a key signer
 // and sends it to SSHConnector.SetKey().
-func (c *SSHConnector) ParseKeyWithPassphrase(privateKey []byte, passphrase string) error {
+func (c *SSHConnector) ParseKeyWithPassphrase(privateKey, passphrase []byte) error {
 	if privateKey == nil || len(privateKey) < 1 {
-		return errors.New("connections.SSHConnector.ParseKeyWithPassphrase: privateKey was empty")
+		return fmt.Errorf("connections.SSHConnector.ParseKeyWithPassphrase: privateKey was empty")
 	}
 
 	key, err := ssh.ParsePrivateKeyWithPassphrase(privateKey, []byte(passphrase))
@@ -104,8 +104,34 @@ func (c *SSHConnector) ParseKeyWithPassphrase(privateKey []byte, passphrase stri
 	return c.AddKeyAuth(key)
 }
 
+/*
+// GenerateAuth creates the ssh.AuthMethod slice from the AuthMethods slice.
+func (c *SSHConnector) GenerateAuth() error {
+	if len(c.AuthMethods) < 1 {
+		return fmt.Errorf("connections.SSHConnector.GenerateSAuth: no auth methods available")
+	}
+
+	var errs error
+	for _, a := range c.AuthMethods {
+		if a.Proto != SSH {
+			continue
+		}
+
+		am, err := a.ToSSHAuthMethod()
+		if err != nil {
+			errs = fmt.Errorf("%w\n%s", errs, err)
+			continue
+		}
+
+		c.Auth = append(c.Auth, am)
+	}
+
+	return errs
+}
+*/
+
 // OpenSession creates a new single command session.
-func (c *SSHConnector) OpenSession(server Server) error {
+func (c *SSHConnector) OpenSession(bufs Buffers) error {
 	// log.Print(" - Creating session...")
 	if !c.isConnected {
 		return ErrNotConnected
@@ -113,8 +139,8 @@ func (c *SSHConnector) OpenSession(server Server) error {
 
 	sess, err := c.NewSession()
 	if err != nil {
-		server.Log(time.Now(), err.Error())
-		server.PrintResults(time.Now(), "error", err)
+		bufs.Log(time.Now(), err.Error())
+		bufs.PrintResults(time.Now(), "error", err)
 		return err
 	}
 
@@ -133,7 +159,7 @@ func (c *SSHConnector) CloseSession() error {
 
 	c.hasSession = false
 	if c.Session == nil {
-		return errors.New("connections.SSHConnector.CloseSession: no session avaiable")
+		return fmt.Errorf("connections.SSHConnector.CloseSession: no session avaiable")
 	}
 
 	return c.Session.Close()
@@ -175,11 +201,9 @@ func (c SSHConnector) Validate() error {
 	return nil
 }
 
-func (c *SSHConnector) Open(server Server) error {
-	if err := server.Validate(); err != nil {
-		return err
-	}
-
+// Open creates a connection to the server. addr is the server address to connect to in the format
+// of "hostname:port" or "ip:port".
+func (c *SSHConnector) Open(addr string, bufs Buffers) error {
 	config := &ssh.ClientConfig{
 		User:            c.User,
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(), // INCOMPLETE: Find a way to add host key checking.
@@ -188,10 +212,10 @@ func (c *SSHConnector) Open(server Server) error {
 	}
 
 	// log.Print("Dialing server...")
-	client, err := ssh.Dial("tcp", server.GetAddr(), config)
+	client, err := ssh.Dial("tcp", addr, config)
 	if err != nil {
-		server.Log(time.Now(), err.Error())
-		server.PrintResults(time.Now(), "error", err)
+		bufs.Log(time.Now(), err.Error())
+		bufs.PrintResults(time.Now(), "error", err)
 		return err
 	}
 
@@ -202,16 +226,16 @@ func (c *SSHConnector) Open(server Server) error {
 	return nil
 }
 
-func (c *SSHConnector) TestConnection(server Server) error {
+func (c *SSHConnector) TestConnection(bufs Buffers) error {
 	expect := "cuttle ok"
-	return c.run(server, fmt.Sprintf("echo '%s'", expect), expect)
+	return c.run(bufs, fmt.Sprintf("echo '%s'", expect), expect)
 }
 
-func (c *SSHConnector) Run(server Server, cmd string, exp string) error {
-	return c.run(server, cmd, exp)
+func (c *SSHConnector) Run(bufs Buffers, cmd string, exp string) error {
+	return c.run(bufs, cmd, exp)
 }
 
-func (c *SSHConnector) run(server Server, cmd string, exp string) error {
+func (c *SSHConnector) run(bufs Buffers, cmd string, exp string) error {
 	if cmd == "" {
 		return ErrEmtpyCmd
 	}
@@ -220,7 +244,7 @@ func (c *SSHConnector) run(server Server, cmd string, exp string) error {
 		return ErrEmtpyExp
 	}
 
-	err := c.OpenSession(server)
+	err := c.OpenSession(bufs)
 	if err != nil {
 		return err
 	}
@@ -236,23 +260,23 @@ func (c *SSHConnector) run(server Server, cmd string, exp string) error {
 	// log.Print("   - Running cmd...")
 	err = c.Session.Run(cmd)
 	if err != nil {
-		server.Log(eventTime, err.Error())
-		server.PrintResults(eventTime, "error", err)
+		bufs.Log(eventTime, err.Error())
+		bufs.PrintResults(eventTime, "error", err)
 		return err
 	}
 	// log.Print("done.")
 
 	// Log the full output of the command
-	server.Log(eventTime, b.String())
+	bufs.Log(eventTime, b.String())
 
 	// Match results to the expected results and print
 	ok := foundExpect(b.Bytes(), exp)
 	if !ok {
-		server.PrintResults(eventTime, "failed", nil)
+		bufs.PrintResults(eventTime, "failed", nil)
 		return nil
 	}
 
-	server.PrintResults(eventTime, "ok", nil)
+	bufs.PrintResults(eventTime, "ok", nil)
 	return nil
 }
 

@@ -46,7 +46,7 @@ func (c *Connection) Open(pool ConnectionPool) (*Connection, error) {
 	}
 
 	c.killAt = time.Now().Add(time.Minute * time.Duration(TTL))
-	err := c.Connector.Open(*c.Server)
+	err := c.Connector.Open(c.Server.GetAddr(), c.Server.Buffers)
 	if err != nil {
 		return nil, err
 	}

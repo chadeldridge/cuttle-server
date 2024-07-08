@@ -9,13 +9,13 @@ import (
 )
 
 const (
-	testHost = "localhost"
+	testHost = "test.home"
 	testUser = "bob"
-	testPass = "testUserP@ssw0rd"
 )
 
 var (
-	keyPass = []byte(`-----BEGIN OPENSSH PRIVATE KEY-----
+	testPass = []byte("testUserP@ssw0rd")
+	keyPass  = []byte(`-----BEGIN OPENSSH PRIVATE KEY-----
 b3BlbnNzaC1rZXktdjEAAAAACmFlczI1Ni1jdHIAAAAGYmNyeXB0AAAAGAAAABATucg6QV
 b74QXyKzG7c6YAAAAAZAAAAAEAAAAzAAAAC3NzaC1lZDI1NTE5AAAAIN8GWe3xMFt/5zSP
 xbFK7UlOCB72cCvTec2X1fwAFtYgAAAAoCgV9C/P0QHNfo1edW3BgnBQ1bMOpKVxzUkQ7Q
@@ -33,7 +33,7 @@ AAAECwBTmJkCxA2UyiNnP5Mh3ampIMnZt+wegxE5jqySmfAvingJrKdq5sXfmHM5wReDp7
 )
 
 func testNewSSHConnector() SSHConnector {
-	return SSHConnector{User: testUser, Auth: []ssh.AuthMethod{ssh.Password(testPass)}}
+	return SSHConnector{User: testUser, Auth: []ssh.AuthMethod{ssh.Password(string(testPass))}}
 }
 
 func TestSSHConnectorNewSSHConnector(t *testing.T) {
@@ -103,7 +103,7 @@ func TestSSHConnectorAddPasswordAuth(t *testing.T) {
 	require := require.New(t)
 	conn := SSHConnector{User: testUser}
 
-	conn.AddPasswordAuth(testPass)
+	conn.AddPasswordAuth(string(testPass))
 	require.Len(conn.Auth, 1, "missing AuthMethod after AddKeyAuth")
 }
 
@@ -178,7 +178,7 @@ func TestSSHConnectorParseKeyWithPassphrase(t *testing.T) {
 
 	t.Run("bad passphrase", func(t *testing.T) {
 		conn.Auth = []ssh.AuthMethod{}
-		err := conn.ParseKeyWithPassphrase(keyPass, "")
+		err := conn.ParseKeyWithPassphrase(keyPass, []byte(""))
 		require.Error(err, "SSHConnector.ParseKeyWithPassphrase() did not return an error")
 		require.Len(conn.Auth, 0, "AuthMethod found")
 	})
@@ -204,14 +204,14 @@ func TestSSHConnectorOpenSession(t *testing.T) {
 
 	require := require.New(t)
 	conn := testNewSSHConnector()
-	server := Server{Hostname: testHost, Connector: &conn, Results: &res, Logs: &log}
+	server := Server{Hostname: testHost, Connector: &conn, Buffers: Buffers{Results: &res, Logs: &log}}
 
-	err := conn.Open(server)
+	err := conn.Open(server.GetAddr(), server.Buffers)
 	require.NoError(err, "SSHConnector.Open() returned an error: %s", err)
 	require.True(conn.isConnected, "failed to open SSHConnector")
 
 	t.Run("connected", func(t *testing.T) {
-		err := conn.OpenSession(server)
+		err := conn.OpenSession(server.Buffers)
 		require.NoError(err, "SSHConnector.OpenSession() returned an error: %s", err)
 		require.True(conn.hasSession, "SSHConnector.hasSession was false")
 	})
@@ -226,7 +226,7 @@ func TestSSHConnectorOpenSession(t *testing.T) {
 
 	conn = SSHConnector{}
 	t.Run("not connected", func(t *testing.T) {
-		err := conn.OpenSession(server)
+		err := conn.OpenSession(server.Buffers)
 		require.Error(err, "SSHConnector.OpenSession() did not return an error")
 		require.False(conn.hasSession, "SSHConnector Session openned despite not being connected")
 	})
@@ -240,9 +240,9 @@ func TestSSHConnectorCloseSession(t *testing.T) {
 
 	require := require.New(t)
 	conn := testNewSSHConnector()
-	server := Server{Hostname: testHost, Connector: &conn, Results: &res, Logs: &logs}
+	server := Server{Hostname: testHost, Connector: &conn, Buffers: Buffers{Results: &res, Logs: &logs}}
 
-	err := conn.Open(server)
+	err := conn.Open(server.GetAddr(), server.Buffers)
 	require.NoError(err, "SSHConnector.Open() returned an error: %s", err)
 	require.True(conn.isConnected, "failed to open SSHConnector")
 
@@ -252,7 +252,7 @@ func TestSSHConnectorCloseSession(t *testing.T) {
 		require.False(conn.hasSession, "failed to close SSHConnector Session")
 	})
 
-	err = conn.OpenSession(server)
+	err = conn.OpenSession(server.Buffers)
 	require.NoError(err, "SSHConnector.OpenSession() returned an error: %s", err)
 	require.True(conn.hasSession, "SSHConnector.hasSession was false")
 
@@ -412,10 +412,10 @@ func TestSSHConnectorOpen(t *testing.T) {
 
 	require := require.New(t)
 	conn := testNewSSHConnector()
-	server := Server{Hostname: testHost, Connector: &conn, Results: &res, Logs: &log}
+	server := Server{Hostname: testHost, Connector: &conn, Buffers: Buffers{Results: &res, Logs: &log}}
 
 	t.Run("valid", func(t *testing.T) {
-		err := conn.Open(server)
+		err := conn.Open(server.GetAddr(), server.Buffers)
 		require.NoError(err, "SSHConnector.Open() returned an error: %s", err)
 		require.True(conn.isConnected, "failed to open SSHConnector")
 	})
@@ -424,21 +424,16 @@ func TestSSHConnectorOpen(t *testing.T) {
 	require.NoError(err, "SSHConnector.Close() returned an error: %s", err)
 	require.False(conn.isConnected, "failed to close SSHConnector")
 
-	t.Run("invalid server", func(t *testing.T) {
-		require.Error(conn.Open(Server{}), "SSHConnector.Open() did not return an error")
-		require.False(conn.isConnected, "SSHConnector openned despite invalid state")
-	})
-
 	t.Run("invalid connector", func(t *testing.T) {
 		conn := SSHConnector{}
-		require.Error(conn.Open(server), "SSHConnector.Open() did not return an error")
+		require.Error(conn.Open(server.GetAddr(), server.Buffers), "SSHConnector.Open() did not return an error")
 		require.False(conn.isConnected, "SSHConnector openned despite invalid state")
 	})
 
 	t.Run("dial err", func(t *testing.T) {
 		conn := testNewSSHConnector()
-		server := Server{Hostname: "not.likely", Connector: &conn, Results: &res, Logs: &log}
-		require.Error(conn.Open(server), "SSHConnector.Open() did not return an error")
+		server := Server{Hostname: "not.likely", Connector: &conn, Buffers: Buffers{Results: &res, Logs: &log}}
+		require.Error(conn.Open(server.GetAddr(), server.Buffers), "SSHConnector.Open() did not return an error")
 		require.False(conn.isConnected, "SSHConnector openned despite invalid state")
 	})
 }
@@ -449,14 +444,14 @@ func TestSSHConnectorTestConnection(t *testing.T) {
 
 	require := require.New(t)
 	conn := testNewSSHConnector()
-	server := Server{Hostname: testHost, Connector: &conn, Results: &res, Logs: &log}
+	server := Server{Hostname: testHost, Connector: &conn, Buffers: Buffers{Results: &res, Logs: &log}}
 
-	err := conn.Open(server)
+	err := conn.Open(server.GetAddr(), server.Buffers)
 	require.NoError(err, "SSHConnector.Open() returned an error: %s", err)
 	defer conn.Close(true)
 
 	t.Run("test connection", func(t *testing.T) {
-		err := conn.TestConnection(server)
+		err := conn.TestConnection(server.Buffers)
 		require.NoError(err, "SSHConnector.TestConnection() returned an error: %s", err)
 		require.NotEmpty(res.String(), "results Buffer was empty")
 		require.NotEmpty(log.String(), "logs Buffer was empty")
@@ -469,38 +464,38 @@ func TestSSHConnectorRun(t *testing.T) {
 
 	require := require.New(t)
 	conn := testNewSSHConnector()
-	server := Server{Hostname: testHost, Connector: &conn, Results: &res, Logs: &log}
+	server := Server{Hostname: testHost, Connector: &conn, Buffers: Buffers{Results: &res, Logs: &log}}
 	cmd := "echo testing | grep testing"
 	exp := "testing"
 
-	err := conn.Open(server)
+	err := conn.Open(server.GetAddr(), server.Buffers)
 	require.NoError(err, "SSHConnector.Open() returned an error: %s", err)
 
 	// This also verifies that SSHConnector properly implements the Connector interface.
 	t.Run("good connector", func(t *testing.T) {
-		err = conn.Run(server, cmd, exp)
+		err = conn.Run(server.Buffers, cmd, exp)
 		require.NoError(err, "SSHConnector.Run() returned an error: %s", err)
 		require.NotEmpty(res.String(), "results Buffer was empty")
 		require.NotEmpty(log.String(), "logs Buffer was empty")
 	})
 
 	t.Run("empty cmd", func(t *testing.T) {
-		err := conn.Run(server, "", exp)
+		err := conn.Run(server.Buffers, "", exp)
 		require.Error(err, "SSHConnector.Run() did not return an error")
 	})
 
 	t.Run("empty exp", func(t *testing.T) {
-		err := conn.Run(server, cmd, "")
+		err := conn.Run(server.Buffers, cmd, "")
 		require.Error(err, "SSHConnector.Run() did not return an error")
 	})
 
 	t.Run("bad cmd", func(t *testing.T) {
-		err := conn.Run(server, "blahIsNotACommand -with args", exp)
+		err := conn.Run(server.Buffers, "blahIsNotACommand -with args", exp)
 		require.Error(err, "SSHConnector.Run() did not return an error")
 	})
 
 	t.Run("bad exp", func(t *testing.T) {
-		err := conn.Run(server, cmd, "this won't match")
+		err := conn.Run(server.Buffers, cmd, "this won't match")
 		require.NoError(err, "SSHConnector.Run() return an error")
 		require.Contains(GetLastBufferLine(server.Results), "failed", "SSHConnector.Run() did not fail match")
 	})
@@ -509,7 +504,7 @@ func TestSSHConnectorRun(t *testing.T) {
 	require.False(conn.isConnected, "failed to close SSHConnector")
 
 	t.Run("not connected", func(t *testing.T) {
-		err := conn.Run(server, cmd, exp)
+		err := conn.Run(server.Buffers, cmd, exp)
 		require.Error(err, "SSHConnector.Run() did not return an error")
 	})
 }
@@ -520,9 +515,9 @@ func TestSSHConnectorClose(t *testing.T) {
 
 	require := require.New(t)
 	conn := testNewSSHConnector()
-	server := Server{Hostname: testHost, Connector: &conn, Results: &res, Logs: &log}
+	server := Server{Hostname: testHost, Connector: &conn, Buffers: Buffers{Results: &res, Logs: &log}}
 
-	err := conn.Open(server)
+	err := conn.Open(server.GetAddr(), server.Buffers)
 	require.NoError(err, "SSHConnector.Open() returned an error: %s", err)
 	require.True(conn.isConnected, "failed to open SSHConnector")
 
@@ -540,7 +535,7 @@ func TestSSHConnectorClose(t *testing.T) {
 		require.False(conn.isConnected, "failed to close SSHConnector")
 	})
 
-	err = conn.Open(server)
+	err = conn.Open(server.GetAddr(), server.Buffers)
 	require.NoError(err, "SSHConnector.Open() returned an error: %s", err)
 	require.True(conn.isConnected, "failed to open SSHConnector")
 
