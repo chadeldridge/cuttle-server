@@ -16,6 +16,7 @@ var (
 	remoateHost = "localhost"
 	remoteUser  = "bob"
 	pass        = "testUserP@ssw0rd"
+	encPass     = []byte("Myv3ryGo0dandsupersecureP@sswordTM$")
 )
 
 func main() {
