@@ -23,8 +23,8 @@ func (r Profiles) migrate() error {
 		name varchar(255) NOT NULL,
 	)`
 
-	if err := r.Migrate(query); err != nil {
-		return fmt.Errorf("db.Profiles.Migrate: %w", err)
+	if err := r.Exec(query); err != nil {
+		return fmt.Errorf("db.Profiles.Exec: %w", err)
 	}
 
 	query = `
@@ -35,8 +35,8 @@ func (r Profiles) migrate() error {
 		FOREIGN KEY (tile_id) REFERENCES tiles(id) ON DELETE CASCADE
 	)`
 
-	if err := r.Migrate(query); err != nil {
-		return fmt.Errorf("db.Profiles.Migrate: %w", err)
+	if err := r.Exec(query); err != nil {
+		return fmt.Errorf("db.Profiles.Exec: %w", err)
 	}
 
 	query = `
@@ -47,8 +47,8 @@ func (r Profiles) migrate() error {
 		FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE
 	)`
 
-	if err := r.Migrate(query); err != nil {
-		return fmt.Errorf("db.Profiles.Migrate: %w", err)
+	if err := r.Exec(query); err != nil {
+		return fmt.Errorf("db.Profiles.Exec: %w", err)
 	}
 
 	return nil

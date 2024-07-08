@@ -27,8 +27,8 @@ func (r Servers) migrate() error {
 		useIP BOOLEAN NOT NULL DEFAULT FALSE,
 	)`
 
-	if err := r.Migrate(query); err != nil {
-		return fmt.Errorf("db.Servers.Migrate: %w", err)
+	if err := r.Exec(query); err != nil {
+		return fmt.Errorf("db.Servers.Exec: %w", err)
 	}
 
 	// Create the table for the Server to Connector relation.
@@ -40,8 +40,8 @@ func (r Servers) migrate() error {
 		FOREIGN KEY (connector_id) REFERENCES connectors(id) ON DELETE CASCADE
 	)`
 
-	if err := r.Migrate(query); err != nil {
-		return fmt.Errorf("db.Servers.Migrate: %w", err)
+	if err := r.Exec(query); err != nil {
+		return fmt.Errorf("db.Servers.Exec: %w", err)
 	}
 
 	return nil

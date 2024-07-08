@@ -23,8 +23,8 @@ func (r Groups) migrate() error {
 		name varchar(255) NOT NULL
 	)`
 
-	if err := r.Migrate(query); err != nil {
-		return fmt.Errorf("db.Groups.Migrate: %w", err)
+	if err := r.Exec(query); err != nil {
+		return fmt.Errorf("db.Groups.Exec: %w", err)
 	}
 
 	// Create the table for the Group to Server relation.
@@ -36,8 +36,8 @@ func (r Groups) migrate() error {
 		FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE
 	)`
 
-	if err := r.Migrate(query); err != nil {
-		return fmt.Errorf("db.Groups.Migrate: %w", err)
+	if err := r.Exec(query); err != nil {
+		return fmt.Errorf("db.Groups.Exec: %w", err)
 	}
 
 	return nil

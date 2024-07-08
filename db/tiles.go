@@ -28,8 +28,8 @@ func (r Tiles) migrate() error {
 		display_size INTEGER NOT NULL DEFAULT 40,
 	)`
 
-	if err := r.Migrate(query); err != nil {
-		return fmt.Errorf("db.Tiles.Migrate: %w", err)
+	if err := r.Exec(query); err != nil {
+		return fmt.Errorf("db.Tiles.Exec: %w", err)
 	}
 
 	return nil

@@ -25,8 +25,8 @@ func (r Connectors) migrate() error {
 		type VARCHAR(255) NOT NULL,
 	)`
 
-	if err := r.Migrate(query); err != nil {
-		return fmt.Errorf("db.Connectors.Migrate: %w", err)
+	if err := r.Exec(query); err != nil {
+		return fmt.Errorf("db.Connectors.Exec: %w", err)
 	}
 
 	// Create the table for the Connector to AuthMethod relation.
@@ -38,8 +38,8 @@ func (r Connectors) migrate() error {
 		FOREIGN KEY (auth_method_id) REFERENCES auth_methods(id) ON DELETE CASCADE
 	)`
 
-	if err := r.Migrate(query); err != nil {
-		return fmt.Errorf("db.Connectors.Migrate: %w", err)
+	if err := r.Exec(query); err != nil {
+		return fmt.Errorf("db.Connectors.Exec: %w", err)
 	}
 
 	return nil
