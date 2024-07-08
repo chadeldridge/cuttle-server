@@ -18,7 +18,7 @@ var (
 	results     bytes.Buffer
 	logs        bytes.Buffer
 
-	serverInputs = []string{
+	testServerNames = []string{
 		"host1",
 		"host2",
 		"host3",
@@ -27,7 +27,7 @@ var (
 
 func initGroupTest(t *testing.T, errConn bool) {
 	testServers = []connections.Server{}
-	for _, h := range serverInputs {
+	for _, h := range testServerNames {
 		testServers = append(testServers, createNewServer(t, h, errConn))
 	}
 }
