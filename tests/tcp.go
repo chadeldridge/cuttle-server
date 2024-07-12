@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"fmt"
 	"net"
 	"strconv"
 	"time"
@@ -10,34 +11,51 @@ import (
 
 const TCPDefaultTimeout = time.Second * 3
 
-func getArg(args []map[string]any, key string) any {
-	if len(args) == 0 {
-		return nil
-	}
+var ErrInvalidTestType = fmt.Errorf("invalid test type")
 
-	for _, a := range args {
-		if v, ok := a[key]; ok {
-			return v
-		}
-	}
-
-	return nil
+// TCPTest is a struct that holds the parameters for TCP tests.
+type TCPTest struct {
+	testType string
+	port     string
+	timeout  time.Duration
 }
 
-func getTimeoutArg(args []map[string]any) time.Duration {
-	t := getArg(args, "timeout")
-	if t == nil || t.(time.Duration) == 0 {
-		return TCPDefaultTimeout
+// NewTCPPortOpen creates a new Test for tcp port open with the given parameters.
+// name: The name of the test.
+// mustSucceed: If false, the Tile will continue with the test stack if this test fails.
+//
+// These TestArg will be evaluated:
+// "timeout": (int, int64, time.Duration) int/int64 will be converted into time.Second * int.
+func NewTCPPortOpen(name string, mustSucceed bool, port int, args ...TestArg) Test {
+	return Test{
+		Name:        name,
+		MustSucceed: mustSucceed,
+		Tester: &TCPTest{
+			testType: "port_open",
+			port:     strconv.Itoa(port),
+			timeout:  getTCPTimeout(args),
+		},
 	}
-
-	return t.(time.Duration)
 }
 
-func PortOpen(server connections.Server, port int, args ...map[string]any) error {
+func getTCPTimeout(args []TestArg) time.Duration { return GetTimeout(args, TCPDefaultTimeout) }
+
+// Run evaluates TCPTest.testType and runs the appropriate test, passing along server and args.
+func (t TCPTest) Run(server connections.Server, args ...TestArg) error {
+	switch t.testType {
+	case "port_open":
+		return PortOpen(t, server, args...)
+	default:
+		return ErrInvalidTestType
+	}
+}
+
+// PortOpen performs a simple tcp port open test against the server.
+func PortOpen(t TCPTest, server connections.Server, args ...TestArg) error {
 	conn, err := net.DialTimeout(
 		"tcp",
-		net.JoinHostPort(server.GetHostAddr(), strconv.Itoa(port)),
-		getTimeoutArg(args),
+		net.JoinHostPort(server.GetHostAddr(), t.port),
+		t.timeout,
 	)
 	if err != nil {
 		return err
