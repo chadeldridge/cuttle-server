@@ -141,6 +141,7 @@ func (c MockConnector) Run(bufs Buffers, cmd, exp string) error {
 	ok := foundExpect(out, exp)
 	if !ok {
 		bufs.PrintResults(eventTime, "failed", nil)
+		return fmt.Errorf("expected '%s' but got '%s'", exp, string(out))
 	}
 
 	bufs.PrintResults(eventTime, "ok", nil)
