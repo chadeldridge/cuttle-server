@@ -3,11 +3,19 @@ package profiles
 import (
 	"testing"
 
-	"github.com/chadeldridge/cuttle/connections"
+	"github.com/chadeldridge/cuttle/tests"
 	"github.com/stretchr/testify/require"
 )
 
-func testNewTile(name string) Tile { return Tile{Name: name, Cmd: "echo Hello", Exp: "Hello"} }
+func testNewTile(name string) Tile {
+	return Tile{
+		Name:        name,
+		DisplaySize: 40,
+		Tests:       []tests.Test{tests.NewMockTest(false)},
+		AllMustPass: false,
+		InParallel:  false,
+	}
+}
 
 func TestProfilesNewProfile(t *testing.T) {
 	initGroupTest(t, false)
@@ -206,8 +214,8 @@ func TestProfilesGetGroup(t *testing.T) {
 func TestProfilesExecute(t *testing.T) {
 	initGroupTest(t, false)
 	require := require.New(t)
-	tile1 := Tile{Name: "Tile1", Cmd: "echo Hello", Exp: "Hello"}
-	tile2 := Tile{Name: "Tile2", Cmd: "this is not a command", Exp: "Hello"}
+	tile1 := testNewTile("Tile1")
+	tile2 := testNewTile("Tile2")
 	group1 := Group{Name: "Group1", Servers: testServers}
 	profile := Profile{
 		Name:   "TestProfile",
@@ -230,24 +238,6 @@ func TestProfilesExecute(t *testing.T) {
 
 	t.Run("invalid group", func(t *testing.T) {
 		err := profile.Execute("Tile1", "InvalidGroup")
-		require.Error(err, "Execute() did not return an error")
-	})
-
-	t.Run("invalid command", func(t *testing.T) {
-		err := profile.Execute("Tile2", "Group1")
-		require.Error(err, "Execute() did not return an error")
-		require.NotContains(results.String(), "ok")
-		results.Reset()
-		logs.Reset()
-	})
-
-	t.Run("connection error", func(t *testing.T) {
-		connections.Pool.CloseAll()
-		initGroupTest(t, true)
-		group2 := NewGroup("Group2", testServers...)
-		profile.Groups["Group2"] = group2
-
-		err := profile.Execute("Tile1", "Group2")
 		require.Error(err, "Execute() did not return an error")
 	})
 }

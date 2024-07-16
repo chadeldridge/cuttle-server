@@ -3,8 +3,6 @@ package profiles
 import (
 	"errors"
 	"fmt"
-
-	"github.com/chadeldridge/cuttle/connections"
 )
 
 // Profile holds the Groups and command Tiles uses to run tests.
@@ -145,14 +143,17 @@ func (p Profile) Execute(tileName, groupName string) error {
 
 		// INCOMPLETE: Add special variable replacement in the command and expect strings.
 
-		// Make sure we have an open connection to the server.
-		_, err = connections.Pool.Open(server)
-		if err != nil {
-			errs = errors.Join(errs, err)
-			continue
-		}
+		/*
+			Moved to SSHTest.Run
+			// Make sure we have an open connection to the server.
+			_, err = connections.Pool.Open(server)
+			if err != nil {
+				errs = errors.Join(errs, err)
+				continue
+			}
+		*/
 
-		err = server.Run(tile.Cmd, tile.Exp)
+		err = tile.Run(*server)
 		if err != nil {
 			errs = errors.Join(errs, err)
 			continue

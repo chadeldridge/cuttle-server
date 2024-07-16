@@ -2,7 +2,11 @@ package profiles
 
 import (
 	"errors"
-	"strings"
+	"fmt"
+	"time"
+
+	"github.com/chadeldridge/cuttle/connections"
+	"github.com/chadeldridge/cuttle/tests"
 )
 
 // Command Tiles
@@ -14,44 +18,37 @@ import (
 // {{IPs(groupName)}}		"192.168.1.1, 192.168.1.2, 192.168.1.3"...
 
 const (
-	smallestTileSize      = 20 // Size in pixels.
-	defaultSizeMultiplier = 2  // Default multiplier to determine DisplaySize.
+	SmallestTileSize      = 20 // Size in pixels.
+	DefaultSizeMultiplier = 2  // Default multiplier to determine DisplaySize.
 )
 
 type Tile struct {
-	HideCmd     bool   // Whether or not to send the cmd value to the client.
-	HideExp     bool   // Whether or not to send the exp value to the client.
-	Name        string // Tile name. ("Ping", "Check Connectivity", etc.)
-	Cmd         string // Command to run on a remote server.
-	Exp         string // String to match with the results of cmd.
-	DisplaySize int    // Size is a multiple of the smallest button size. Default 40.
+	Name        string       // Tile name. ("Ping", "Check Connectivity", etc.)
+	DisplaySize int          // Size is a multiple of the smallest button size. Default 40.
+	Tests       []tests.Test // List of tests to run.
+	AllMustPass bool         // If true, all tests must pass for the tile to pass. Ignores Test.MustSucceed.
+	InParallel  bool         // If true, all tests will be ran in parallel.
 }
 
 // DefaultTile creates a new Tile object with several default settings.
 func DefaultTile() Tile {
 	return Tile{
-		HideCmd:     false,
-		HideExp:     false,
-		DisplaySize: smallestTileSize * defaultSizeMultiplier,
+		DisplaySize: SmallestTileSize * DefaultSizeMultiplier,
+		AllMustPass: false,
+		InParallel:  false,
 	}
 }
 
-// NewTile creates a new Tile object with a name, cmd(command), and exp(expect) string.
-func NewTile(name string, cmd string, exp string) Tile {
+// NewTile creates a new Tile object with a name and the given tests. Tests will be ran in order
+// unless InParallel is set.
+func NewTile(name string, tileTests ...tests.Test) Tile {
 	t := DefaultTile()
 	// INCOMPLETE: Add html safe validation for name, cmd, and exp here.
-	t.Name = name
-	t.Cmd = cmd
-	t.Exp = exp
+	t.SetName(name)
+	t.Tests = tileTests
 
 	return t
 }
-
-// SetHideCmd sets the Tile.hideCmd field.
-func (t *Tile) SetHideCmd(hide bool) { t.HideCmd = hide }
-
-// SetHideExp sets the Tile.hideExp field.
-func (t *Tile) SetHideExp(hide bool) { t.HideExp = hide }
 
 // SetName validates and sets Tile.name.
 func (t *Tile) SetName(name string) error {
@@ -64,37 +61,126 @@ func (t *Tile) SetName(name string) error {
 	return nil
 }
 
-// SetSize takes a multiplier and sets the Tile.DisplaySize to smallestTileSize * multiplier.
-// Passing 0 will default to defaultSizeMultiplier.
+// SetSize takes a multiplier and sets the Tile.DisplaySize to SmallestTileSize * multiplier.
+// Passing 0 will default to DefaultSizeMultiplier.
 func (t *Tile) SetSize(multiplier int) {
 	if multiplier <= 0 {
-		multiplier = defaultSizeMultiplier
+		multiplier = DefaultSizeMultiplier
 	}
 
-	t.DisplaySize = smallestTileSize * multiplier
+	t.DisplaySize = SmallestTileSize * multiplier
 }
 
-// SetCmd sets a command to be ran on a server.
-func (t *Tile) SetCmd(cmd string) error {
-	cmd = strings.TrimSpace(cmd)
-	if cmd == "" {
-		return errors.New("profiles.Tile.SetCmd: cmd cannot be empty or whitespace only")
+// AddTest adds a test to the Tile.Tests slice at the given postion.
+func (t *Tile) AddTest(position int, newTest tests.Test) {
+	if position == 0 {
+		t.Tests = append([]tests.Test{newTest}, t.Tests...)
+		return
 	}
 
-	// INCOMPLETE: Add html safe validation for cmd here.
-	t.Cmd = cmd
+	if position >= len(t.Tests) {
+		t.Tests = append(t.Tests, newTest)
+		return
+	}
+
+	t.Tests = append(t.Tests[:position], append([]tests.Test{newTest}, t.Tests[position:]...)...)
+}
+
+// AppendTest adds a test to the end of the Tile.Tests slice.
+func (t *Tile) AppendTest(newTest tests.Test) { t.Tests = append(t.Tests, newTest) }
+
+// AddTests adds a list of tests to the Tile.Tests slice.
+func (t *Tile) AddTests(newTests ...tests.Test) { t.Tests = append(t.Tests, newTests...) }
+
+// RemoveTest removes a test from the Tile.Tests slice.
+func (t *Tile) RemoveTest(test tests.Test) {
+	for i, tileTest := range t.Tests {
+		if tileTest == test {
+			t.RemoveTestAt(i)
+			return
+		}
+	}
+}
+
+// RemoveTestAt removes a test from the Tile.Tests slice at the given position.
+func (t *Tile) RemoveTestAt(position int) {
+	if position == 0 {
+		t.Tests = t.Tests[1:]
+		return
+	}
+
+	if position == len(t.Tests)-1 {
+		t.Tests = t.Tests[:len(t.Tests)-1]
+		return
+	}
+
+	t.Tests = append(t.Tests[:position], t.Tests[position+1:]...)
+}
+
+// RunInParallel sets the Tile.InParallel field to true.
+func (t *Tile) RunInParallel() { t.InParallel = true }
+
+// RunInSequence sets the Tile.InParallel field to false.
+func (t *Tile) RunInSequence() { t.InParallel = false }
+
+// Run tests in the Tile.Tests slice and return an error if any tests fail.
+func (t Tile) Run(server connections.Server, args ...tests.TestArg) error {
+	if t.InParallel {
+		return t.runInParallel(server, args)
+	}
+
+	return t.runInSequence(server, args)
+}
+
+func (t Tile) runInSequence(server connections.Server, args []tests.TestArg) error {
+	for _, test := range t.Tests {
+		err := test.Run(server, args...)
+		if err != nil && test.MustSucceed {
+			server.Buffers.PrintResults(
+				time.Now(),
+				fmt.Sprintf("(%s) %s - %s...fail", t.Name, test.Name, server.Hostname),
+				err,
+			)
+			return err
+		}
+
+		server.Buffers.PrintResults(
+			time.Now(),
+			fmt.Sprintf("(%s) %s - %s...pass", t.Name, test.Name, server.Hostname),
+			nil,
+		)
+	}
+
+	server.Buffers.PrintResults(time.Now(), fmt.Sprintf("(%s) %s...pass", t.Name, server.Hostname), nil)
 	return nil
 }
 
-// SetExp sets the expect string which will be matches against the output of Tile.cmd after being
-// ran on a server.
-func (t *Tile) SetExp(exp string) error {
-	exp = strings.TrimSpace(exp)
-	if exp == "" {
-		return errors.New("profiles.Tile.SetExp: exp cannot be empty or whitespace only")
+func (t Tile) runInParallel(server connections.Server, args []tests.TestArg) error {
+	errs := make(chan error, len(t.Tests))
+	for _, test := range t.Tests {
+		go func(test tests.Test) {
+			errs <- test.Run(server, args...)
+		}(test)
 	}
 
-	// INCOMPLETE: Add html safe validation for exp here.
-	t.Exp = exp
+	for i := 0; i < len(t.Tests); i++ {
+		err := <-errs
+		if err != nil && t.AllMustPass {
+			server.Buffers.PrintResults(
+				time.Now(),
+				fmt.Sprintf("(%s) %s - %s...failed", t.Name, t.Tests[i].Name, server.Hostname),
+				err,
+			)
+			return err
+		}
+
+		server.Buffers.PrintResults(
+			time.Now(),
+			fmt.Sprintf("(%s) %s - %s...pass", t.Name, t.Tests[i].Name, server.Hostname),
+			nil,
+		)
+	}
+
+	server.Buffers.PrintResults(time.Now(), fmt.Sprintf("(%s) %s...pass", t.Name, server.Hostname), nil)
 	return nil
 }
