@@ -1,5 +1,10 @@
 package main
 
+// Credit: https://grafana.com/blog/2024/02/09/how-i-write-http-services-in-go-after-13-years/
+// HTTP server initially modeled after Mat Ryer's article. Perfect timing hearing about it on
+// the Go Time podcast right when I was thinking about dropping gin-gonic and going with a more
+// bare bones solution for this project.
+
 import (
 	"context"
 	"io"
