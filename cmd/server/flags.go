@@ -1,29 +1,54 @@
 package main
 
+import (
+	"github.com/chadeldridge/cuttle/core"
+)
+
+var (
+	version = "Cuttle v0.1.0"
+	help    = `
+Usage:
+	cuttle [options] [args]
+Options:
+	--help				Print this help message.
+	--version			Print the version.
+	-c, --config-file <path>	Path to the configuration file.
+	-d, --db-root <path>		Path to the database.
+	-e, --env <env>			Environment to run the server in.
+	-h, --host <host>		Host to bind the API to.
+	-p, --port <port>		Port to bind the API to.
+	-v, --verbose			Enable verbose logging.`
+)
+
 // Skip the app name and return all flags and arguments.
-func parseFlags(args []string) (map[string]string, []string) {
+func parseFlags(logger *core.Logger, args []string) (map[string]string, []string) {
 	flags := map[string]string{}
 	a := []string{}
 	for i := 1; i < len(args); i++ {
 		switch args[i] {
-		case "-h", "--help":
-			printHelp()
+		case "--help":
+			logger.Println(help)
+			return nil, nil
 		case "--version":
-			printVersion()
-		case "-v", "--verbose":
-			flags["debug"] = "true"
-		case "-H", "--host":
+			logger.Println(version)
+			return nil, nil
+		case "-c", "--config-file":
+			flags["config_file"] = args[i+1]
+			i++
+		case "-d", "--db-root":
+			flags["db_root"] = args[i+1]
+			i++
+		case "-e", "--env":
+			flags["env"] = args[i+1]
+			i++
+		case "-h", "--host":
 			flags["api_host"] = args[i+1]
 			i++
 		case "-p", "--port":
 			flags["api_port"] = args[i+1]
 			i++
-		case "-d", "--db-root":
-			flags["db_root"] = args[i+1]
-			i++
-		case "-c", "--config-file":
-			flags["config_file"] = args[i+1]
-			i++
+		case "-v", "--verbose":
+			flags["debug"] = "true"
 		default:
 			a = append(a, args[i])
 		}
