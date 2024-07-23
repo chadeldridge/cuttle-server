@@ -24,9 +24,9 @@ func encode[T any](w http.ResponseWriter, status int, obj T) error {
 }
 
 // data, err := decode[MyStructType](r)
-func decode[T any](r *http.Request) (T, error) {
+func decode[T any](req *http.Request) (T, error) {
 	var obj T
-	if err := json.NewDecoder(r.Body).Decode(&obj); err != nil {
+	if err := json.NewDecoder(req.Body).Decode(&obj); err != nil {
 		return obj, fmt.Errorf("decoder: %w", err)
 	}
 
