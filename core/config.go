@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"maps"
 	"os"
 	"strings"
 
@@ -14,7 +15,7 @@ import (
 //
 
 const (
-	DefaultAPIHost         = "localhost"
+	DefaultAPIHost         = "0.0.0.0"
 	DefaultAPIPort         = "8080"
 	DefaultDBRoot          = db.DefaultDBFolder
 	DefaultShutdownTimeout = 10
@@ -25,15 +26,17 @@ var (
 	ErrInvalidEnv = fmt.Errorf("invalid environment")
 	ErrUnknownOpt = fmt.Errorf("unknown option")
 
-	supportedEnv  = []string{"prod", "dev"}
-	supportedVars = []string{
-		"CUTTLE_API_HOST",
-		"CUTTLE_API_PORT",
-		"CUTTLE_CONFIG_FILE",
-		"CUTTLE_DB_ROOT",
-		"CUTTLE_DEBUG",
-		"CUTLE_ENV",
-	}
+	supportedEnv = []string{"prod", "dev"}
+	/*
+		supportedVars = []string{
+			"CUTTLE_API_HOST",
+			"CUTTLE_API_PORT",
+			"CUTTLE_CONFIG_FILE",
+			"CUTTLE_DB_ROOT",
+			"CUTTLE_DEBUG",
+			"CUTLE_ENV",
+		}
+	*/
 )
 
 type Config struct {
@@ -45,9 +48,11 @@ type Config struct {
 	ShutdownTimeout int    `yaml:"shutdown_timeout"` // in seconds
 }
 
-func NewConfig(flags map[string]string, args []string, getenv func(string) string) (*Config, error) {
+func NewConfig(flags map[string]string, args []string, env map[string]string) (*Config, error) {
 	// Create a default config.
 	c := &Config{
+		Env:             "dev",
+		Debug:           false,
 		APIHost:         DefaultAPIHost,
 		APIPort:         DefaultAPIPort,
 		DBRoot:          DefaultDBRoot,
@@ -55,7 +60,7 @@ func NewConfig(flags map[string]string, args []string, getenv func(string) strin
 	}
 
 	// Parse the environment variables into a normalized format.
-	flags = parseEnvVars(flags, getenv)
+	flags = parseEnvVars(flags, env)
 
 	// If there's a config file, parse it and set the values in the config.
 	file := ""
@@ -121,32 +126,24 @@ func setConfigValue(c *Config, k, v string) error {
 }
 
 // Parse all supported environment variables into a map.
-func parseEnvVars(flags map[string]string, getenv func(string) string) map[string]string {
-	for _, k := range supportedVars {
-		newKey := strings.ToLower(strings.TrimPrefix(k, "CUTTLE_"))
-		// Don't overwrite existing flags that aren't empty.
-		if v, ok := flags[newKey]; ok && v != "" {
+func parseEnvVars(flags, env map[string]string) map[string]string {
+	f := map[string]string{}
+	// Copy the environment variables into the map with normalized keys.
+	for k, v := range env {
+		if !strings.HasPrefix(k, "CUTTLE_") {
 			continue
 		}
 
-		// Get the value from the environment.
-		v := getenv(k)
-		if v == "" {
-			continue
-		}
-
-		// Add the value to the flags map.
-		flags[newKey] = v
+		f[strings.ToLower(strings.TrimPrefix(k, "CUTTLE_"))] = v
 	}
 
-	return flags
+	maps.Copy(f, flags)
+	return f
 }
 
 // getConfigLocation returns the location of the config file. If a location is set and the file
-// does not exist, panic. If no config file is found and we did not panic, return fileNotFound.
+// does not exist, panic. If no config file is found and we did not panic, return FileNotFound.
 func getConfigLocation(file string) (string, error) {
-	fileName := "config.yaml"
-
 	// Check for a flag or env provided file.
 	if file != "" {
 		if _, err := os.Stat(file); err != nil {
@@ -155,16 +152,18 @@ func getConfigLocation(file string) (string, error) {
 		return file, nil
 	}
 
+	// If the config file is not in a dedicated cuttle folder, prefer a filename of cuttle.yaml.
 	var locations []string
+
 	// Add the user's home directory.
 	if dir, err := os.UserHomeDir(); err == nil {
-		locations = append(locations, dir+"/cuttle.yaml", dir+"/.config/cuttle/"+fileName)
+		locations = append(locations, dir+"/cuttle.yaml", dir+"/.config/cuttle/config.yaml")
 	}
 
 	// Add the current working directory. Assume the filename contains the app name so we do
 	// not load in another app's config by mistake.
 	if dir, err := os.Getwd(); err == nil {
-		locations = append(locations, dir+"/"+fileName, dir+"/cuttle.yaml")
+		locations = append(locations, dir+"/cuttle.yaml", dir+"/config.yaml")
 	}
 
 	for _, l := range locations {
