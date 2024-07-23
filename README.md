@@ -46,8 +46,8 @@ Config file will be checked for in this order:
 ```
 ~/cuttle.yaml
 ~/.config/cuttle/config.yaml
-`pwd`/config.yaml
 `pwd`/cuttle.yaml
+`pwd`/config.yaml
 ```
 
 If no config file is provided, cuttle will move on to checking for env variables and cli flags.
