@@ -13,8 +13,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"sync"
-	"time"
+	"strings"
 
 	"github.com/chadeldridge/cuttle/api"
 	"github.com/chadeldridge/cuttle/core"
@@ -33,24 +32,30 @@ var (
 */
 
 // run allows us to setup and implement in testing and production.
-func run(ctx context.Context, out io.Writer, args []string, getenv func(string) string) error {
+func run(ctx context.Context, out io.Writer, args []string, env map[string]string) error {
 	// Capture the interrupt signal to gracefully shutdown the server.
 	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt)
 	defer cancel()
 
+	// Setup logger.
+	logger := core.NewLogger(out, "cuttle: ", log.LstdFlags, false)
+
 	// Get flags.
-	flags, args := parseFlags(args)
+	flags, args := parseFlags(logger, args)
+	if flags == nil && args == nil {
+		return nil
+	}
 
 	// Setup the configuration.
-	config, err := core.NewConfig(flags, args, getenv)
+	config, err := core.NewConfig(flags, args, env)
 	if err != nil {
 		return err
 	}
 
-	// Setup logger.
-	logger := core.NewLogger(out, "cuttle: ", log.LstdFlags, config.Debug)
+	// Update logger with config value.
+	logger.DebugMode = config.Debug
 
-	// Remove later. Debug only.
+	// Print config if in debug mode.
 	logger.Debugf("Config: %+v\n", config)
 
 	// Setup the HTTP server.
@@ -60,38 +65,26 @@ func run(ctx context.Context, out io.Writer, args []string, getenv func(string) 
 		Handler: srv,
 	}
 
-	// Start the server.
-	go func() {
-		logger.Printf("server listening on %s\n", httpServer.Addr)
-		if err := httpServer.ListenAndServe(); err != nil {
-			logger.Printf("%v\n", err)
-		}
-	}()
-
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		<-ctx.Done()
-		shutdownCtx := context.Background()
-		shutdownCtx, cancel := context.WithTimeout(shutdownCtx, time.Duration(config.ShutdownTimeout)*time.Second)
-		defer cancel()
-
-		if err := httpServer.Shutdown(shutdownCtx); err != nil {
-			logger.Printf("http server shutdown error: %v\n", err)
-		}
-	}()
-	wg.Wait()
-
-	return nil
+	// Start API Server.
+	return api.Start(ctx, httpServer, logger, config.ShutdownTimeout)
 }
 
 func main() {
 	ctx := context.Background()
-	if err := run(ctx, os.Stdout, os.Args, os.Getenv); err != nil {
+	if err := run(ctx, os.Stdout, os.Args, getEnv()); err != nil {
 		log.Printf("%v\n", err)
 		os.Exit(1)
 	}
+}
+
+func getEnv() map[string]string {
+	env := map[string]string{}
+	for _, e := range os.Environ() {
+		pair := strings.SplitN(e, "=", 2)
+		env[pair[0]] = pair[1]
+	}
+
+	return env
 }
 
 /*
