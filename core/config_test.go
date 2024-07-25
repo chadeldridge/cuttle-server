@@ -2,7 +2,6 @@ package core
 
 import (
 	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -22,34 +21,44 @@ func defaultConfig() *Config {
 
 func TestConfigNewConfig(t *testing.T) {
 	require := require.New(t)
+	tester = MockTester
+	reader = MockReader
 	want := map[string]string{
-		"api_host": "127.0.0.1",
-		"api_port": "9090",
-		"db_root":  "/tmp/db",
-		"debug":    "true",
-		"env":      "prod",
+		"api_host":      "127.0.0.1",
+		"api_port":      "9090",
+		"db_root":       "/tmp/db",
+		"debug":         "true",
+		"env":           "prod",
+		"tls_cert_file": "/tmp/cuttle.pem",
+		"tls_key_file":  "/tmp/cuttle.key",
 	}
 
 	t.Run("no flags", func(t *testing.T) {
 		flags := map[string]string{}
 		args := []string{}
 		env := map[string]string{}
+		MockClearFS()
 
 		c, err := NewConfig(flags, args, env)
-		require.NoError(err, "NewConfig() returned an error: %s", err)
+		require.Error(err, "NewConfig() returned an error: %s", err)
+		require.Equal("tls cert: file not found", err.Error(), "NewConfig() did not return the correct error")
 		require.Equal(defaultConfig(), c, "NewConfig() did not return the default config")
 	})
 
 	t.Run("flags only", func(t *testing.T) {
 		flags := map[string]string{
-			"api_host": "127.0.0.1",
-			"api_port": "9090",
-			"db_root":  "/tmp/db",
-			"debug":    "true",
-			"env":      "prod",
+			"api_host":      "127.0.0.1",
+			"api_port":      "9090",
+			"db_root":       "/tmp/db",
+			"debug":         "true",
+			"env":           "prod",
+			"tls_cert_file": "/tmp/cuttle_cert.pem",
+			"tls_key_file":  "/tmp/cuttle_key.pem",
 		}
 		args := []string{}
 		env := map[string]string{}
+		MockWriteFile("/tmp/cuttle_cert.pem", []byte(""), true, nil)
+		MockWriteFile("/tmp/cuttle_key.pem", []byte(""), true, nil)
 
 		c, err := NewConfig(flags, args, env)
 		require.NoError(err, "NewConfig() returned an error: %s", err)
@@ -59,13 +68,17 @@ func TestConfigNewConfig(t *testing.T) {
 	t.Run("env only", func(t *testing.T) {
 		flags := map[string]string{}
 		env := map[string]string{
-			"CUTTLE_API_HOST": "127.0.0.1",
-			"CUTTLE_API_PORT": "9090",
-			"CUTTLE_DB_ROOT":  "/tmp/db",
-			"CUTTLE_DEBUG":    "true",
-			"CUTTLE_ENV":      "prod",
+			"CUTTLE_API_HOST":      "127.0.0.1",
+			"CUTTLE_API_PORT":      "9090",
+			"CUTTLE_DB_ROOT":       "/tmp/db",
+			"CUTTLE_DEBUG":         "true",
+			"CUTTLE_ENV":           "prod",
+			"CUTTLE_TLS_CERT_FILE": "/tmp/cuttle_cert.pem",
+			"CUTTLE_TLS_KEY_FILE":  "/tmp/cuttle_key.pem",
 		}
 		args := []string{}
+		MockWriteFile("/tmp/cuttle_cert.pem", []byte(""), true, nil)
+		MockWriteFile("/tmp/cuttle_key.pem", []byte(""), true, nil)
 
 		c, err := NewConfig(flags, args, env)
 		require.NoError(err, "NewConfig() returned an error: %s", err)
@@ -77,41 +90,43 @@ func TestConfigNewConfig(t *testing.T) {
 		env := map[string]string{}
 		args := []string{}
 		config := &Config{
-			Env:     want["env"],
-			Debug:   true,
-			APIHost: want["api_host"],
-			APIPort: want["api_port"],
-			DBRoot:  want["db_root"],
+			Env:         want["env"],
+			Debug:       true,
+			TLSCertFile: "/tmp/cuttle_cert.pem",
+			TLSKeyFile:  "/tmp/cuttle_key.pem",
+			APIHost:     want["api_host"],
+			APIPort:     want["api_port"],
+			DBRoot:      want["db_root"],
 		}
 
-		file := "/tmp/cuttle.yaml"
-		writeFile(file, config)
+		data, err := yaml.Marshal(config)
+		require.NoError(err, "yaml.Marshal() returned an error: %s", err)
+		MockWriteFile("/tmp/cuttle.yaml", data, true, nil)
+		MockWriteFile("/tmp/cuttle_cert.pem", []byte(""), true, nil)
+		MockWriteFile("/tmp/cuttle_key.pem", []byte(""), true, nil)
 
 		c, err := NewConfig(flags, args, env)
 		require.NoError(err, "NewConfig() returned an error: %s", err)
 		testConfig(t, want, c)
-		removeFile(file)
 	})
 
 	t.Run("missing file", func(t *testing.T) {
 		flags := map[string]string{"config_file": "/tmp/cuttle.yaml"}
 		env := map[string]string{}
 		args := []string{}
-
-		file := "/tmp/cuttle.yaml"
-		removeFile(file)
+		MockClearFS()
 
 		c, err := NewConfig(flags, args, env)
 		require.Error(err, "NewConfig() did not return an error")
 		require.Equal(
-			"stat /tmp/cuttle.yaml: no such file or directory",
+			"MockTester /tmp/cuttle.yaml: no such file or directory",
 			err.Error(),
 			"NewConfig() did not return the correct error",
 		)
 		require.Equal(defaultConfig(), c, "NewConfig() did not return the default config")
 	})
 
-	t.Run("invalid option", func(t *testing.T) {
+	t.Run("invalid flag", func(t *testing.T) {
 		flags := map[string]string{"invalid": "value"}
 		env := map[string]string{}
 		args := []string{}
@@ -127,20 +142,24 @@ func TestConfigNewConfig(t *testing.T) {
 		env := map[string]string{"CUTTLE_API_HOST": "63.57.123.41", "CUTTLE_API_PORT": want["api_port"]}
 		args := []string{}
 		config := &Config{
-			Env:     want["env"],
-			Debug:   true,
-			APIHost: "192.168.0.1",
-			APIPort: "3000",
-			DBRoot:  want["db_root"],
+			Env:         want["env"],
+			Debug:       true,
+			TLSCertFile: "/tmp/cuttle_cert.pem",
+			TLSKeyFile:  "/tmp/cuttle_key.pem",
+			APIHost:     "192.168.0.1",
+			APIPort:     "3000",
+			DBRoot:      want["db_root"],
 		}
 
-		file := "/tmp/cuttle.yaml"
-		writeFile(file, config)
+		data, err := yaml.Marshal(config)
+		require.NoError(err, "yaml.Marshal() returned an error: %s", err)
+		MockWriteFile("/tmp/cuttle.yaml", data, true, nil)
+		MockWriteFile("/tmp/cuttle_cert.pem", []byte(""), true, nil)
+		MockWriteFile("/tmp/cuttle_key.pem", []byte(""), true, nil)
 
 		c, err := NewConfig(flags, args, env)
 		require.NoError(err, "NewConfig() returned an error: %s", err)
 		testConfig(t, want, c)
-		removeFile(file)
 	})
 }
 
@@ -174,7 +193,7 @@ func TestConfigSetConfigValue(t *testing.T) {
 	c := defaultConfig()
 
 	t.Run("set one", func(t *testing.T) {
-		err := setConfigValue(c, "api_host", "127.0.0.1")
+		err := c.setConfigValue("api_host", "127.0.0.1")
 		require.NoError(err, "setConfigValue() returned an error")
 		require.Equal("127.0.0.1", c.APIHost, "setConfigValue() did not set the value")
 	})
@@ -197,7 +216,7 @@ func TestConfigSetConfigValue(t *testing.T) {
 		}
 
 		for k, v := range m {
-			err := setConfigValue(c, k, v)
+			err := c.setConfigValue(k, v)
 			require.NoError(err, "setConfigValue() returned an error")
 		}
 
@@ -205,19 +224,19 @@ func TestConfigSetConfigValue(t *testing.T) {
 	})
 
 	t.Run("invalid key", func(t *testing.T) {
-		err := setConfigValue(c, "invalid", "value")
+		err := c.setConfigValue("invalid", "value")
 		require.Error(err, "setConfigValue() did not return an error")
 		require.Equal(ErrUnknownOpt, err, "setConfigValue() did not return the correct error")
 	})
 
 	t.Run("invalid env", func(t *testing.T) {
-		err := setConfigValue(c, "env", "invalid")
+		err := c.setConfigValue("env", "invalid")
 		require.Error(err, "setConfigValue() did not return an error")
 		require.Equal(ErrInvalidEnv, err, "setConfigValue() did not return the correct error")
 	})
 
 	t.Run("debug false", func(t *testing.T) {
-		err := setConfigValue(c, "debug", "false")
+		err := c.setConfigValue("debug", "false")
 		require.NoError(err, "setConfigValue() returned an error")
 		require.False(c.Debug, "setConfigValue() did not set the value")
 	})
@@ -288,76 +307,113 @@ func TestConfigParseEnvVars(t *testing.T) {
 	})
 }
 
-func writeFile(file string, config *Config) error {
-	if err := os.MkdirAll(filepath.Dir(file), 0o700); err != nil {
-		return err
-	}
-
-	data, err := yaml.Marshal(config)
-	if err != nil {
-		return err
-	}
-
-	return os.WriteFile(file, data, 0o600)
-}
-
-func removeFile(file string) error {
-	return os.Remove(file)
-}
-
-func TestConfigGetConfigLocation(t *testing.T) {
+func TestConfigSetTLSFiles(t *testing.T) {
 	require := require.New(t)
 	c := defaultConfig()
+	tester = MockTester
 
-	t.Run("no file", func(t *testing.T) {
-		file, err := getConfigLocation("")
-		require.NoError(err, "getConfigLocation() returned an error: %s", err)
-		require.Equal(FileNotFound, file, "getConfigLocation() did not return the default location")
+	t.Run("not set", func(t *testing.T) {
+		err := c.setTLSFiles()
+		require.Error(err, "setTLSFiles() did not return an error")
+		require.Equal("tls cert: file not found", err.Error(), "setTLSFiles() did not set the cert file")
+		require.Equal("", c.TLSKeyFile, "setTLSFiles() did not set the key file")
 	})
 
-	t.Run("missing file", func(t *testing.T) {
-		f := "/tmp/cuttle.yaml"
-		removeFile(f)
-		file, err := getConfigLocation(f)
-		require.Error(err, "getConfigLocation() did not return an error")
-		require.Equal("", file, "getConfigLocation() did not return the correct location")
+	t.Run("cert set", func(t *testing.T) {
+		c.TLSCertFile = "/tmp/cuttle_cert.pem"
+		MockWriteFile("/tmp/cuttle_cert.pem", []byte(""), true, nil)
+
+		err := c.setTLSFiles()
+		require.Error(err, "setTLSFiles() did not return an error")
+		require.Equal("tls key: file not found", err.Error(), "setTLSFiles() did not set the key file")
+		require.Equal("", c.TLSKeyFile, "setTLSFiles() did not set the key file")
 	})
 
-	t.Run("file set", func(t *testing.T) {
-		f := "/tmp/cuttle.yaml"
-		writeFile(f, c)
-		file, err := getConfigLocation(f)
-		require.NoError(err, "getConfigLocation() returned an error: %s", err)
-		require.Equal(f, file, "getConfigLocation() did not return the correct location")
-		removeFile(f)
+	t.Run("both set", func(t *testing.T) {
+		c.TLSCertFile = "/tmp/cuttle_cert.pem"
+		c.TLSKeyFile = "/tmp/cuttle_key.pem"
+		MockWriteFile("/tmp/cuttle_cert.pem", []byte(""), true, nil)
+		MockWriteFile("/tmp/cuttle_key.pem", []byte(""), true, nil)
+
+		err := c.setTLSFiles()
+		require.NoError(err, "setTLSFiles() returned an error: %s", err)
+		require.Equal("/tmp/cuttle_cert.pem", c.TLSCertFile, "setTLSFiles() did not set the cert file")
+		require.Equal("/tmp/cuttle_key.pem", c.TLSKeyFile, "setTLSFiles() did not set the key file")
+	})
+}
+
+func TestConfigSetTLSCertFile(t *testing.T) {
+	require := require.New(t)
+	c := defaultConfig()
+	tester = MockTester
+
+	t.Run("not set", func(t *testing.T) {
+		err := c.setTLSCertFile()
+		require.Error(err, "setTLSFiles() did not return an error")
+		require.Equal("tls cert: file not found", err.Error(), "setTLSFiles() did not set the cert file")
+		require.Equal("", c.TLSKeyFile, "setTLSFiles() did not set the key file")
 	})
 
-	t.Run("default files", func(t *testing.T) {
-		hdir, err := os.UserHomeDir()
+	t.Run("specified", func(t *testing.T) {
+		c.TLSCertFile = "/tmp/cuttle_cert.pem"
+		MockWriteFile("/tmp/cuttle_cert.pem", []byte(""), true, nil)
+
+		err := c.setTLSCertFile()
+		require.NoError(err, "setTLSFiles() returned an error: %s", err)
+		require.Equal("/tmp/cuttle_cert.pem", c.TLSCertFile, "setTLSFiles() set the cert file")
+	})
+
+	t.Run("found", func(t *testing.T) {
+		dir, err := os.UserHomeDir()
 		require.NoError(err, "os.UserHomeDir() returned an error: %s", err)
 
-		cwd, err := os.Getwd()
-		require.NoError(err, "os.Getwd() returned an error: %s", err)
+		c.TLSCertFile = ""
+		MockWriteFile(dir+"/cuttle_cert.pem", []byte(""), true, nil)
 
-		files := []string{
-			hdir + "/cuttle.yaml",
-			hdir + "/.config/cuttle/config.yaml",
-			cwd + "/cuttle.yaml",
-			cwd + "/config.yaml",
-		}
+		err = c.setTLSCertFile()
+		require.NoError(err, "setTLSFiles() returned an error: %s", err)
+		require.Equal(dir+"/cuttle_cert.pem", c.TLSCertFile, "setTLSFiles() set the cert file")
+	})
+}
 
-		for _, file := range files {
-			writeFile(file, c)
-			got, err := getConfigLocation("")
-			require.NoError(err, "getConfigLocation() returned an error: %s", err)
-			require.Equal(file, got, "getConfigLocation() did not return the correct location")
-			removeFile(file)
-		}
+func TestConfigSetTLSKeyFile(t *testing.T) {
+	require := require.New(t)
+	c := defaultConfig()
+	tester = MockTester
+
+	t.Run("not set", func(t *testing.T) {
+		err := c.setTLSKeyFile()
+		require.Error(err, "setTLSFiles() did not return an error")
+		require.Equal("tls key: file not found", err.Error(), "setTLSFiles() did not set the key file")
+		require.Equal("", c.TLSKeyFile, "setTLSFiles() did not set the key file")
+	})
+
+	t.Run("specified", func(t *testing.T) {
+		c.TLSKeyFile = "/tmp/cuttle_key.pem"
+		MockWriteFile("/tmp/cuttle_key.pem", []byte(""), true, nil)
+
+		err := c.setTLSKeyFile()
+		require.NoError(err, "setTLSFiles() returned an error: %s", err)
+		require.Equal("/tmp/cuttle_key.pem", c.TLSKeyFile, "setTLSFiles() set the key file")
+	})
+
+	t.Run("found", func(t *testing.T) {
+		dir, err := os.UserHomeDir()
+		require.NoError(err, "os.UserHomeDir() returned an error: %s", err)
+
+		MockWriteFile(dir+"/cuttle_key.pem", []byte(""), true, nil)
+		c.TLSKeyFile = ""
+
+		err = c.setTLSKeyFile()
+		require.NoError(err, "setTLSFiles() returned an error: %s", err)
+		require.Equal(dir+"/cuttle_key.pem", c.TLSKeyFile, "setTLSFiles() set the key file")
 	})
 }
 
 func TestConfigParseConfigFile(t *testing.T) {
 	require := require.New(t)
+	tester = MockTester
+	reader = MockReader
 	c := defaultConfig()
 	want := &Config{
 		Env:     "prod",
@@ -367,35 +423,54 @@ func TestConfigParseConfigFile(t *testing.T) {
 		DBRoot:  "/tmp/db",
 	}
 
-	t.Run("no file", func(t *testing.T) {
-		err := parseConfigFile(c, "")
-		require.NoError(err, "parseConfigFile() returned an error: %s", err)
+	t.Run("no files", func(t *testing.T) {
+		err := c.parseConfigFile("")
+		require.Error(err, "parseConfigFile() did not return an error")
+		require.Equal("file not found", err.Error(), "parseConfigFile() did not return the correct error")
 		require.Equal(defaultConfig(), c, "parseConfigFile() did not return the default config")
 	})
 
 	t.Run("missing file", func(t *testing.T) {
 		file := "/tmp/cuttle.yaml"
-		removeFile(file)
-		err := parseConfigFile(c, file)
+		MockClearFS()
+
+		err := c.parseConfigFile(file)
 		require.Error(err, "parseConfigFile() did not return an error")
-		require.Contains(err.Error(), "no such file or directory", "parseConfigFile() did not return the correct error")
+		require.Equal(
+			"MockTester /tmp/cuttle.yaml: no such file or directory",
+			err.Error(),
+			"parseConfigFile() did not return the correct error",
+		)
 	})
 
 	t.Run("invalid config", func(t *testing.T) {
-		file := "/tmp/cuttle.yaml"
-		os.WriteFile(file, []byte("invalid"), 0o600)
-		err := parseConfigFile(c, file)
+		MockWriteFile("/tmp/cuttle.yaml", []byte("invalid"), true, nil)
+
+		err := c.parseConfigFile("/tmp/cuttle.yaml")
 		require.Error(err, "parseConfigFile() did not return an error")
 		require.Equal(defaultConfig(), c, "parseConfigFile() did not return the default config")
-		removeFile(file)
 	})
 
 	t.Run("valid config", func(t *testing.T) {
-		file := "/tmp/cuttle.yaml"
-		writeFile(file, want)
-		err := parseConfigFile(c, file)
+		data, err := yaml.Marshal(want)
+		require.NoError(err, "yaml.Marshal() returned an error: %s", err)
+		MockWriteFile("/tmp/cuttle.yaml", data, true, nil)
+
+		err = c.parseConfigFile("/tmp/cuttle.yaml")
 		require.NoError(err, "parseConfigFile() returned an error: %s", err)
 		require.Equal(want, c, "parseConfigFile() did not return the correct config")
-		removeFile(file)
+	})
+
+	t.Run("found config", func(t *testing.T) {
+		dir, err := os.UserHomeDir()
+		require.NoError(err, "os.UserHomeDir() returned an error: %s", err)
+
+		data, err := yaml.Marshal(want)
+		require.NoError(err, "yaml.Marshal() returned an error: %s", err)
+		MockWriteFile(dir+"/cuttle.yaml", data, true, nil)
+
+		err = c.parseConfigFile("")
+		require.NoError(err, "parseConfigFile() returned an error: %s", err)
+		require.Equal(want, c, "parseConfigFile() did not return the correct config")
 	})
 }

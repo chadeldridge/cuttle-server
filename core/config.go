@@ -2,12 +2,11 @@ package core
 
 import (
 	"fmt"
+	"log"
 	"maps"
-	"os"
 	"strings"
 
 	"github.com/chadeldridge/cuttle/db"
-	"gopkg.in/yaml.v3"
 )
 
 //
@@ -42,17 +41,25 @@ var (
 type Config struct {
 	Env             string `yaml:"env"`
 	Debug           bool   `yaml:"debug"`
+	TLSCertFile     string `yaml:"tls_cert_file"`
+	TLSKeyFile      string `yaml:"tls_key_file"`
 	APIHost         string `yaml:"api_host"`
 	APIPort         string `yaml:"api_port"`
 	DBRoot          string `yaml:"db_root"`          // DBRoot is the root path for the database.
 	ShutdownTimeout int    `yaml:"shutdown_timeout"` // in seconds
 }
 
-func NewConfig(flags map[string]string, args []string, env map[string]string) (*Config, error) {
+func NewConfig(
+	flags map[string]string,
+	args []string,
+	env map[string]string,
+) (*Config, error) {
 	// Create a default config.
 	c := &Config{
 		Env:             "dev",
 		Debug:           false,
+		TLSCertFile:     "",
+		TLSKeyFile:      "",
 		APIHost:         DefaultAPIHost,
 		APIPort:         DefaultAPIPort,
 		DBRoot:          DefaultDBRoot,
@@ -63,12 +70,12 @@ func NewConfig(flags map[string]string, args []string, env map[string]string) (*
 	flags = parseEnvVars(flags, env)
 
 	// If there's a config file, parse it and set the values in the config.
-	file := ""
+	var file string
 	if v, ok := flags["config_file"]; ok {
 		file = v
 	}
 
-	if err := parseConfigFile(c, file); err != nil {
+	if err := c.parseConfigFile(file); err != nil && err.Error() != FileNotFound {
 		return c, err
 	}
 
@@ -79,10 +86,15 @@ func NewConfig(flags map[string]string, args []string, env map[string]string) (*
 			continue
 		}
 
-		err := setConfigValue(c, k, v)
+		err := c.setConfigValue(k, v)
 		if err != nil {
 			return c, err
 		}
+	}
+
+	// Fail if we cannot find the TLS files.
+	if err := c.setTLSFiles(); err != nil {
+		return c, err
 	}
 
 	return c, nil
@@ -98,7 +110,7 @@ func validateEnv(env string) bool {
 	return false
 }
 
-func setConfigValue(c *Config, k, v string) error {
+func (c *Config) setConfigValue(k, v string) error {
 	switch k {
 	case "api_host":
 		c.APIHost = v
@@ -118,6 +130,10 @@ func setConfigValue(c *Config, k, v string) error {
 			return ErrInvalidEnv
 		}
 		c.Env = v
+	case "tls_cert_file":
+		c.TLSCertFile = v
+	case "tls_key_file":
+		c.TLSKeyFile = v
 	default:
 		return ErrUnknownOpt
 	}
@@ -141,8 +157,7 @@ func parseEnvVars(flags, env map[string]string) map[string]string {
 	return f
 }
 
-// getConfigLocation returns the location of the config file. If a location is set and the file
-// does not exist, panic. If no config file is found and we did not panic, return FileNotFound.
+/*
 func getConfigLocation(file string) (string, error) {
 	// Check for a flag or env provided file.
 	if file != "" {
@@ -174,30 +189,88 @@ func getConfigLocation(file string) (string, error) {
 
 	return FileNotFound, nil
 }
+*/
 
-// parseConfigFile reads the config file and unmarshals the data into the config struct.
-func parseConfigFile(c *Config, file string) error {
-	// If no config file was found, return and use cli, env, or default values.
-	file, err := getConfigLocation(file)
-	if err != nil {
+func (c *Config) setTLSFiles() error {
+	if err := c.setTLSCertFile(); err != nil {
 		return err
 	}
 
-	if file == FileNotFound {
-		return nil
+	return c.setTLSKeyFile()
+}
+
+func (c *Config) setTLSCertFile() error {
+	certFiles := []string{
+		"cuttle.pem",
+		"cuttle_cert.pem",
+		"cuttle.crt",
+		"cuttle_cert.crt",
+		"certs/cuttle.pem",
+		"certs/cuttle_cert.pem",
+		"certs/cuttle.crt",
+		"cetrs/cuttle_cert.crt",
 	}
 
-	// If a file was found but cannot be read, assume the config file is required and return err.
-	data, err := os.ReadFile(file)
-	if err != nil {
-		return err
+	log.Printf("setTLSCertFile: c.TLSCertFile: %s'\n", c.TLSCertFile)
+	// If the cert file location is set, return the results of tester.
+	if c.TLSCertFile != "" {
+		log.Printf("setTLSCertFile: tester(c.TLSCertFile): %s'\n", c.TLSCertFile)
+		return tester(c.TLSCertFile)
 	}
 
-	// Unmarshal the data into the config struct and rerturn any errors.
-	err = yaml.Unmarshal(data, c)
+	// Try to find the cert file location and return if none can be found.
+	log.Printf("setTLSCertFile: FindFiles(certFiles...): %s'\n", certFiles)
+	cert, err := FindFiles(certFiles...)
 	if err != nil {
-		return err
+		log.Printf("setTLSCertFile error: %s'\n", err)
+		return fmt.Errorf("tls cert: %w", err)
 	}
+	log.Printf("setTLSCertFile: cert: %s'\n", cert)
+	c.TLSCertFile = cert
 
 	return nil
+}
+
+func (c *Config) setTLSKeyFile() error {
+	keyFiles := []string{
+		"cuttle.key",
+		"cuttle_key.pem",
+		"certs/cuttle.key",
+		"certs/cuttle_key.pem",
+	}
+
+	// If the key file location is set, return the results of tester.
+	if c.TLSKeyFile != "" {
+		return tester(c.TLSKeyFile)
+	}
+
+	// Try to find the key file location and return if none can be found.
+	key, err := FindFiles(keyFiles...)
+	if err != nil {
+		return fmt.Errorf("tls key: %w", err)
+	}
+	c.TLSKeyFile = key
+
+	return nil
+}
+
+// parseConfigFile reads the config file and unmarshals the data into the config struct.
+func (c *Config) parseConfigFile(file string) error {
+	if file != "" {
+		err := tester(file)
+		if err != nil {
+			return err
+		}
+
+		// If the file was found and readable, parse the data and return.
+		return ParseYAML(file, c)
+	}
+
+	// If no config file was set, return and use cli, env, or default values.
+	file, err := FindFiles("cuttle.yaml", "config.yaml")
+	if err != nil {
+		return err
+	}
+
+	return ParseYAML(file, c)
 }
