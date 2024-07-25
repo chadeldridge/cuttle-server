@@ -8,7 +8,7 @@ import (
 	"github.com/chadeldridge/cuttle/core"
 )
 
-func addRoutes(mux *http.ServeMux, server HTTPServer) {
+func addRoutes(mux *http.ServeMux, server *HTTPServer) {
 	mux.Handle("/v1/test", handleTest(server.logger))
 }
 

@@ -34,7 +34,7 @@ func TestRoutesAddRoutes(t *testing.T) {
 	mux := http.NewServeMux()
 	logger := core.NewLogger(nil, "cuttle: ", 0, false)
 
-	addRoutes(mux, HTTPServer{logger: logger})
+	addRoutes(mux, &HTTPServer{logger: logger})
 	require.NotNil(mux, "addRoutes() returned nil")
 
 	w := httptest.NewRecorder()
