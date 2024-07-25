@@ -9,8 +9,6 @@ import (
 	"context"
 	"io"
 	"log"
-	"net"
-	"net/http"
 	"os"
 	"os/signal"
 	"strings"
@@ -60,13 +58,13 @@ func run(ctx context.Context, out io.Writer, args []string, env map[string]strin
 
 	// Setup the HTTP server.
 	srv := api.NewHTTPServer(logger, config)
-	httpServer := &http.Server{
-		Addr:    net.JoinHostPort(config.APIHost, config.APIPort),
-		Handler: srv,
+	err = srv.Build()
+	if err != nil {
+		return err
 	}
 
 	// Start API Server.
-	return api.Start(ctx, httpServer, logger, config.ShutdownTimeout)
+	return srv.Start(ctx, config.ShutdownTimeout)
 }
 
 func main() {
