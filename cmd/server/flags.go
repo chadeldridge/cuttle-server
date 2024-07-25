@@ -13,9 +13,11 @@ Options:
 	--help				Print this help message.
 	--version			Print the version.
 	-c, --config-file <path>	Path to the configuration file.
+	-C, --cert-file <path>		Path to the TLS certificate.
 	-d, --db-root <path>		Path to the database.
 	-e, --env <env>			Environment to run the server in.
 	-h, --host <host>		Host to bind the API to.
+	-k, --key-file <path>		Path to the TLS key.
 	-p, --port <port>		Port to bind the API to.
 	-v, --verbose			Enable verbose logging.`
 )
@@ -35,6 +37,8 @@ func parseFlags(logger *core.Logger, args []string) (map[string]string, []string
 		case "-c", "--config-file":
 			flags["config_file"] = args[i+1]
 			i++
+		case "-C", "--cert-file":
+			flags["tls_cert_file"] = args[i+1]
 		case "-d", "--db-root":
 			flags["db_root"] = args[i+1]
 			i++
@@ -44,6 +48,8 @@ func parseFlags(logger *core.Logger, args []string) (map[string]string, []string
 		case "-h", "--host":
 			flags["api_host"] = args[i+1]
 			i++
+		case "-k", "--key-file":
+			flags["tls_key_file"] = args[i+1]
 		case "-p", "--port":
 			flags["api_port"] = args[i+1]
 			i++
