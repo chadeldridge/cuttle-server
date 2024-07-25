@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -10,18 +11,45 @@ import (
 	"github.com/chadeldridge/cuttle/core"
 )
 
-func Start(ctx context.Context, httpServer *http.Server, logger *core.Logger, timeoutSec int) error {
+type HTTPServer struct {
+	logger  *core.Logger
+	config  *core.Config
+	Handler http.Handler
+}
+
+func NewHTTPServer(logger *core.Logger, config *core.Config) HTTPServer {
+	return HTTPServer{logger: logger, config: config}
+}
+
+func (s *HTTPServer) Build() error {
+	mux := http.NewServeMux()
+
+	// Add routes.
+	addRoutes(mux, s)
+
+	s.Handler = mux
+	// Add middleware.
+	// server.Handler = someMiddleware(server)
+	return nil
+}
+
+func (s *HTTPServer) Start(ctx context.Context, timeoutSec int) error {
+	httpServer := &http.Server{
+		Addr:    net.JoinHostPort(s.config.APIHost, s.config.APIPort),
+		Handler: s.Handler,
+	}
+
 	// Start the server.
 	srvErr := make(chan error)
 	go func() {
-		logger.Printf("http server listening on %s\n", httpServer.Addr)
+		s.logger.Printf("http server listening on %s\n", httpServer.Addr)
 		err := httpServer.ListenAndServe()
 		if err != nil {
 			if err == http.ErrServerClosed {
-				logger.Printf("server closed")
+				s.logger.Printf("server closed")
 				close(srvErr)
 			} else {
-				// logger.Printf("http server error: %v\n", err)
+				s.logger.Debugf("http server error: %v\n", err)
 				srvErr <- err
 			}
 		}
@@ -42,7 +70,7 @@ func Start(ctx context.Context, httpServer *http.Server, logger *core.Logger, ti
 		defer cancel()
 
 		if err := httpServer.Shutdown(shutdownCtx); err != nil {
-			// logger.Printf("http server shutdown error: %v\n", err)
+			s.logger.Debugf("http server shutdown error: %v\n", err)
 			wgErr <- fmt.Errorf("http server shutdown error: %w", err)
 		}
 	}()
