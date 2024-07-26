@@ -43,7 +43,7 @@ func (s *HTTPServer) Start(ctx context.Context, timeoutSec int) error {
 	srvErr := make(chan error)
 	go func() {
 		s.logger.Printf("http server listening on %s\n", httpServer.Addr)
-		err := httpServer.ListenAndServe()
+		err := httpServer.ListenAndServeTLS(s.config.TLSCertFile, s.config.TLSKeyFile)
 		if err != nil {
 			if err == http.ErrServerClosed {
 				s.logger.Printf("server closed")
