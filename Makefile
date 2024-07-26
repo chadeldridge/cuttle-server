@@ -17,6 +17,6 @@ sshTestServer-stop:
 
 setup:
 	@cp ~/cuttle/cuttle.yaml /tmp/cuttle.yaml
-	@cp ~/cuttle/certs/certificate.cert /tmp/cuttle_cert.cert
-	@cp ~/cuttle/certs/privatekey.pem /tmp/cuttle_key.pem
+	@cp ~/cuttle/certs/certificate.crt /tmp/cuttle_cert.cert
+	@cp ~/cuttle/certs/privatekey.key /tmp/cuttle_key.key
 .PHONY: setup
