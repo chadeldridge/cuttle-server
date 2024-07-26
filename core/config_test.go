@@ -52,12 +52,12 @@ func TestConfigNewConfig(t *testing.T) {
 			"db_root":       "/tmp/db",
 			"debug":         "true",
 			"env":           "prod",
-			"tls_cert_file": "/tmp/cuttle_cert.pem",
+			"tls_cert_file": "/tmp/cuttle_cert.cert",
 			"tls_key_file":  "/tmp/cuttle_key.pem",
 		}
 		args := []string{}
 		env := map[string]string{}
-		MockWriteFile("/tmp/cuttle_cert.pem", []byte(""), true, nil)
+		MockWriteFile("/tmp/cuttle_cert.cert", []byte(""), true, nil)
 		MockWriteFile("/tmp/cuttle_key.pem", []byte(""), true, nil)
 
 		c, err := NewConfig(flags, args, env)
@@ -73,11 +73,11 @@ func TestConfigNewConfig(t *testing.T) {
 			"CUTTLE_DB_ROOT":       "/tmp/db",
 			"CUTTLE_DEBUG":         "true",
 			"CUTTLE_ENV":           "prod",
-			"CUTTLE_TLS_CERT_FILE": "/tmp/cuttle_cert.pem",
+			"CUTTLE_TLS_CERT_FILE": "/tmp/cuttle_cert.cert",
 			"CUTTLE_TLS_KEY_FILE":  "/tmp/cuttle_key.pem",
 		}
 		args := []string{}
-		MockWriteFile("/tmp/cuttle_cert.pem", []byte(""), true, nil)
+		MockWriteFile("/tmp/cuttle_cert.cert", []byte(""), true, nil)
 		MockWriteFile("/tmp/cuttle_key.pem", []byte(""), true, nil)
 
 		c, err := NewConfig(flags, args, env)
@@ -92,7 +92,7 @@ func TestConfigNewConfig(t *testing.T) {
 		config := &Config{
 			Env:         want["env"],
 			Debug:       true,
-			TLSCertFile: "/tmp/cuttle_cert.pem",
+			TLSCertFile: "/tmp/cuttle_cert.cert",
 			TLSKeyFile:  "/tmp/cuttle_key.pem",
 			APIHost:     want["api_host"],
 			APIPort:     want["api_port"],
@@ -102,7 +102,7 @@ func TestConfigNewConfig(t *testing.T) {
 		data, err := yaml.Marshal(config)
 		require.NoError(err, "yaml.Marshal() returned an error: %s", err)
 		MockWriteFile("/tmp/cuttle.yaml", data, true, nil)
-		MockWriteFile("/tmp/cuttle_cert.pem", []byte(""), true, nil)
+		MockWriteFile("/tmp/cuttle_cert.cert", []byte(""), true, nil)
 		MockWriteFile("/tmp/cuttle_key.pem", []byte(""), true, nil)
 
 		c, err := NewConfig(flags, args, env)
@@ -144,7 +144,7 @@ func TestConfigNewConfig(t *testing.T) {
 		config := &Config{
 			Env:         want["env"],
 			Debug:       true,
-			TLSCertFile: "/tmp/cuttle_cert.pem",
+			TLSCertFile: "/tmp/cuttle_cert.cert",
 			TLSKeyFile:  "/tmp/cuttle_key.pem",
 			APIHost:     "192.168.0.1",
 			APIPort:     "3000",
@@ -154,7 +154,7 @@ func TestConfigNewConfig(t *testing.T) {
 		data, err := yaml.Marshal(config)
 		require.NoError(err, "yaml.Marshal() returned an error: %s", err)
 		MockWriteFile("/tmp/cuttle.yaml", data, true, nil)
-		MockWriteFile("/tmp/cuttle_cert.pem", []byte(""), true, nil)
+		MockWriteFile("/tmp/cuttle_cert.cert", []byte(""), true, nil)
 		MockWriteFile("/tmp/cuttle_key.pem", []byte(""), true, nil)
 
 		c, err := NewConfig(flags, args, env)
@@ -320,8 +320,8 @@ func TestConfigSetTLSFiles(t *testing.T) {
 	})
 
 	t.Run("cert set", func(t *testing.T) {
-		c.TLSCertFile = "/tmp/cuttle_cert.pem"
-		MockWriteFile("/tmp/cuttle_cert.pem", []byte(""), true, nil)
+		c.TLSCertFile = "/tmp/cuttle_cert.cert"
+		MockWriteFile("/tmp/cuttle_cert.cert", []byte(""), true, nil)
 
 		err := c.setTLSFiles()
 		require.Error(err, "setTLSFiles() did not return an error")
@@ -330,14 +330,14 @@ func TestConfigSetTLSFiles(t *testing.T) {
 	})
 
 	t.Run("both set", func(t *testing.T) {
-		c.TLSCertFile = "/tmp/cuttle_cert.pem"
+		c.TLSCertFile = "/tmp/cuttle_cert.cert"
 		c.TLSKeyFile = "/tmp/cuttle_key.pem"
-		MockWriteFile("/tmp/cuttle_cert.pem", []byte(""), true, nil)
+		MockWriteFile("/tmp/cuttle_cert.cert", []byte(""), true, nil)
 		MockWriteFile("/tmp/cuttle_key.pem", []byte(""), true, nil)
 
 		err := c.setTLSFiles()
 		require.NoError(err, "setTLSFiles() returned an error: %s", err)
-		require.Equal("/tmp/cuttle_cert.pem", c.TLSCertFile, "setTLSFiles() did not set the cert file")
+		require.Equal("/tmp/cuttle_cert.cert", c.TLSCertFile, "setTLSFiles() did not set the cert file")
 		require.Equal("/tmp/cuttle_key.pem", c.TLSKeyFile, "setTLSFiles() did not set the key file")
 	})
 }
@@ -355,12 +355,12 @@ func TestConfigSetTLSCertFile(t *testing.T) {
 	})
 
 	t.Run("specified", func(t *testing.T) {
-		c.TLSCertFile = "/tmp/cuttle_cert.pem"
-		MockWriteFile("/tmp/cuttle_cert.pem", []byte(""), true, nil)
+		c.TLSCertFile = "/tmp/cuttle_cert.cert"
+		MockWriteFile("/tmp/cuttle_cert.cert", []byte(""), true, nil)
 
 		err := c.setTLSCertFile()
 		require.NoError(err, "setTLSFiles() returned an error: %s", err)
-		require.Equal("/tmp/cuttle_cert.pem", c.TLSCertFile, "setTLSFiles() set the cert file")
+		require.Equal("/tmp/cuttle_cert.cert", c.TLSCertFile, "setTLSFiles() set the cert file")
 	})
 
 	t.Run("found", func(t *testing.T) {
@@ -368,11 +368,11 @@ func TestConfigSetTLSCertFile(t *testing.T) {
 		require.NoError(err, "os.UserHomeDir() returned an error: %s", err)
 
 		c.TLSCertFile = ""
-		MockWriteFile(dir+"/cuttle_cert.pem", []byte(""), true, nil)
+		MockWriteFile(dir+"/cuttle_cert.cert", []byte(""), true, nil)
 
 		err = c.setTLSCertFile()
 		require.NoError(err, "setTLSFiles() returned an error: %s", err)
-		require.Equal(dir+"/cuttle_cert.pem", c.TLSCertFile, "setTLSFiles() set the cert file")
+		require.Equal(dir+"/cuttle_cert.cert", c.TLSCertFile, "setTLSFiles() set the cert file")
 	})
 }
 

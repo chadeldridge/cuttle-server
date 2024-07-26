@@ -78,7 +78,7 @@ func MockReader(file string) ([]byte, error) {
 var (
 	MockTestConfig = []byte(`env: prod
 debug: true
-tls_cert_file: "/tmp/cuttle_cert.pem"
+tls_cert_file: "/tmp/cuttle_cert.cert"
 tls_key_file: "/tmp/cuttle_key.pem"
 api_host: 127.0.0.1
 api_port: "9090"

@@ -67,7 +67,7 @@ func TestServerRun(t *testing.T) {
 
 	// Add our mock files so it can be accessed by later tests.
 	core.MockWriteFile("/tmp/cuttle.yaml", core.MockTestConfig, true, nil)
-	core.MockWriteFile("/tmp/cuttle_cert.pem", core.MockTestCert, true, nil)
+	core.MockWriteFile("/tmp/cuttle_cert.cert", core.MockTestCert, true, nil)
 	core.MockWriteFile("/tmp/cuttle_key.pem", core.MockTestKey, true, nil)
 
 	t.Run("debug", func(t *testing.T) {
@@ -85,7 +85,7 @@ func TestServerRun(t *testing.T) {
 		args := []string{
 			"app",
 			"-v",
-			"-C", "/tmp/cuttle_cert.pem",
+			"-C", "/tmp/cuttle_cert.cert",
 			"-k", "/tmp/cuttle_key.pem",
 			"--host", "127.0.0.1",
 			"--port", "9090",

@@ -202,11 +202,11 @@ func (c *Config) setTLSCertFile() error {
 	certFiles := []string{
 		"cuttle.pem",
 		"cuttle_cert.pem",
-		"cuttle.crt",
-		"cuttle_cert.crt",
+		"cuttle.cert",
+		"cuttle_cert.cert",
 		"certs/cuttle.pem",
 		"certs/cuttle_cert.pem",
-		"certs/cuttle.crt",
+		"certs/cuttle.cert",
 		"cetrs/cuttle_cert.crt",
 	}
 
