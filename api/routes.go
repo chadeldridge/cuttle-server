@@ -8,8 +8,16 @@ import (
 	"github.com/chadeldridge/cuttle/core"
 )
 
-func addRoutes(mux *http.ServeMux, server *HTTPServer) {
-	mux.Handle("/v1/test", handleTest(server.logger))
+func addRoutes(mux *http.ServeMux, server *HTTPServer) error {
+	root, err := NewRouterGroup(mux, "/v1")
+	if err != nil {
+		return err
+	}
+
+	root.GET("/test", handleTest(server.logger), AuthMiddleware(server.logger))
+	// mux.Handle("/v1/test", handleTest(server.logger))
+
+	return nil
 }
 
 // func encode[T any](w http.ResponseWriter, r *http.Request, status int, obj T) error {
