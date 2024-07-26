@@ -7,6 +7,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/chadeldridge/cuttle/core"
 	"github.com/stretchr/testify/require"
 )
 
@@ -28,6 +29,8 @@ func testRunServer(out io.Writer, args []string, env map[string]string) error {
 func TestServerRun(t *testing.T) {
 	var buf bytes.Buffer
 	require := require.New(t)
+	core.SetTester(core.MockTester)
+	core.SetReader(core.MockReader)
 
 	t.Run("version", func(t *testing.T) {
 		ctx := context.Background()
@@ -62,6 +65,11 @@ func TestServerRun(t *testing.T) {
 		buf.Reset()
 	})
 
+	// Add our mock files so it can be accessed by later tests.
+	core.MockWriteFile("/tmp/cuttle.yaml", core.MockTestConfig, true, nil)
+	core.MockWriteFile("/tmp/cuttle_cert.pem", core.MockTestCert, true, nil)
+	core.MockWriteFile("/tmp/cuttle_key.pem", core.MockTestKey, true, nil)
+
 	t.Run("debug", func(t *testing.T) {
 		env := map[string]string{}
 		args := []string{"app", "-v", "-c", "/tmp/cuttle.yaml"}
@@ -77,14 +85,10 @@ func TestServerRun(t *testing.T) {
 		args := []string{
 			"app",
 			"-v",
-			"-C",
-			"/tmp/cuttle_cert.pem",
-			"-k",
-			"/tmp/cuttle_key.pem",
-			"--host",
-			"127.0.0.1",
-			"--port",
-			"9090",
+			"-C", "/tmp/cuttle_cert.pem",
+			"-k", "/tmp/cuttle_key.pem",
+			"--host", "127.0.0.1",
+			"--port", "9090",
 		}
 		err := testRunServer(&buf, args, env)
 
