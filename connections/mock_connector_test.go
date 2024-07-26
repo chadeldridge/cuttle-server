@@ -428,7 +428,7 @@ func TestMockConnectorRun(t *testing.T) {
 	t.Run("bad exp", func(t *testing.T) {
 		conn.isConnected = true
 		err := conn.Run(server.Buffers, cmd, "this won't match")
-		require.NoError(err, "MockConnector.Run() did not return an error: %s", err)
+		require.Error(err, "MockConnector.Run() did not return an error")
 	})
 }
 
