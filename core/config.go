@@ -2,7 +2,6 @@ package core
 
 import (
 	"fmt"
-	"log"
 	"maps"
 	"strings"
 
@@ -211,21 +210,16 @@ func (c *Config) setTLSCertFile() error {
 		"cetrs/cuttle_cert.crt",
 	}
 
-	log.Printf("setTLSCertFile: c.TLSCertFile: %s'\n", c.TLSCertFile)
 	// If the cert file location is set, return the results of tester.
 	if c.TLSCertFile != "" {
-		log.Printf("setTLSCertFile: tester(c.TLSCertFile): %s'\n", c.TLSCertFile)
 		return tester(c.TLSCertFile)
 	}
 
 	// Try to find the cert file location and return if none can be found.
-	log.Printf("setTLSCertFile: FindFiles(certFiles...): %s'\n", certFiles)
 	cert, err := FindFiles(certFiles...)
 	if err != nil {
-		log.Printf("setTLSCertFile error: %s'\n", err)
 		return fmt.Errorf("tls cert: %w", err)
 	}
-	log.Printf("setTLSCertFile: cert: %s'\n", cert)
 	c.TLSCertFile = cert
 
 	return nil
