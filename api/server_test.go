@@ -24,7 +24,7 @@ func TestServerStart(t *testing.T) {
 	core.SetTester(core.MockTester)
 	core.SetReader(core.MockReader)
 	core.MockWriteFile("/tmp/cuttle.yaml", core.MockTestConfig, true, nil)
-	core.MockWriteFile("/tmp/cuttle_cert.pem", core.MockTestCert, true, nil)
+	core.MockWriteFile("/tmp/cuttle_cert.cert", core.MockTestCert, true, nil)
 	core.MockWriteFile("/tmp/cuttle_key.pem", core.MockTestKey, true, nil)
 
 	config, err := core.NewConfig(map[string]string{"config_file": "/tmp/cuttle.yaml"}, []string{}, map[string]string{})
