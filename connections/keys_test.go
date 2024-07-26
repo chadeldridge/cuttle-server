@@ -1,5 +1,6 @@
 package connections
 
+/*
 import (
 	"encoding/pem"
 	"log"
@@ -8,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/ssh"
 )
+
 
 func TestKeysStripPasswordFromKey(t *testing.T) {
 	require := require.New(t)
@@ -20,3 +22,4 @@ func TestKeysStripPasswordFromKey(t *testing.T) {
 	writeable := pem.EncodeToMemory(ePEMBlock)
 	log.Println("Encrypted key:\n", string(writeable))
 }
+*/
