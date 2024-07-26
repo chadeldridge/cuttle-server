@@ -16,7 +16,7 @@ const (
 	DefaultAPIHost         = "0.0.0.0"
 	DefaultAPIPort         = "8080"
 	DefaultDBRoot          = db.DefaultDBFolder
-	DefaultShutdownTimeout = 10
+	DefaultShutdownTimeout = 5
 )
 
 var (
@@ -38,14 +38,14 @@ var (
 )
 
 type Config struct {
-	Env             string `yaml:"env"`
-	Debug           bool   `yaml:"debug"`
-	TLSCertFile     string `yaml:"tls_cert_file"`
-	TLSKeyFile      string `yaml:"tls_key_file"`
-	APIHost         string `yaml:"api_host"`
-	APIPort         string `yaml:"api_port"`
-	DBRoot          string `yaml:"db_root"`          // DBRoot is the root path for the database.
-	ShutdownTimeout int    `yaml:"shutdown_timeout"` // in seconds
+	Env             string `yaml:"env,omitempty"`
+	Debug           bool   `yaml:"debug,omitempty"`
+	TLSCertFile     string `yaml:"tls_cert_file,omitempty"`
+	TLSKeyFile      string `yaml:"tls_key_file,omitempty"`
+	APIHost         string `yaml:"api_host,omitempty"`
+	APIPort         string `yaml:"api_port,omitempty"`
+	DBRoot          string `yaml:"db_root,omitempty"`                      // DBRoot is the root path for the database.
+	ShutdownTimeout int    `default:"5" yaml:"shutdown_timeout,omitempty"` // in seconds
 }
 
 func NewConfig(
@@ -89,6 +89,11 @@ func NewConfig(
 		if err != nil {
 			return c, err
 		}
+	}
+
+	// If ShutdownTimeout is 0 it will cause a shutdown error and hang the server when using TLS.
+	if c.ShutdownTimeout == 0 {
+		c.ShutdownTimeout = DefaultShutdownTimeout
 	}
 
 	// Fail if we cannot find the TLS files.
