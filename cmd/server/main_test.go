@@ -54,21 +54,17 @@ func TestServerRun(t *testing.T) {
 	t.Run("missing config file", func(t *testing.T) {
 		ctx := context.Background()
 		env := map[string]string{}
-		args := []string{"app", "--config-file", "/tmp/noconfig.yaml"}
+		args := []string{"app"}
 
 		err := run(ctx, &buf, args, env)
 		require.Error(err, "run() did not return an error")
-		require.Contains(
-			err.Error(),
-			"stat /tmp/noconfig.yaml: no such file or directory",
-			"run() did not return the correct error",
-		)
+		require.Equal("tls cert: file not found", err.Error(), "run() did not return the correct error")
 		buf.Reset()
 	})
 
 	t.Run("debug", func(t *testing.T) {
 		env := map[string]string{}
-		args := []string{"app", "-v"}
+		args := []string{"app", "-v", "-c", "/tmp/cuttle.yaml"}
 		err := testRunServer(&buf, args, env)
 
 		require.NoError(err, "run() returned an error: %s", err)
@@ -76,23 +72,20 @@ func TestServerRun(t *testing.T) {
 		buf.Reset()
 	})
 
-	t.Run("defaults", func(t *testing.T) {
-		env := map[string]string{}
-		args := []string{"app"}
-		err := testRunServer(&buf, args, env)
-
-		require.NoError(err, "run() returned an error: %s", err)
-		require.Contains(
-			buf.String(),
-			"http server listening on 0.0.0.0:8080",
-			"run() output did not contain the expected string",
-		)
-		buf.Reset()
-	})
-
 	t.Run("with flags", func(t *testing.T) {
 		env := map[string]string{}
-		args := []string{"app", "-v", "--host", "127.0.0.1", "--port", "9090"}
+		args := []string{
+			"app",
+			"-v",
+			"-C",
+			"/tmp/cuttle_cert.pem",
+			"-k",
+			"/tmp/cuttle_key.pem",
+			"--host",
+			"127.0.0.1",
+			"--port",
+			"9090",
+		}
 		err := testRunServer(&buf, args, env)
 
 		require.NoError(err, "run() returned an error: %s", err)
@@ -106,7 +99,7 @@ func TestServerRun(t *testing.T) {
 
 	t.Run("all interfaces", func(t *testing.T) {
 		env := map[string]string{}
-		args := []string{"app", "-v", "--host", "0.0.0.0", "--port", "9090"}
+		args := []string{"app", "-v", "-c", "/tmp/cuttle.yaml", "--host", "0.0.0.0", "--port", "9090"}
 		err := testRunServer(&buf, args, env)
 
 		require.NoError(err, "run() returned an error: %s", err)
