@@ -37,7 +37,7 @@ func AuthMiddleware(logger *core.Logger) Middleware {
 			func(w http.ResponseWriter, r *http.Request) {
 				if r.Header.Get("Authorization") == "" {
 					logger.Println("no auth header")
-					err := encode(w, http.StatusUnauthorized, struct {
+					err := renderJSON(w, http.StatusUnauthorized, struct {
 						Error   string
 						Message string
 					}{
