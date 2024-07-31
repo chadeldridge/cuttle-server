@@ -1,0 +1,31 @@
+<html>
+        <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+		<link rel="shortcut icon" href="/favicon.ico">
+		<link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500" rel="stylesheet">
+		<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+		<link rel="stylesheet" type="text/css" href="app.css">
+		<title>API Login</title>
+		<script src="https://unpkg.com/htmx.org@2.0.1"></script>
+        </head>
+        <body>
+                <div id="login" class="App flexContainerCol flexColHCenter">
+                        <div class="alignCenter flexColHCenter mTop15vh">
+                                <div class="flexContainerRow flexRowHCenter"><p>Cuttle Login</p></div>
+	                                <form hx-post="/v1/login" hx-target="login" hx-swap="outerHTML">
+		                                <div class="flexContainerCol pSides10">
+			                                <input type="text" id="1" placeholder="Username" onkeypress="if(event.keyCode == 13) {document.getElementById('2').focus();}"/>
+			                                <br/>
+			                                <input type="password" id="2" placeholder="Password" onkeypress="if(event.keyCode == 13) {document.getElementById('3').focus();}"/>
+			                                <br/>
+		                                </div>
+		                                <div class="alignCenter">
+		                                        <button id="4">Login</button>
+		                                </div>
+	                                </form>
+	                        </div>
+                        </div>
+                </div>
+        </body>
+</html>
