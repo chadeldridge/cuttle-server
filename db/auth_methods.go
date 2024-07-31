@@ -105,14 +105,14 @@ func (r AuthMethods) Create(data AuthMethodData) error {
 	return nil
 }
 
-func (r AuthMethods) Read(id int) (AuthMethodData, error) {
-	var data AuthMethodData
+func (r AuthMethods) Get(id int) (AuthMethodData, error) {
 	query := `SELECT name, data FROM ? WHERE id = ?`
 
+	var data AuthMethodData
 	row := r.QueryRow(query, amdb_ref, id)
 	err := row.Scan(&data.ID, &data.Name, &data.AuthType, &data.Data)
 	if err != nil {
-		return data, fmt.Errorf("db.AuthMethods.Read: %w", err)
+		return data, fmt.Errorf("db.AuthMethods.Get: %w", err)
 	}
 
 	return data, nil
@@ -128,7 +128,7 @@ func (r AuthMethods) Update(data AuthMethodData) error {
 }
 
 func (r AuthMethods) Delete(id int) error {
-	query := `DELETE FROM ? WHERE id = ?`
+	query := `DELETE FROM ? WHERE id = ? LIMIT 1`
 	if err := r.Exec(query, amdb_ref, id); err != nil {
 		return fmt.Errorf("db.AuthMethods.Delete: %w", err)
 	}

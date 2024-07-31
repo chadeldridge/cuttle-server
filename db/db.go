@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"fmt"
 	"os"
 )
 
@@ -10,6 +11,11 @@ const (
 )
 
 var db_folder string
+
+var (
+	ErrDuplicateEntry = fmt.Errorf("UNIQUE constraint failed")
+	ErrRecordNotFound = fmt.Errorf("record not found")
+)
 
 func init() {
 	currentDir, err := os.Getwd()
@@ -23,8 +29,10 @@ func init() {
 type DB interface {
 	Open() error
 	Attach(filename, alias string) error
-	QueryRow(query string, args ...interface{}) *sql.Row
-	Exec(query string, args ...interface{}) error
+	IsUnique(query string, args ...any) bool
+	Query(query string, args ...any) (*sql.Rows, error)
+	QueryRow(query string, args ...any) *sql.Row
+	Exec(query string, args ...any) error
 	Close() error
 }
 

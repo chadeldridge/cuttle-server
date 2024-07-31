@@ -9,8 +9,6 @@ import (
 	"path/filepath"
 )
 
-var ErrDuplicateEntry = fmt.Errorf("duplicate entry")
-
 type SqliteDB struct {
 	Name string // DB file name.
 	DB   *sql.DB
@@ -67,11 +65,27 @@ func (db *SqliteDB) Attach(filename, alias string) error {
 	return err
 }
 
-func (db *SqliteDB) QueryRow(query string, args ...interface{}) *sql.Row {
+func (db *SqliteDB) IsUnique(query string, args ...any) bool {
+	row := db.QueryRow(query, args...)
+
+	var count int
+	err := row.Scan(&count)
+	if err != nil {
+		log.Fatalf("db.AuthMethods.IsUnique: %s", err)
+	}
+
+	return count == 0
+}
+
+func (db *SqliteDB) Query(query string, args ...any) (*sql.Rows, error) {
+	return db.DB.QueryContext(db.ctx, query, args...)
+}
+
+func (db *SqliteDB) QueryRow(query string, args ...any) *sql.Row {
 	return db.DB.QueryRowContext(db.ctx, query, args...)
 }
 
-func (db *SqliteDB) Exec(query string, args ...interface{}) error {
+func (db *SqliteDB) Exec(query string, args ...any) error {
 	_, err := db.DB.ExecContext(db.ctx, query, args...)
 	return err
 }
