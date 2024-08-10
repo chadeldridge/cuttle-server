@@ -41,8 +41,12 @@ func NewAuthMethods(db DB) (AuthMethods, error) {
 		return r, fmt.Errorf("db.NewAuthMethods: db is nil")
 	}
 
-	amdb := NewSqliteDB(amdb_file)
-	err := amdb.Open()
+	amdb, err := NewSqliteDB(amdb_file)
+	if err != nil {
+		return r, fmt.Errorf("db.NewAuthMethods: failed to create db: %w", err)
+	}
+
+	err = amdb.Open()
 	if err != nil {
 		return r, fmt.Errorf("db.NewAuthMethods: failed to open db: %w", err)
 	}

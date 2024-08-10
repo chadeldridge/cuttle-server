@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"os"
 	"os/user"
+	"path/filepath"
 	"syscall"
 
 	"gopkg.in/yaml.v3"
@@ -117,6 +118,33 @@ func ReadFile(file string) ([]byte, error) {
 	}
 
 	return data, nil
+}
+
+func MapFiles(docRoot string) ([]string, error) {
+	var files []string
+	err := filepath.WalkDir(docRoot, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if d.IsDir() {
+			if d.Name() == "includes" {
+				return filepath.SkipDir
+			}
+
+			return nil
+		}
+
+		// Make sure we can read the file.
+		if err := AssertReadable(path); err != nil {
+			return nil
+		}
+
+		files = append(files, path)
+		return nil
+	})
+
+	return files, err
 }
 
 // CheckReadability returns nil if file is readable.

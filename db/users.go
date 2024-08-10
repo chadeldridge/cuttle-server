@@ -11,40 +11,31 @@ const (
 	udb_ref   = udb_alias + "." + udb_name
 )
 
+var ErrInvalidUsername = fmt.Errorf("invalid username")
+
+// Users holds the main database the Users repo is attached to.
 type Users struct {
 	DB
 }
 
+// UserData represents a user in the database.
 type UserData struct {
 	ID       int
 	Username string
+	Name     string // Name to show in app.
 	Password string
-	Groups   string
+	Groups   string // JSON string of group IDs.
 }
 
+// NewUsers attaches the users database to the current database. It first opens the users database,
+// creating and migrating it if it does not exist.
 func NewUsers(db DB) (Users, error) {
 	r := Users{
 		DB: db,
 	}
 
-	if db == nil {
-		return r, fmt.Errorf("db.NewUsers: db is nil")
-	}
-
-	udb := NewSqliteDB(udb_file)
-	err := udb.Open()
-	if err != nil {
-		return r, fmt.Errorf("db.NewUsers: failed to open db: %w", err)
-	}
-	defer udb.Close()
-
-	udbMigrate(udb)
-	err = r.Attach(udb_file, udb_alias)
-	if err != nil {
-		return r, fmt.Errorf("db.NewUsers: failed to attach udb: %w", err)
-	}
-
-	return r, nil
+	err := db.AddRepo(udb_file, udb_alias, udbMigrate)
+	return r, err
 }
 
 func udbMigrate(db DB) error {
@@ -52,6 +43,7 @@ func udbMigrate(db DB) error {
 	CREATE TABLE IF NOT EXISTS ` + udb_name + ` (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		username VARCHAR(255) NOT NULL UNIQUE,
+		name VARCHAR(32) NOT NULL UNIQUE,
 		password VARCHAR(32) NOT NULL,
 		groups TEXT NOT NULL,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -69,9 +61,13 @@ func (r Users) IsUnique(name string) bool {
 	return r.DB.IsUnique(`SELECT COUNT(*) FROM `+udb_ref+` WHERE username = ?`, name)
 }
 
-func (r Users) Create(username, pwHash, groups string) error {
+func (r Users) Create(username, name, pwHash, groups string) error {
 	if username == "" {
 		return fmt.Errorf("db.Users.Create: %w", ErrInvalidName)
+	}
+
+	if username == "" {
+		return fmt.Errorf("db.Users.Create: %w", ErrInvalidUsername)
 	}
 
 	if !r.IsUnique(username) {
@@ -82,15 +78,15 @@ func (r Users) Create(username, pwHash, groups string) error {
 		return fmt.Errorf("db.Users.Create: groups is empty")
 	}
 
-	query := `INSERT INTO ` + udb_ref + ` (username, password, groups) VALUES (?, ?, ?)`
-	if err := r.Exec(query, username, pwHash, groups); err != nil {
+	query := `INSERT INTO ` + udb_ref + ` (username, name, password, groups) VALUES (?, ?, ?, ?)`
+	if err := r.Exec(query, name, username, pwHash, groups); err != nil {
 		return fmt.Errorf("db.Users.Create: %w", err)
 	}
 
 	return nil
 }
 
-func (r Users) GetByName(username string) (UserData, error) {
+func (r Users) GetByUsername(username string) (UserData, error) {
 	query := `SELECT * FROM ` + udb_ref + ` WHERE username = ?`
 	row := r.QueryRow(query, username)
 
@@ -117,8 +113,12 @@ func (r Users) Get(id int) (UserData, error) {
 }
 
 func (r Users) Update(data UserData) error {
-	query := `UPDATE ` + udb_ref + ` SET username = ?, password = ?, groups = ? WHERE id = ?`
-	if err := r.Exec(query, data.Username, data.Password, data.Groups, data.ID); err != nil {
+	if data.ID == 0 {
+		return fmt.Errorf("db.Users.Update: %w", ErrInvalidID)
+	}
+
+	query := `UPDATE ` + udb_ref + ` SET username = ?, name = ?, password = ?, groups = ? WHERE id = ? LIMIT 1`
+	if err := r.Exec(query, data.Username, data.Name, data.Password, data.Groups, data.ID); err != nil {
 		return fmt.Errorf("db.Users.Update: %w", err)
 	}
 
@@ -126,6 +126,10 @@ func (r Users) Update(data UserData) error {
 }
 
 func (r Users) Delete(id int) error {
+	if id == 0 {
+		return fmt.Errorf("db.Users.Update: %w", ErrInvalidID)
+	}
+
 	query := `DELETE FROM ` + udb_ref + ` WHERE id = ? LIMIT 1`
 	if err := r.Exec(query, id); err != nil {
 		return fmt.Errorf("db.Users.Delete: %w", err)

@@ -8,17 +8,6 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func defaultConfig() *Config {
-	return &Config{
-		Env:             "dev",
-		Debug:           false,
-		APIHost:         DefaultAPIHost,
-		APIPort:         DefaultAPIPort,
-		DBRoot:          DefaultDBRoot,
-		ShutdownTimeout: DefaultShutdownTimeout,
-	}
-}
-
 func TestConfigNewConfig(t *testing.T) {
 	require := require.New(t)
 	tester = MockTester
@@ -42,7 +31,7 @@ func TestConfigNewConfig(t *testing.T) {
 		c, err := NewConfig(flags, args, env)
 		require.Error(err, "NewConfig() returned an error: %s", err)
 		require.Equal("tls cert: file not found", err.Error(), "NewConfig() did not return the correct error")
-		require.Equal(defaultConfig(), c, "NewConfig() did not return the default config")
+		require.Equal(DefaultConfig(), c, "NewConfig() did not return the default config")
 	})
 
 	t.Run("flags only", func(t *testing.T) {
@@ -123,7 +112,7 @@ func TestConfigNewConfig(t *testing.T) {
 			err.Error(),
 			"NewConfig() did not return the correct error",
 		)
-		require.Equal(defaultConfig(), c, "NewConfig() did not return the default config")
+		require.Equal(DefaultConfig(), c, "NewConfig() did not return the default config")
 	})
 
 	t.Run("invalid flag", func(t *testing.T) {
@@ -134,7 +123,7 @@ func TestConfigNewConfig(t *testing.T) {
 		c, err := NewConfig(flags, args, env)
 		require.Error(err, "NewConfig() did not return an error")
 		require.Equal(ErrUnknownOpt, err, "NewConfig() did not return the correct error")
-		require.Equal(defaultConfig(), c, "NewConfig() did not return the default config")
+		require.Equal(DefaultConfig(), c, "NewConfig() did not return the default config")
 	})
 
 	t.Run("override", func(t *testing.T) {
@@ -190,7 +179,7 @@ func TestConfigValidateEnv(t *testing.T) {
 
 func TestConfigSetConfigValue(t *testing.T) {
 	require := require.New(t)
-	c := defaultConfig()
+	c := DefaultConfig()
 
 	t.Run("set one", func(t *testing.T) {
 		err := c.setConfigValue("api_host", "127.0.0.1")
@@ -309,7 +298,7 @@ func TestConfigParseEnvVars(t *testing.T) {
 
 func TestConfigSetTLSFiles(t *testing.T) {
 	require := require.New(t)
-	c := defaultConfig()
+	c := DefaultConfig()
 	tester = MockTester
 
 	t.Run("not set", func(t *testing.T) {
@@ -344,7 +333,7 @@ func TestConfigSetTLSFiles(t *testing.T) {
 
 func TestConfigSetTLSCertFile(t *testing.T) {
 	require := require.New(t)
-	c := defaultConfig()
+	c := DefaultConfig()
 	tester = MockTester
 
 	t.Run("not set", func(t *testing.T) {
@@ -378,7 +367,7 @@ func TestConfigSetTLSCertFile(t *testing.T) {
 
 func TestConfigSetTLSKeyFile(t *testing.T) {
 	require := require.New(t)
-	c := defaultConfig()
+	c := DefaultConfig()
 	tester = MockTester
 
 	t.Run("not set", func(t *testing.T) {
@@ -414,7 +403,7 @@ func TestConfigParseConfigFile(t *testing.T) {
 	require := require.New(t)
 	tester = MockTester
 	reader = MockReader
-	c := defaultConfig()
+	c := DefaultConfig()
 	want := &Config{
 		Env:     "prod",
 		Debug:   true,
@@ -427,7 +416,7 @@ func TestConfigParseConfigFile(t *testing.T) {
 		err := c.parseConfigFile("")
 		require.Error(err, "parseConfigFile() did not return an error")
 		require.Equal("file not found", err.Error(), "parseConfigFile() did not return the correct error")
-		require.Equal(defaultConfig(), c, "parseConfigFile() did not return the default config")
+		require.Equal(DefaultConfig(), c, "parseConfigFile() did not return the default config")
 	})
 
 	t.Run("missing file", func(t *testing.T) {
@@ -448,7 +437,7 @@ func TestConfigParseConfigFile(t *testing.T) {
 
 		err := c.parseConfigFile("/tmp/cuttle.yaml")
 		require.Error(err, "parseConfigFile() did not return an error")
-		require.Equal(defaultConfig(), c, "parseConfigFile() did not return the default config")
+		require.Equal(DefaultConfig(), c, "parseConfigFile() did not return the default config")
 	})
 
 	t.Run("valid config", func(t *testing.T) {

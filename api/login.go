@@ -1,11 +1,10 @@
 package api
 
-import (
-	"net/http"
+func userLogin(username, password string) error {
+	return nil
+}
 
-	"github.com/chadeldridge/cuttle/core"
-)
-
+/*
 func handleLoginGet(logger *core.Logger, server *HTTPServer) http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
@@ -21,6 +20,7 @@ func handleLoginGet(logger *core.Logger, server *HTTPServer) http.Handler {
 			renderHTML(w, http.StatusOK, page)
 		})
 }
+*/
 
 /*
 func handleLogin(logger *core.Logger, server *HTTPServer) http.Handler {

@@ -28,8 +28,12 @@ func NewUserGroups(db DB) (UserGroups, error) {
 		return r, fmt.Errorf("db.NewUserGroups: db is nil")
 	}
 
-	ugdb := NewSqliteDB(ugdb_file)
-	err := ugdb.Open()
+	ugdb, err := NewSqliteDB(ugdb_file)
+	if err != nil {
+		return r, fmt.Errorf("db.NewUserGroups: failed to create db: %w", err)
+	}
+
+	err = ugdb.Open()
 	if err != nil {
 		return r, fmt.Errorf("db.NewUserGroups: failed to open db: %w", err)
 	}

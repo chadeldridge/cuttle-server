@@ -5,8 +5,9 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"os"
-	"path/filepath"
+
+	// libray has to be imported to register the driver.
+	_ "github.com/mattn/go-sqlite3"
 )
 
 type SqliteDB struct {
@@ -18,10 +19,14 @@ type SqliteDB struct {
 }
 
 // NewSqliteDB creates a new Sqlite3 DB instance.
-func NewSqliteDB(filename string) *SqliteDB {
+func NewSqliteDB(filename string) (*SqliteDB, error) {
+	if filename == "" {
+		return nil, fmt.Errorf("db.NewSqliteDB: filename is empty")
+	}
+
 	db := &SqliteDB{Name: filename}
 	db.ctx, db.cancel = context.WithCancel(context.Background())
-	return db
+	return db, nil
 }
 
 // Open opens the database. It attempts to create the path to the database file if it does not
@@ -31,27 +36,16 @@ func (db *SqliteDB) Open() error {
 		return fmt.Errorf("no database name provided")
 	}
 
-	// if db.Name != ":memory:" {
-	if err := os.MkdirAll(filepath.Dir(db_folder+"/"+db.Name), 0o700); err != nil {
-		return err
-	}
-	//}
-
 	var err error
-	db.DB, err = sql.Open("sqlite3", db_folder+"/"+db.Name)
+	dsn := fmt.Sprintf("file:%s?_journal_mode=WAL&_foreign_keys=ON", db_folder+"/"+db.Name)
+	db.DB, err = sql.Open("sqlite3", dsn)
 	if err != nil {
-		log.Fatalf("SqliteDB.Open: %s", err)
-		return err
+		return fmt.Errorf("SqliteDB.Open: %w", err)
 	}
 
-	// Enable WAL mode.
-	if _, err := db.DB.Exec(`PRAGMA journal_mode = wal;`); err != nil {
-		return fmt.Errorf("enable wal: %w", err)
-	}
-
-	// Enable foreign key checks.
-	if _, err := db.DB.Exec(`PRAGMA foreign_keys = ON;`); err != nil {
-		return fmt.Errorf("foreign keys pragma: %w", err)
+	err = db.DB.Ping()
+	if err != nil {
+		return fmt.Errorf("SqliteDB.Open: failed to ping db: %w", err)
 	}
 
 	// TODO: Implement zstd compression. https://phiresky.github.io/blog/2022/sqlite-zstd/
@@ -61,8 +55,79 @@ func (db *SqliteDB) Open() error {
 
 // Attach the filename database tot he current database with the given alias.
 func (db *SqliteDB) Attach(filename, alias string) error {
+	if filename == "" {
+		return fmt.Errorf("SqliteDB.Attach: filename is empty")
+	}
+
+	if alias == "" {
+		return fmt.Errorf("SqliteDB.Attach: alias is empty")
+	}
+
 	_, err := db.DB.ExecContext(db.ctx, "ATTACH DATABASE ? AS ?", filename, alias)
 	return err
+}
+
+func (db *SqliteDB) IsAttached(alias string) bool {
+	rows, err := db.Query("PRAGMA database_list")
+	if err != nil {
+		log.Fatalf("SqliteDB.IsAttached: %s", err)
+		return false
+	}
+
+	for rows.Next() {
+		var id int
+		var name, file string
+
+		err := rows.Scan(&id, &name, &file)
+		if err != nil {
+			log.Fatalf("SqliteDB.IsAttached: %s", err)
+			return false
+		}
+
+		fmt.Printf("id: %d, name: %s, file: %s, alias: %s\n", id, name, file, alias)
+		if name == alias {
+			return true
+		}
+	}
+
+	return false
+}
+
+type migrater func(DB) error
+
+func (db *SqliteDB) AddRepo(file, alias string, migrate migrater) error {
+	if db.DB == nil {
+		return fmt.Errorf("SqliteDB.AddRepo: db.DB is nil")
+	}
+
+	if db.IsAttached(alias) {
+		return fmt.Errorf("SqliteDB.AddRepo: %w", ErrAliasInUse)
+	}
+
+	repo, err := NewSqliteDB(file)
+	if err != nil {
+		return fmt.Errorf("SqliteDB.AddRepo: %w", err)
+	}
+
+	err = repo.Open()
+	if err != nil {
+		return fmt.Errorf("SqliteDB.AddRepo: failed to open repo db: %w", err)
+	}
+	defer repo.Close()
+
+	err = migrate(repo)
+	if err != nil {
+		return fmt.Errorf("SqliteDB.AddRepo: failed to migrate repo: %w", err)
+	}
+
+	// Attach the repo database to the main database so we can perform joins.
+	// Access tables in the attached repo with "alias.table_name".
+	err = db.Attach(file, alias)
+	if err != nil {
+		return fmt.Errorf("SqliteDB.AddRepo: failed to attach repo: %w", err)
+	}
+
+	return nil
 }
 
 func (db *SqliteDB) IsUnique(query string, args ...any) bool {
@@ -71,7 +136,7 @@ func (db *SqliteDB) IsUnique(query string, args ...any) bool {
 	var count int
 	err := row.Scan(&count)
 	if err != nil {
-		log.Fatalf("db.AuthMethods.IsUnique: %s", err)
+		log.Fatalf("SqliteDB.AuthMethods.IsUnique: %s", err)
 	}
 
 	return count == 0

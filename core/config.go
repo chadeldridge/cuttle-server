@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"maps"
 	"strings"
-
-	"github.com/chadeldridge/cuttle/db"
 )
 
 //
@@ -15,7 +13,8 @@ import (
 const (
 	DefaultAPIHost         = "0.0.0.0"
 	DefaultAPIPort         = "8080"
-	DefaultDBRoot          = db.DefaultDBFolder
+	DefaultDocRoot         = "assets"
+	DefaultDBRoot          = "db"
 	DefaultShutdownTimeout = 5
 )
 
@@ -45,7 +44,22 @@ type Config struct {
 	APIHost         string `yaml:"api_host,omitempty"`
 	APIPort         string `yaml:"api_port,omitempty"`
 	DBRoot          string `yaml:"db_root,omitempty"`                      // DBRoot is the root path for the database.
+	DocRoot         string `yaml:"doc_root,omitempty"`                     // DocRoot is the document root path for the serving static html files.
 	ShutdownTimeout int    `default:"5" yaml:"shutdown_timeout,omitempty"` // in seconds
+}
+
+func DefaultConfig() *Config {
+	return &Config{
+		Env:             "dev",
+		Debug:           false,
+		TLSCertFile:     "",
+		TLSKeyFile:      "",
+		APIHost:         DefaultAPIHost,
+		APIPort:         DefaultAPIPort,
+		DBRoot:          DefaultDBRoot,
+		DocRoot:         DefaultDocRoot,
+		ShutdownTimeout: DefaultShutdownTimeout,
+	}
 }
 
 func NewConfig(
@@ -54,16 +68,7 @@ func NewConfig(
 	env map[string]string,
 ) (*Config, error) {
 	// Create a default config.
-	c := &Config{
-		Env:             "dev",
-		Debug:           false,
-		TLSCertFile:     "",
-		TLSKeyFile:      "",
-		APIHost:         DefaultAPIHost,
-		APIPort:         DefaultAPIPort,
-		DBRoot:          DefaultDBRoot,
-		ShutdownTimeout: DefaultShutdownTimeout,
-	}
+	c := DefaultConfig()
 
 	// Parse the environment variables into a normalized format.
 	flags = parseEnvVars(flags, env)
@@ -128,6 +133,8 @@ func (c *Config) setConfigValue(k, v string) error {
 			break
 		}
 		c.Debug = false
+	case "doc_root":
+		c.DocRoot = v
 	case "env":
 		v = strings.ToLower(v)
 		if !validateEnv(v) {

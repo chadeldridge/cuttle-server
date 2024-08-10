@@ -1,0 +1,151 @@
+package components
+
+templ Login(redirect string) {
+	<div id="app" class="">
+		<form hx-post="/login.html">
+			@Card(
+				CardTitle("Cuttle Login"),
+				LoginFields(redirect),
+				CardActions(
+					ButtonSubmit("3", "Login", "3", nil),
+					ButtonOutlined("4", "Sign Up", "4", templ.Attributes{"onclick": "location.href='/signup.html'"}),
+				),
+			)
+		</form>
+		<output id="errors" class="CardErrors"></output>
+	</div>
+}
+
+templ LoginFields(redirect string) {
+	if redirect == "" {
+		redirect = "/"
+	}
+	<div class="block py-5">
+		@InputOutlined("username", "text", "Username",
+			templ.Attributes{
+				"placeholder": "Username",
+				"tabindex":    "1",
+				"onkeypress":  OnKeyFocusID(13, "2"),
+			})
+		@InputOutlined("password", "password", "Password",
+			templ.Attributes{
+				"placeholder": "Password",
+				"tabindex":    "2",
+				"onkeypress":  OnKeyFocusID(13, "3"),
+			})
+		<input id="redirect" type="hidden" value={ redirect }/>
+	</div>
+}
+
+templ Signup() {
+	<div id="app" class="">
+		<form hx-post="/signup.html" hx-target="errors">
+			@Card(
+				CardTitle("Cuttle Login"),
+				CardContent(SignupFields()),
+				CardActions(
+					ButtonSubmit("signupButton", "Sign Up", "5", nil),
+					ButtonOutlined("6", "Login", "6", templ.Attributes{"onclick": "location.href='/login.html'"}),
+				),
+			)
+		</form>
+	</div>
+	<script>
+		let pwMatch = false;
+		let name = document.getElementById("name");
+		let username = document.getElementById("username");
+		let signupButton = document.getElementById("signupButton");
+		let password = document.getElementById("password");
+		let confirmPassword = document.getElementById("confirmPassword");
+		let confirmPasswordDiv = document.getElementById("confirmPassword-div");
+		let confirmPasswordLabel = document.getElementById("confirmPassword-label");
+		let errorOutput = document.getElementById("errors");
+
+		if (password.value == "" || password.value !== confirmPassword.value) {
+			signupButton.disabled = true;
+		}
+	
+		let checkPasswords = () => {
+			if (password.value === "" || password.value !== confirmPassword.value) {
+				pwMatch = false;
+				signupButton.disabled = true;
+				errorOutput.style.display = "block";
+				errorOutput.innerHTML = "Passwords do not match.";
+				confirmPasswordDiv.classList.remove("border-primary-light");
+				confirmPasswordDiv.classList.remove("hover:border-primary-highlight");
+				confirmPasswordDiv.classList.remove("has-[:focus]:border-secondary-base");
+				confirmPasswordLabel.classList.remove("peer-has-[:hover]:text-primary-highlight");
+				confirmPasswordLabel.classList.remove("peer-has-[:focus]:text-secondary-base");
+				confirmPasswordDiv.classList.remove("border-success");
+				confirmPasswordLabel.classList.remove("text-success");
+				confirmPasswordDiv.classList.add("border-error");
+				confirmPasswordLabel.classList.add("text-error");
+			} else {
+				pwMatch = true;
+				signupButton.disabled = false;
+				errorOutput.style.display = "none";
+				errorOutput.innerHTML = "";
+				confirmPasswordDiv.classList.remove("border-primary-light");
+				confirmPasswordDiv.classList.remove("hover:border-primary-highlight");
+				confirmPasswordDiv.classList.remove("has-[:focus]:border-secondary-base");
+				confirmPasswordLabel.classList.remove("peer-has-[:hover]:text-primary-highlight");
+				confirmPasswordLabel.classList.remove("peer-has-[:focus]:text-secondary-base");
+				confirmPasswordLabel.classList.remove("text-error");
+				confirmPasswordDiv.classList.remove("border-error");
+				confirmPasswordDiv.classList.add("border-success");
+				confirmPasswordLabel.classList.add("text-success");
+			}
+
+			enableButton();
+		};
+
+		name.addEventListener('keyup', enableButton);
+		username.addEventListener('keyup', enableButton);
+		password.addEventListener('keyup', checkPasswords);
+		confirmPassword.addEventListener('keyup', checkPasswords);
+
+		function enableButton() {
+			if (allFilled()) {
+				signupButton.disabled = false;
+			} else {
+				signupButton.disabled = true;
+			}
+		}
+
+		function allFilled() {
+			return document.getElementById("name").value !== "" &&
+				document.getElementById("username").value !== "" &&
+				document.getElementById("password").value !== "" &&
+				document.getElementById("confirmPassword").value !== "" &&
+				pwMatch;
+		}
+	</script>
+}
+
+templ SignupFields() {
+	@InputOutlined("name", "text", "Name",
+		templ.Attributes{
+			"placeholder": "Bob",
+			"tabindex":    "1",
+			"onkeypress":  OnKeyFocusID(13, "2"),
+		})
+	@InputOutlined("username", "text", "Username",
+		templ.Attributes{
+			"placeholder": "myusername",
+			"tabindex":    "2",
+			"onkeypress":  OnKeyFocusID(13, "3"),
+		})
+	@InputOutlined("password", "password", "Password",
+		templ.Attributes{
+			"placeholder": "Make It A Strong One",
+			"tabindex":    "3",
+			"onkeypress":  OnKeyFocusID(13, "4"),
+		})
+	@InputOutlined("confirmPassword", "password", "Confirm Password",
+		templ.Attributes{
+			"placeholder": "Retype Password",
+			"tabindex":    "4",
+			"onkeypress":  OnKeyFocusID(13, "5"),
+		})
+	<div id="errors" class="display-hidden content-center relative mt-6 min-h-0 flex-auto flex flex-col text-text-disabled border border-primary-base border-opacity-75"></div>
+}

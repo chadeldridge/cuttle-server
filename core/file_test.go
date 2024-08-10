@@ -211,7 +211,7 @@ func TestFilesAssertReadable(t *testing.T) {
 	})
 
 	t.Run("valid file", func(t *testing.T) {
-		writeFile("/tmp/cuttle_test.file", defaultConfig())
+		writeFile("/tmp/cuttle_test.file", DefaultConfig())
 		err := AssertReadable("/tmp/cuttle_test.file")
 		require.NoError(err, "AssertReadable() returned an error: %s", err)
 		removeFile("/tmp/cuttle_test.file")
@@ -222,7 +222,7 @@ func TestFilesHasReadPerm(t *testing.T) {
 	require := require.New(t)
 
 	t.Run("other read", func(t *testing.T) {
-		writeFile("/tmp/cuttle_test.file", defaultConfig())
+		writeFile("/tmp/cuttle_test.file", DefaultConfig())
 		err := os.Chmod("/tmp/cuttle_test.file", 0o666)
 		require.NoError(err, "os.Chmod() returned an error: %s", err)
 
@@ -235,7 +235,7 @@ func TestFilesHasReadPerm(t *testing.T) {
 	})
 
 	t.Run("user read", func(t *testing.T) {
-		writeFile("/tmp/cuttle_test.file", defaultConfig())
+		writeFile("/tmp/cuttle_test.file", DefaultConfig())
 		err := os.Chmod("/tmp/cuttle_test.file", 0o660)
 		require.NoError(err, "os.Chmod() returned an error: %s", err)
 
@@ -248,7 +248,7 @@ func TestFilesHasReadPerm(t *testing.T) {
 	})
 
 	t.Run("group read", func(t *testing.T) {
-		writeFile("/tmp/cuttle_test.file", defaultConfig())
+		writeFile("/tmp/cuttle_test.file", DefaultConfig())
 		err := os.Chmod("/tmp/cuttle_test.file", 0o600)
 		require.NoError(err, "os.Chmod() returned an error: %s", err)
 

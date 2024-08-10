@@ -19,3 +19,12 @@
 
 # Go workspace file
 go.work
+
+# Ignore symlinks
+# Ignore top-level directory 'assets' but do not ignore 'assets' in subdirectories
+assets
+!*/assets
+
+# Other directories to ignore
+bin/
+node_modules/

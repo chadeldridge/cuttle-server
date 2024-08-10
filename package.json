@@ -1,0 +1,19 @@
+{
+  "name": "cuttle-server",
+  "version": "1.0.0",
+  "description": "Server macros for quick actions.",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "build": "tailwindcss build -i web/assets/css/base.css -o web/assets/css/tailwind.min.css --minify",
+    "watch": "tailwindcss build -i web/assets/css/base.css -o web/assets/css/tailwind.min.css --watch"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "tailwindcss": "^3.4.7"
+  }
+}

@@ -9,8 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var testDBRoot = "/tmp/cuttle/db"
-
 /*
 var (
 	testDBRoot = "/tmp/cuttle/db"
@@ -33,32 +31,8 @@ AAAECwBTmJkCxA2UyiNnP5Mh3ampIMnZt+wegxE5jqySmfAvingJrKdq5sXfmHM5wReDp7
 )
 */
 
-func testDBSetup() {
-	db_folder = testDBRoot
-	deleteDBDir()
-}
-
-func deleteDBDir() {
-	err := os.RemoveAll(db_folder)
-	if err != nil {
-		log.Fatalf("deleteDBDir: %s", err)
-	}
-}
-
-func deleteDB(filename string) {
-	if _, err := os.Stat(db_folder + "/" + filename); os.IsNotExist(err) {
-		return
-	}
-
-	err := os.Remove(db_folder + "/" + filename)
-	if err != nil {
-		log.Println(err)
-		log.Fatalf("deleteDB: %s", err)
-	}
-}
-
 func TestAuthMethodsAMDBMigrate(t *testing.T) {
-	testDBSetup()
+	testDBSetup(t)
 	deleteDB(amdb_file)
 	_, err := os.Stat(db_folder + "/" + amdb_file)
 	if err == nil && !os.IsNotExist(err) {
@@ -66,7 +40,9 @@ func TestAuthMethodsAMDBMigrate(t *testing.T) {
 	}
 
 	require := require.New(t)
-	amdb := NewSqliteDB(amdb_file)
+	amdb, err := NewSqliteDB(amdb_file)
+	require.NoError(err, "TestAuthMethodsAMDBMigrate returned an error: %s", err)
+
 	err = amdb.Open()
 	require.NoError(err, "TestAuthMethodsAMDBMigrate returned an error: %s", err)
 	defer amdb.Close()

@@ -15,6 +15,9 @@ import (
 
 	"github.com/chadeldridge/cuttle/api"
 	"github.com/chadeldridge/cuttle/core"
+	"github.com/chadeldridge/cuttle/db"
+	"github.com/chadeldridge/cuttle/router"
+	"github.com/chadeldridge/cuttle/web"
 )
 
 /*
@@ -56,9 +59,37 @@ func run(ctx context.Context, out io.Writer, args []string, env map[string]strin
 	// Print config if in debug mode.
 	logger.Debugf("Config: %+v\n", config)
 
+	// Setup the database.
+	db.SetDBRoot(config.DBRoot)
+	mainDB, err := db.NewSqliteDB("cuttle.db")
+	if err != nil {
+		return err
+	}
+
+	err = mainDB.Open()
+	if err != nil {
+		return err
+	}
+	defer mainDB.Close()
+
+	users, err := db.NewUsers(mainDB)
+	if err != nil {
+		return err
+	}
+
 	// Setup the HTTP server.
-	srv := api.NewHTTPServer(logger, config)
-	err = srv.Build()
+	srv := router.NewHTTPServer(logger, config)
+	srv.Users = &users
+	// Add routes and do anything else we need to do before starting the server.
+
+	// Add web routes.
+	err = web.AddRoutes(&srv)
+	if err != nil {
+		return err
+	}
+
+	// Add API routes.
+	err = api.AddRoutes(&srv)
 	if err != nil {
 		return err
 	}

@@ -1,0 +1,141 @@
+package components
+
+import "strconv"
+
+//
+// Pages and page components
+//
+templ head(title string) {
+	<head>
+		<title>{ title }</title>
+		<meta charset="UTF-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+		<link rel="shortcut icon" href="/favicon.ico"/>
+		<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons|Material+Icons+Two+Tone" media="all"/>
+		<link rel="stylesheet" type="text/css" href="/assets/css/tailwind.min.css"/>
+		<script src="/assets/js/htmx.min.js"></script>
+	</head>
+}
+
+templ Page(title string, content templ.Component) {
+	<!DOCTYPE html>
+	<html lang="en">
+		@head(title)
+		<body class={ "bg-primary-dark text-text-light" }>
+			<div id="app" class="w-full min-h-screen h-full place-content-center">
+				@content
+			</div>
+		</body>
+	</html>
+}
+
+templ ErrorPage(statusCode int, pageMsg string, errMsg error) {
+	<html>
+		@head("404 - Page not found")
+		<body>
+			<div class="error">
+				<h1>{ strconv.Itoa(statusCode) }</h1>
+				<p>{ pageMsg }</p>
+			</div>
+		</body>
+	</html>
+}
+
+//
+// Scripts
+//
+
+script OnKeyFocusID(keyCode int, id string) {
+	if (event.keyCode == keyCode) {
+		document.getElementById(id).focus();
+	}
+}
+
+//
+// Inputs
+//
+templ InputOutlined(inputID, inputType, label string, attrs templ.Attributes) {
+	<span class="inline-flex flex-col relative min-w-0 w-full align-top mt-6 border-0">
+		<label id={ inputID + "-label" } class="bg-primary-base text-primary-light text-base font-normal font-base block whitespace-nowrap overflow-hidden text-ellipsis p-1 max-w-prose absolute z-10 select-none pointer-events-auto origin-top-left top-0 left-0 translate-x-3 -translate-y-3 scale-75 peer-has-[:hover]:text-primary-highlight peer-has-[:focus]:text-secondary-base" data-shrink="true" for={ inputID }>{ label }</label>
+		<div id={ inputID + "-div" } class="peer cursor-text bg-inherit text-primary-light placeholder:text-primary-light box-border inline-flex relative items-center border rounded border-primary-light hover:border-primary-highlight has-[:focus]:border-secondary-base">
+			<input
+				id={ inputID }
+				type={ inputType }
+				if attrs != nil && len(attrs) > 0 {
+					{ attrs... }
+				}
+				class="bg-transparent text-text-light placeholder:text-text-disabled border-0 box-content m-0 block min-w-0 w-full py-2 px-3 focus:outline-none"
+			/>
+		</div>
+	</span>
+}
+
+//
+// Buttons
+//
+templ ButtonSubmit(id, text, tabIndex string, attrs templ.Attributes) {
+	<button
+		id={ id }
+		type="submit"
+		class="mx-2 rounded-md cursor-pointer bg-secondary-base text-text-light uppercase px-3 py-2 text-_5rem font-semibold leading-5 hover:bg-secondary-light disabled:bg-primary-light disabled:text-text-disabled"
+		tabindex={ tabIndex }
+		if attrs != nil && len(attrs) > 0 {
+			{ attrs... }
+		}
+	>{ text }</button>
+}
+
+templ ButtonOutlined(id, text, tabIndex string, attrs templ.Attributes) {
+	<button
+		id={ id }
+		type="button"
+		class="mx-2 rounded-md cursor-pointer bg-inherit text-primary-highlight border-primary-highlight border uppercase px-3 py-2 text-_5rem font-semibold leading-5 hover:bg-primary-light hover:text-text-light hover:border-text-light"
+		tabindex={ tabIndex }
+		if attrs != nil && len(attrs) > 0 {
+			attrs...
+		}
+	>{ text }</button>
+}
+
+//
+// Cards
+//
+templ Card(cardHeader, cardContent, cardFooter templ.Component) {
+	<div class="place-content-center bg-primary-base px-10 py-5 shrink-0 max-w-sm mx-auto rounded shadow-xl shadow-black/10 ring-1 ring-black/10">
+		if cardHeader != nil {
+			@cardHeader
+		}
+		if cardContent != nil {
+			@cardContent
+		}
+		if cardFooter != nil {
+			@cardFooter
+		}
+	</div>
+}
+
+templ CardImage(imageURL, imageAlt string) {
+	<div class="card-image">
+		<img src={ imageURL } alt={ imageAlt }/>
+	</div>
+}
+
+templ CardTitle(title string) {
+	<div class="mx-auto mt-6 px-6 lg:px-8">
+		<h2 class="text-center text-2xl font-bold tracking-tight text-gray-200 sm:text-4xl">{ title }</h2>
+	</div>
+}
+
+templ CardContent(content templ.Component) {
+	<div class="block p-2">
+		@content
+	</div>
+}
+
+templ CardActions(actions ...templ.Component) {
+	<div class="flex mt-2 p-2 place-content-center">
+		for _, action := range actions {
+			@action
+		}
+	</div>
+}
