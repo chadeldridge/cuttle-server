@@ -1,10 +1,6 @@
 package db
 
-import (
-	"fmt"
-	"log"
-)
-
+/*
 const (
 	amdb_file  = "auth_methods.db"
 	amdb_name  = "auth_methods"
@@ -12,15 +8,10 @@ const (
 	amdb_ref   = amdb_alias + "." + amdb_name
 )
 
-var (
-	ErrInvalidAuthType   = fmt.Errorf("invalid auth type")
-	ErrInvalidName       = fmt.Errorf("invalid name")
-	ErrInvalidPassphrase = fmt.Errorf("invalid passphrase")
-)
-
 type AuthMethods struct {
 	DB
 }
+*/
 
 type AuthMethodData struct {
 	ID       int
@@ -29,6 +20,7 @@ type AuthMethodData struct {
 	Data     string
 }
 
+/*
 // NewAuthMethods attaches the auth_methods database to the current database. It first opens the
 // auth_methods database, migrates the database, closes the instance, and then attaches it to the
 // current database.
@@ -139,3 +131,4 @@ func (r AuthMethods) Delete(id int) error {
 
 	return nil
 }
+*/

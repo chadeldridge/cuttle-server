@@ -1,5 +1,6 @@
 package db
 
+/*
 import (
 	"log"
 	"os"
@@ -8,6 +9,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/require"
 )
+*/
 
 /*
 var (
@@ -31,6 +33,7 @@ AAAECwBTmJkCxA2UyiNnP5Mh3ampIMnZt+wegxE5jqySmfAvingJrKdq5sXfmHM5wReDp7
 )
 */
 
+/*
 func TestAuthMethodsAMDBMigrate(t *testing.T) {
 	testDBSetup(t)
 	deleteDB(amdb_file)
@@ -62,6 +65,7 @@ func TestAuthMethodsAMDBMigrate(t *testing.T) {
 		require.NoError(amdbMigrate(amdb))
 	})
 }
+*/
 
 /*
 func TestAuthMethods(t *testing.T) {

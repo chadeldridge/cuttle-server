@@ -1,7 +1,6 @@
 package db
 
-import "fmt"
-
+/*
 type Connectors struct {
 	DB
 }
@@ -44,3 +43,4 @@ func (r Connectors) migrate() error {
 
 	return nil
 }
+*/

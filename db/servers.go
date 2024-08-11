@@ -1,5 +1,6 @@
 package db
 
+/*
 import "fmt"
 
 type Servers struct {
@@ -46,3 +47,4 @@ func (r Servers) migrate() error {
 
 	return nil
 }
+*/

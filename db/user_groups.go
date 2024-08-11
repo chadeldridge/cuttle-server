@@ -1,5 +1,6 @@
 package db
 
+/*
 import "fmt"
 
 const (
@@ -147,3 +148,4 @@ func (r UserGroups) Delete(name string) error {
 
 	return nil
 }
+*/

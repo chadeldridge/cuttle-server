@@ -1,5 +1,6 @@
 package db
 
+/*
 import "fmt"
 
 type Groups struct {
@@ -42,3 +43,4 @@ func (r Groups) migrate() error {
 
 	return nil
 }
+*/

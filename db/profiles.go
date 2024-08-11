@@ -1,7 +1,6 @@
 package db
 
-import "fmt"
-
+/*
 type Profiles struct {
 	DB
 }
@@ -53,3 +52,4 @@ func (r Profiles) migrate() error {
 
 	return nil
 }
+*/

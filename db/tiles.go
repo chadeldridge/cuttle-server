@@ -1,5 +1,6 @@
 package db
 
+/*
 import "fmt"
 
 type Tiles struct {
@@ -34,3 +35,4 @@ func (r Tiles) migrate() error {
 
 	return nil
 }
+*/
