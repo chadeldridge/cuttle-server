@@ -3,7 +3,7 @@ package tests
 import (
 	"fmt"
 
-	"github.com/chadeldridge/cuttle/connections"
+	"github.com/chadeldridge/cuttle-server/services/cuttle/connections"
 )
 
 var ErrTestFailed = fmt.Errorf("failed")

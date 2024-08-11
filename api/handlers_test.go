@@ -5,9 +5,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/chadeldridge/cuttle/core"
-	"github.com/chadeldridge/cuttle/router"
-	"github.com/chadeldridge/cuttle/test_helpers"
+	"github.com/chadeldridge/cuttle-server/core"
+	"github.com/chadeldridge/cuttle-server/router"
+	"github.com/chadeldridge/cuttle-server/test_helpers"
 	"github.com/stretchr/testify/require"
 )
 

@@ -7,7 +7,7 @@ import (
 	"time"
 
 	// libray has to be imported to register the driver.
-	"github.com/chadeldridge/cuttle/core"
+	"github.com/chadeldridge/cuttle-server/core"
 	_ "github.com/mattn/go-sqlite3"
 )
 

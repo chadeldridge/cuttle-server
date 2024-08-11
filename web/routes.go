@@ -3,7 +3,7 @@ package web
 import (
 	"net/http"
 
-	"github.com/chadeldridge/cuttle/router"
+	"github.com/chadeldridge/cuttle-server/router"
 )
 
 var BodyInternalServerError = "internal server error"

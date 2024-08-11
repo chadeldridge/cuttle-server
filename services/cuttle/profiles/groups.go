@@ -3,7 +3,7 @@ package profiles
 import (
 	"errors"
 
-	"github.com/chadeldridge/cuttle/connections"
+	"github.com/chadeldridge/cuttle-server/services/cuttle/connections"
 )
 
 var ErrEndOfList = errors.New("end of list")

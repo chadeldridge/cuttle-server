@@ -3,7 +3,7 @@ package profiles
 import (
 	"testing"
 
-	"github.com/chadeldridge/cuttle/tests"
+	"github.com/chadeldridge/cuttle-server/services/cuttle/tests"
 	"github.com/stretchr/testify/require"
 )
 

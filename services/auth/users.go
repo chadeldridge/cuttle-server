@@ -3,7 +3,7 @@ package auth
 import (
 	"fmt"
 
-	"github.com/chadeldridge/cuttle/db"
+	"github.com/chadeldridge/cuttle-server/db"
 )
 
 type ID int

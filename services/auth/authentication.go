@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/chadeldridge/cuttle/db"
+	"github.com/chadeldridge/cuttle-server/db"
 	"golang.org/x/crypto/bcrypt"
 )
 

@@ -1,6 +1,6 @@
 package tests
 
-import "github.com/chadeldridge/cuttle/connections"
+import "github.com/chadeldridge/cuttle-server/services/cuttle/connections"
 
 type MockTest struct {
 	fail bool

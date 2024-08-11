@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/chadeldridge/cuttle/connections"
+	"github.com/chadeldridge/cuttle-server/services/cuttle/connections"
 	probing "github.com/prometheus-community/pro-bing"
 )
 

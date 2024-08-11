@@ -4,11 +4,11 @@ import (
 	"net/http"
 
 	"github.com/a-h/templ"
-	"github.com/chadeldridge/cuttle/core"
-	"github.com/chadeldridge/cuttle/db"
-	"github.com/chadeldridge/cuttle/router"
-	"github.com/chadeldridge/cuttle/services/auth"
-	"github.com/chadeldridge/cuttle/web/components"
+	"github.com/chadeldridge/cuttle-server/core"
+	"github.com/chadeldridge/cuttle-server/db"
+	"github.com/chadeldridge/cuttle-server/router"
+	"github.com/chadeldridge/cuttle-server/services/auth"
+	"github.com/chadeldridge/cuttle-server/web/components"
 )
 
 type ErrorHandler func(error) templ.Component

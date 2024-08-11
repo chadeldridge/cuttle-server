@@ -3,8 +3,8 @@ package api
 import (
 	"net/http"
 
-	"github.com/chadeldridge/cuttle/core"
-	"github.com/chadeldridge/cuttle/router"
+	"github.com/chadeldridge/cuttle-server/core"
+	"github.com/chadeldridge/cuttle-server/router"
 )
 
 func handleTest(logger *core.Logger) http.Handler {

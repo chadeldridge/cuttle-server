@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/chadeldridge/cuttle/connections"
+	"github.com/chadeldridge/cuttle-server/services/cuttle/connections"
 )
 
 type SSHTest struct {

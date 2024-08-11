@@ -1,4 +1,4 @@
-module github.com/chadeldridge/cuttle
+module github.com/chadeldridge/cuttle-server
 
 go 1.22
 

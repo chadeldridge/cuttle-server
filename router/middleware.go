@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/chadeldridge/cuttle/core"
-	"github.com/chadeldridge/cuttle/db"
+	"github.com/chadeldridge/cuttle-server/core"
+	"github.com/chadeldridge/cuttle-server/db"
 	"github.com/felixge/httpsnoop"
 )
 

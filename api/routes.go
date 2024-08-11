@@ -1,7 +1,7 @@
 package api
 
 import (
-	"github.com/chadeldridge/cuttle/router"
+	"github.com/chadeldridge/cuttle-server/router"
 )
 
 func AddRoutes(server *router.HTTPServer) error {

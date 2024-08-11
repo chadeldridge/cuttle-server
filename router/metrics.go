@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/chadeldridge/cuttle/core"
+	"github.com/chadeldridge/cuttle-server/core"
 )
 
 var metrics *Metrics

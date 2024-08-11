@@ -5,7 +5,7 @@ import (
 	"log"
 	"testing"
 
-	"github.com/chadeldridge/cuttle/core"
+	"github.com/chadeldridge/cuttle-server/core"
 	"github.com/stretchr/testify/require"
 )
 

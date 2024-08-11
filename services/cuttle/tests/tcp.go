@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/chadeldridge/cuttle/connections"
+	"github.com/chadeldridge/cuttle-server/services/cuttle/connections"
 )
 
 const TCPDefaultTimeout = time.Second * 3
