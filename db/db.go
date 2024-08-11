@@ -11,16 +11,6 @@ const (
 
 var db_folder string
 
-var (
-	ErrRecordExists      = fmt.Errorf("record exists")
-	ErrInvalidID         = fmt.Errorf("invalid ID")
-	ErrAliasInUse        = fmt.Errorf("db alias in use")
-	ErrInvalidUsername   = fmt.Errorf("invalid username")
-	ErrInvalidAuthType   = fmt.Errorf("invalid auth type")
-	ErrInvalidName       = fmt.Errorf("invalid name")
-	ErrInvalidPassphrase = fmt.Errorf("invalid passphrase")
-)
-
 func init() {
 	db_folder = GenDBFolder()
 }
