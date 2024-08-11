@@ -1,7 +1,6 @@
 package db
 
 import (
-	"database/sql"
 	"fmt"
 	"os"
 )
@@ -13,10 +12,13 @@ const (
 var db_folder string
 
 var (
-	ErrDuplicateEntry = fmt.Errorf("UNIQUE constraint failed")
-	ErrRecordNotFound = fmt.Errorf("record not found")
-	ErrInvalidID      = fmt.Errorf("invalid ID")
-	ErrAliasInUse     = fmt.Errorf("db alias in use")
+	ErrRecordExists      = fmt.Errorf("record exists")
+	ErrInvalidID         = fmt.Errorf("invalid ID")
+	ErrAliasInUse        = fmt.Errorf("db alias in use")
+	ErrInvalidUsername   = fmt.Errorf("invalid username")
+	ErrInvalidAuthType   = fmt.Errorf("invalid auth type")
+	ErrInvalidName       = fmt.Errorf("invalid name")
+	ErrInvalidPassphrase = fmt.Errorf("invalid passphrase")
 )
 
 func init() {
@@ -32,15 +34,27 @@ func GenDBFolder() string {
 	return currentDir + "/" + DefaultDBFolder
 }
 
-type DB interface {
+type CuttleDB interface {
 	Open() error
-	AddRepo(file, alias string, migrate migrater) error
-	Attach(filename, alias string) error
-	IsUnique(query string, args ...any) bool
-	Query(query string, args ...any) (*sql.Rows, error)
-	QueryRow(query string, args ...any) *sql.Row
-	Exec(query string, args ...any) error
+	CuttleMigrate() error
 	Close() error
+	// AddRepo(file, alias string, migrate migrater) error
+	// Attach(filename, alias string) error
+}
+
+type AuthDB interface {
+	Open() error
+	AuthMigrate() error
+	Close() error
+	// AddRepo(file, alias string, migrate migrater) error
+	// Attach(filename, alias string) error
+	// Users
+	UserIsUnique(username string) error
+	UserCreate(username, name, password, groups string) (UserData, error)
+	UserGet(id int) (UserData, error)
+	UserGetByUsername(username string) (UserData, error)
+	UserUpdate(user UserData) (UserData, error)
+	UserDelete(id int) error
 }
 
 // SetDBRoot sets the root directory for the database. If this is not set, the default behavior is to
