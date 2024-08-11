@@ -4,8 +4,9 @@ import "encoding/json"
 
 type Group struct {
 	ID
-	Name    string
-	Members []ID
+	Name     string
+	Members  []ID
+	Profiles map[string]Permissions
 }
 
 type Groups []Group
