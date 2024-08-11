@@ -60,26 +60,17 @@ func run(ctx context.Context, out io.Writer, args []string, env map[string]strin
 	logger.Debugf("Config: %+v\n", config)
 
 	// Setup the database.
-	db.SetDBRoot(config.DBRoot)
-	mainDB, err := db.NewSqliteDB("cuttle.db")
+	cuttleDB, authDB, err := openDBs(config.DBRoot)
 	if err != nil {
 		return err
 	}
-
-	err = mainDB.Open()
-	if err != nil {
-		return err
-	}
-	defer mainDB.Close()
-
-	users, err := db.NewUsers(mainDB)
-	if err != nil {
-		return err
-	}
+	defer cuttleDB.Close()
+	defer authDB.Close()
 
 	// Setup the HTTP server.
 	srv := router.NewHTTPServer(logger, config)
-	srv.Users = &users
+	srv.CuttleDB = cuttleDB
+	srv.AuthDB = authDB
 	// Add routes and do anything else we need to do before starting the server.
 
 	// Add web routes.
@@ -96,6 +87,47 @@ func run(ctx context.Context, out io.Writer, args []string, env map[string]strin
 
 	// Start API Server.
 	return srv.Start(ctx, config.ShutdownTimeout)
+}
+
+func openDBs(dbRoot string) (db.CuttleDB, db.AuthDB, error) {
+	err := db.SetDBRoot(dbRoot)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Cuttle database setup.
+	cuttleDB, err := db.NewSqliteDB("cuttle.db")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	err = cuttleDB.Open()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	err = cuttleDB.CuttleMigrate()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Auth database setup.
+	authDB, err := db.NewSqliteDB("auth.db")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	err = authDB.Open()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	err = authDB.AuthMigrate()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return cuttleDB, authDB, nil
 }
 
 func main() {

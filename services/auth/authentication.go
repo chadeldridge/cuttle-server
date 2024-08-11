@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 
@@ -29,10 +30,10 @@ func IsMatch(hashedPassword, password string) bool {
 	return err == nil
 }
 
-func AuthenticateUser(repo *db.Users, username string, password string) (User, error) {
-	data, err := repo.GetByUsername(username)
+func AuthenticateUser(authDB db.AuthDB, username string, password string) (User, error) {
+	data, err := authDB.UserGetByUsername(username)
 	if err != nil {
-		if errors.Is(err, db.ErrRecordNotFound) {
+		if errors.Is(err, sql.ErrNoRows) {
 			return User{}, fmt.Errorf("auth.AuthenticateUser: %w", ErrUserNotFound)
 		}
 

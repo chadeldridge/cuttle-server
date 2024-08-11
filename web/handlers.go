@@ -83,7 +83,7 @@ func handleSignup(server *router.HTTPServer) http.Handler {
 		func(w http.ResponseWriter, r *http.Request) {
 			if r.Method == http.MethodPost {
 				// handle signup
-				handleSignupPost(server.Logger, server.Users, w, r)
+				handleSignupPost(server.Logger, server.AuthDB, w, r)
 			}
 
 			handleSignupGet(server.Logger, w, r)
@@ -97,7 +97,7 @@ func handleSignupGet(logger *core.Logger, w http.ResponseWriter, r *http.Request
 	}
 }
 
-func handleSignupPost(logger *core.Logger, users *db.Users, w http.ResponseWriter, r *http.Request) {
+func handleSignupPost(logger *core.Logger, authDB db.AuthDB, w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	n := r.FormValue("name")
 	u := r.FormValue("username")
@@ -123,7 +123,8 @@ func handleSignupPost(logger *core.Logger, users *db.Users, w http.ResponseWrite
 		return
 	}
 
-	err := auth.Signup(u, n, p, users)
+	// TODO: Do something with the returned user data
+	_, err := auth.Signup(u, n, p, authDB)
 	if err != nil {
 		handleError(logger, w, r, http.StatusInternalServerError, "internal server error", nil)
 		return

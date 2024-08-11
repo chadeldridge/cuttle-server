@@ -15,16 +15,16 @@ type User struct {
 	Groups   []ID
 }
 
-func Signup(username, name, password string, udb *db.Users) error {
+func Signup(username, name, password string, authDB db.AuthDB) (db.UserData, error) {
 	// INCOMPLETE: implement password strength checks
 	password, err := HashPassword(password)
 	if err != nil {
-		return fmt.Errorf("auth.Signup: %w", err)
+		return db.UserData{}, fmt.Errorf("auth.Signup: %w", err)
 	}
 
-	err = udb.Create(username, name, password, "{}")
+	user, err := authDB.UserCreate(username, name, password, "{}")
 	if err != nil {
-		return fmt.Errorf("auth.Signup: %w", err)
+		return user, fmt.Errorf("auth.Signup: %w", err)
 	}
-	return nil
+	return user, nil
 }

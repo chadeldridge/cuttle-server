@@ -6,7 +6,7 @@ import (
 
 func AddRoutes(server *router.HTTPServer) error {
 	mwLogger := router.LoggerMiddleware(server.Logger)
-	mwAuth := router.AuthMiddleware(server.Logger, server.Users)
+	mwAuth := router.AuthMiddleware(server.Logger, server.CuttleDB)
 	root, err := router.NewRouterGroup(server.Mux, "/api")
 	if err != nil {
 		return err
