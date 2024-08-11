@@ -13,9 +13,10 @@ import (
 )
 
 type HTTPServer struct {
-	Logger  *core.Logger
-	Config  *core.Config
-	Users   *db.Users
+	Logger *core.Logger
+	Config *core.Config
+	db.CuttleDB
+	db.AuthDB
 	Handler http.Handler
 	// Mux saves the http.ServeMux instance. This provides easier access to the
 	// mux without having to enforce a ref type on HTTPServer.Handler everytime.

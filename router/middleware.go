@@ -109,7 +109,7 @@ func LoggerMiddleware(logger *core.Logger) Middleware {
 	}
 }
 
-func AuthMiddleware(logger *core.Logger, users *db.Users) Middleware {
+func AuthMiddleware(logger *core.Logger, users db.CuttleDB) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(
 			func(w http.ResponseWriter, r *http.Request) {
