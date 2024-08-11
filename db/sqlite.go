@@ -3,7 +3,9 @@ package db
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	// libray has to be imported to register the driver.
@@ -69,6 +71,10 @@ func (db *SqliteDB) AuthMigrate() error {
 		return fmt.Errorf("db.AuthMigrate: failed to migrate %s: %w", sqlite_tb_users, err)
 	}
 
+	if err := UserGroupsMigrate(db); err != nil {
+		return fmt.Errorf("db.AuthMigrate: failed to migrate %s: %w", sqlite_tb_user_groups, err)
+	}
+
 	return nil
 }
 
@@ -97,6 +103,10 @@ func (db *SqliteDB) IsUnique(table string, where string, args ...any) error {
 	}
 
 	return nil
+}
+
+func NotUnique(err error) bool {
+	return strings.Contains(err.Error(), "UNIQUE constraint failed:")
 }
 
 func (db *SqliteDB) Close() error {
@@ -200,19 +210,20 @@ func (db *SqliteDB) Exec(query string, args ...any) error {
 	return err
 }
 
-// ############################################################################################# //
-// ###################################        Users         #################################### //
-// ############################################################################################# //
+// ############################################################################################## //
+// ####################################        Users         #################################### //
+// ############################################################################################## //
 
 // UserData represents a user in the database.
 type UserData struct {
 	ID       int
-	Username string // Username to login with.
-	Name     string // Name to show in app.
-	Password string // Hashed password.
-	Groups   string // JSON string of group IDs. Empty should be "[]".
-	Created  time.Time
-	Updated  time.Time
+	Username string    // Username to login with.
+	Name     string    // Name to show in app.
+	Password string    // Hashed password.
+	Groups   string    // JSON string of group IDs. Empty should be "[]".
+	IsAdmin  bool      // Is the user an admin.
+	Created  time.Time // Time created.
+	Updated  time.Time // Time last updated.
 }
 
 func (db *SqliteDB) UsersMigrate() error {
@@ -223,19 +234,26 @@ func (db *SqliteDB) UsersMigrate() error {
 		name VARCHAR(32) NOT NULL,
 		password VARCHAR(32) NOT NULL,
 		groups TEXT NOT NULL,
+		is_admin BOOLEAN DEFAULT FALSE,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-	)`
+	);
+	CREATE INDEX IF NOT EXISTS idx_users_username ON ` + sqlite_tb_users + ` (username);`
 
 	if err := db.Exec(query); err != nil {
-		return fmt.Errorf("db.UserMigrate: %w", err)
+		return fmt.Errorf("SqliteDB.UserMigrate: %w", err)
 	}
 
 	return nil
 }
 
 func (db *SqliteDB) UserIsUnique(username string) error {
-	return db.IsUnique(sqlite_tb_users, "username = ?", username)
+	err := db.IsUnique(sqlite_tb_users, "username = ?", username)
+	if errors.Is(err, ErrRecordExists) {
+		return fmt.Errorf("SqliteDB.UserIsUnique: %w", ErrUserExists)
+	}
+
+	return err
 }
 
 func (db *SqliteDB) UserCreate(username, name, pwHash, groups string) (UserData, error) {
@@ -253,15 +271,21 @@ func (db *SqliteDB) UserCreate(username, name, pwHash, groups string) (UserData,
 	}
 
 	if groups == "" {
-		groups = "{}"
+		groups = "[]"
 	}
 
-	if err := db.UserIsUnique(username); err != nil {
-		return UserData{}, fmt.Errorf("SqliteDB.UserCreate: %w", err)
-	}
+	/*
+		if err := db.UserIsUnique(username); err != nil {
+			return UserData{}, fmt.Errorf("SqliteDB.UserCreate: %w", err)
+		}
+	*/
 
 	query := `INSERT INTO ` + sqlite_tb_users + ` (username, name, password, groups) VALUES (?, ?, ?, ?)`
 	if err := db.Exec(query, username, name, pwHash, groups); err != nil {
+		if NotUnique(err) {
+			return UserData{}, fmt.Errorf("SqliteDB.UserCreate: %w", ErrUserExists)
+		}
+
 		return UserData{}, fmt.Errorf("SqliteDB.UserCreate: %w", err)
 	}
 
@@ -273,7 +297,16 @@ func (db *SqliteDB) UserGet(id int) (UserData, error) {
 	row := db.QueryRow(query, id)
 
 	var data UserData
-	err := row.Scan(&data.ID, &data.Username, &data.Name, &data.Password, &data.Groups, &data.Created, &data.Updated)
+	err := row.Scan(
+		&data.ID,
+		&data.Username,
+		&data.Name,
+		&data.Password,
+		&data.Groups,
+		&data.IsAdmin,
+		&data.Created,
+		&data.Updated,
+	)
 	if err != nil {
 		return data, fmt.Errorf("SqliteDB.UserGet: %w", err)
 	}
@@ -290,7 +323,16 @@ func (db *SqliteDB) UserGetByUsername(username string) (UserData, error) {
 	row := db.QueryRow(query, username)
 
 	var data UserData
-	err := row.Scan(&data.ID, &data.Username, &data.Name, &data.Password, &data.Groups, &data.Created, &data.Updated)
+	err := row.Scan(
+		&data.ID,
+		&data.Username,
+		&data.Name,
+		&data.Password,
+		&data.Groups,
+		&data.IsAdmin,
+		&data.Created,
+		&data.Updated,
+	)
 	if err != nil {
 		return data, fmt.Errorf("SqliteDB.UserGetByUsername: %w", err)
 	}
@@ -304,8 +346,8 @@ func (db *SqliteDB) UserUpdate(user UserData) (UserData, error) {
 	}
 
 	user.Updated = time.Now()
-	query := `UPDATE ` + sqlite_tb_users + ` SET username = ?, name = ?, password = ?, groups = ?, updated_at = ? WHERE id = ?`
-	if err := db.Exec(query, user.Username, user.Name, user.Password, user.Groups, user.Updated, user.ID); err != nil {
+	query := `UPDATE ` + sqlite_tb_users + ` SET username = ?, name = ?, password = ?, groups = ?, is_admin = ?, updated_at = ? WHERE id = ?`
+	if err := db.Exec(query, user.Username, user.Name, user.Password, user.Groups, user.IsAdmin, user.Updated, user.ID); err != nil {
 		return UserData{}, fmt.Errorf("SqliteDB.UserUpdate: %w", err)
 	}
 
@@ -314,16 +356,197 @@ func (db *SqliteDB) UserUpdate(user UserData) (UserData, error) {
 
 func (db *SqliteDB) UserDelete(id int) error {
 	if id == 0 {
-		return fmt.Errorf("db.UserUpdate: %w", ErrInvalidID)
+		return fmt.Errorf("SqliteDB.UserUpdate: %w", ErrInvalidID)
 	}
 
 	if _, err := db.UserGet(id); err != nil {
-		return fmt.Errorf("db.UserDelete: %w", err)
+		return fmt.Errorf("SqliteDB.UserDelete: %w", err)
 	}
 
 	query := `DELETE FROM ` + sqlite_tb_users + ` WHERE id = ?`
 	if err := db.Exec(query, id); err != nil {
-		return fmt.Errorf("db.UserDelete: %w", err)
+		return fmt.Errorf("SqliteDB.UserDelete: %w", err)
+	}
+
+	return nil
+}
+
+// ############################################################################################## //
+// ##################################        User Groups        ################################# //
+// ############################################################################################## //
+
+type UserGroupData struct {
+	ID       int
+	Name     string    // Group name.
+	Members  string    // JSON string of user IDs. Empty should be "[]". "[1,5,28,349]"
+	Profiles string    // JSON string of profile IDs. Empty should be "{}". "{profile_name:{method: bool...}".
+	Created  time.Time // Time created.
+	Updated  time.Time // Time last updated.
+}
+
+func UserGroupsMigrate(db *SqliteDB) error {
+	query := `
+CREATE TABLE IF NOT EXISTS ` + sqlite_tb_user_groups + ` (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	name VARCHAR(255) NOT NULL UNIQUE,
+	members TEXT NOT NULL,
+	profiles TEXT NOT NULL,
+	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_user_groups_name ON ` + sqlite_tb_user_groups + ` (name);`
+	if err := db.Exec(query); err != nil {
+		return fmt.Errorf("SqliteDB.UserGroupsMigrate: %w", err)
+	}
+
+	return nil
+}
+
+func (db *SqliteDB) UserGroupIsUnique(name string) error {
+	err := db.IsUnique(sqlite_tb_user_groups, "name = ?", name)
+	if errors.Is(err, ErrRecordExists) {
+		return fmt.Errorf("SqliteDB.UserGroupIsUnique: %w", ErrUserGroupExists)
+	}
+
+	return err
+}
+
+// Create a new user group. Returns the new user group data.
+//
+// Members should be a JSON array of user IDs. An ID of 0 is invalid: `[1,5,28,349]`
+//
+// Profiles should be a JSON object of profile names and permissions: `{"profile_name": {"method": bool, ...}}`
+//
+// Profiles Example: {"Web Servers": {"POST": false, "GET": true, "PUT": false, "DELETE": false}, "DB Servers": {"POST": false, "GET": true, "PUT": true, "DELETE": false}}
+func (db *SqliteDB) UserGroupCreate(name, members, profiles string) (UserGroupData, error) {
+	if name == "" {
+		return UserGroupData{}, ErrInvalidName
+	}
+
+	if members == "" {
+		members = "[]"
+	}
+
+	if profiles == "" {
+		profiles = "{}"
+	}
+
+	query := `INSERT INTO ` + sqlite_tb_user_groups + ` (name, members, profiles) VALUES (?, ?, ?)`
+	if err := db.Exec(query, name, members, profiles); err != nil {
+		if NotUnique(err) {
+			return UserGroupData{}, fmt.Errorf("SqliteDB.UserGroupsCreate: %w", ErrUserGroupExists)
+		}
+
+		return UserGroupData{}, fmt.Errorf("SqliteDB.UserGroupsCreate: %w", err)
+	}
+
+	return db.UserGroupGetByName(name)
+}
+
+func (db *SqliteDB) UserGroupGet(id int) (UserGroupData, error) {
+	query := `SELECT * FROM ` + sqlite_tb_user_groups + ` WHERE id = ?`
+	row := db.QueryRow(query, id)
+
+	var data UserGroupData
+	err := row.Scan(&data.ID, &data.Name, &data.Members, &data.Profiles, &data.Created, &data.Updated)
+	if err != nil {
+		return data, fmt.Errorf("SqliteDB.UserGroupsGetByID: %w", err)
+	}
+
+	return data, nil
+}
+
+func (db *SqliteDB) UserGroupGetByName(name string) (UserGroupData, error) {
+	if name == "" {
+		return UserGroupData{}, fmt.Errorf("SqliteDB.UserGroupsGetByName: %w", ErrInvalidName)
+	}
+
+	query := `SELECT * FROM ` + sqlite_tb_user_groups + ` WHERE name = ?`
+	row := db.QueryRow(query, name)
+
+	var data UserGroupData
+	err := row.Scan(&data.ID, &data.Name, &data.Members, &data.Profiles, &data.Created, &data.Updated)
+	if err != nil {
+		return data, fmt.Errorf("SqliteDB.UserGroupsGet: %w", err)
+	}
+
+	return data, nil
+}
+
+// arrayToQueryParamString uses the array to create a comma separated string like "?, ?, ?".
+func arrayToQueryParamString[T any](arr []T) string {
+	var query string
+	for i := range arr {
+		if i == 0 {
+			query = "(?"
+			continue
+		}
+
+		query += ", ?"
+	}
+
+	return query + ")"
+}
+
+func (db *SqliteDB) UserGroupGetGroups(gids []int) ([]UserGroupData, error) {
+	if len(gids) == 0 {
+		return []UserGroupData{}, nil
+	}
+
+	in := arrayToQueryParamString(gids)
+	query := `SELECT * FROM ` + sqlite_tb_user_groups + ` WHERE id IN ` + in
+
+	g := make([]any, len(gids))
+	for i, v := range gids {
+		g[i] = v
+	}
+
+	rows, err := db.Query(query, g...)
+	if err != nil {
+		return nil, fmt.Errorf("SqliteDB.UserGroupsGetGroups: %w", err)
+	}
+	defer rows.Close()
+
+	var groups []UserGroupData
+	for rows.Next() {
+		var data UserGroupData
+		err := rows.Scan(&data.ID, &data.Name, &data.Members, &data.Profiles, &data.Created, &data.Updated)
+		if err != nil {
+			return nil, fmt.Errorf("SqliteDB.UserGroupsGetGroups: %w", err)
+		}
+
+		groups = append(groups, data)
+	}
+
+	return groups, nil
+}
+
+func (db *SqliteDB) UserGroupUpdate(data UserGroupData) (UserGroupData, error) {
+	if data.ID == 0 {
+		return UserGroupData{}, fmt.Errorf("SqliteDB.UserGroupsUpdate: %w", ErrInvalidID)
+	}
+
+	data.Updated = time.Now()
+	query := `UPDATE ` + sqlite_tb_user_groups + ` SET name = ?, members = ?, profiles = ?, updated_at = ? WHERE id = ?`
+	if err := db.Exec(query, data.Name, data.Members, data.Profiles, data.Updated, data.ID); err != nil {
+		return UserGroupData{}, fmt.Errorf("SqliteDB.UserGroupsUpdate: %w", err)
+	}
+
+	return db.UserGroupGet(data.ID)
+}
+
+func (db *SqliteDB) UserGroupDelete(id int) error {
+	if id == 0 {
+		return fmt.Errorf("SqliteDB.UserGroupsDelete: %w", ErrInvalidID)
+	}
+
+	if _, err := db.UserGroupGet(id); err != nil {
+		return fmt.Errorf("SqliteDB.UserGroupsDelete: %w", err)
+	}
+
+	query := `DELETE FROM ` + sqlite_tb_user_groups + ` WHERE id = ?`
+	if err := db.Exec(query, id); err != nil {
+		return fmt.Errorf("SqliteDB.UserGroupsDelete: %w", err)
 	}
 
 	return nil

@@ -79,7 +79,7 @@ func deleteFile(filename string) {
 	}
 }
 
-func TestSqliteNewSqliteDB(t *testing.T) {
+func TestSqliteDBNewSqliteDB(t *testing.T) {
 	require := require.New(t)
 
 	t.Run("valid", func(t *testing.T) {
@@ -148,7 +148,7 @@ func testGetAll(db *SqliteDB) {
 }
 */
 
-func TestSqliteOpen(t *testing.T) {
+func TestSqliteDBOpen(t *testing.T) {
 	require := require.New(t)
 	SetDBRoot(testDBRoot)
 	var db *SqliteDB
@@ -189,7 +189,7 @@ func TestSqliteOpen(t *testing.T) {
 	})
 }
 
-func TestSqliteClose(t *testing.T) {
+func TestSqliteDBClose(t *testing.T) {
 	require := require.New(t)
 	db := testSqliteCuttleDBSetup(t)
 	defer deleteDB(testCuttleDBName)
@@ -206,7 +206,7 @@ func TestSqliteClose(t *testing.T) {
 	})
 }
 
-func TestSqliteIsUnique(t *testing.T) {
+func TestSqliteDBIsUnique(t *testing.T) {
 	require := require.New(t)
 	db := testSqliteCuttleDBSetup(t)
 	// Setup the test table.
@@ -239,7 +239,7 @@ var (
 		Username: "user1",
 		Name:     "Bob",
 		Password: "102650912390a29378e092378b29834f",
-		Groups:   "{}",
+		Groups:   "[]",
 	}
 
 	testUser2 = UserData{
@@ -250,7 +250,46 @@ var (
 	}
 )
 
-func TestSqliteUserCreate(t *testing.T) {
+func TestSqliteDBUserMigrate(t *testing.T) {
+	require := require.New(t)
+	db := testSqliteAuthDBSetup(t)
+	defer db.Close()
+	defer deleteDB(testAuthDBName)
+
+	createQuery := `CREATE TABLE ` + sqlite_tb_users + ` (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		username VARCHAR(255) NOT NULL UNIQUE,
+		name VARCHAR(32) NOT NULL,
+		password VARCHAR(32) NOT NULL,
+		groups TEXT NOT NULL,
+		is_admin BOOLEAN DEFAULT FALSE,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	)`
+	indexQuery := `CREATE UNIQUE INDEX idx_users_username ON ` + sqlite_tb_users + ` (username)`
+
+	t.Run("table", func(t *testing.T) {
+		err := db.AuthMigrate()
+		require.NoError(err, "AuthMigrate returned an error: %s", err)
+		row := db.QueryRow("SELECT sql FROM sqlite_schema WHERE name = '" + sqlite_tb_users + "'")
+
+		var schema string
+		err = row.Scan(&schema)
+		require.NoError(err, "Scan returned an error: %s", err)
+		require.Equal(createQuery, schema)
+	})
+
+	t.Run("index", func(t *testing.T) {
+		row := db.QueryRow("SELECT sql FROM sqlite_schema WHERE name = 'idx_users_username'")
+
+		var schema string
+		err := row.Scan(&schema)
+		require.NoError(err, "Scan returned an error: %s", err)
+		require.Equal(indexQuery, schema)
+	})
+}
+
+func TestSqliteDBUserCreate(t *testing.T) {
 	require := require.New(t)
 	db := testSqliteAuthDBSetup(t)
 	defer db.Close()
@@ -322,9 +361,15 @@ func TestSqliteUserCreate(t *testing.T) {
 		require.NotZero(got.Created)
 		require.NotZero(got.Updated)
 	})
+
+	t.Run("duplicate", func(t *testing.T) {
+		_, err := db.UserCreate(testUser2.Username, testUser2.Name, testUser2.Password, testUser2.Groups)
+		require.Error(err, "UserCreate returned an error: %s", err)
+		require.ErrorIs(err, ErrUserExists, "UserCreate did not return the expected error")
+	})
 }
 
-func TestSqliteUserIsUnique(t *testing.T) {
+func TestSqliteDBUserIsUnique(t *testing.T) {
 	require := require.New(t)
 	db := testSqliteAuthDBSetup(t)
 	defer db.Close()
@@ -346,11 +391,11 @@ func TestSqliteUserIsUnique(t *testing.T) {
 	t.Run("not unique", func(t *testing.T) {
 		err := db.UserIsUnique(testUser1.Username)
 		require.Error(err, "IsUnique did not return an error")
-		require.ErrorIs(err, ErrRecordExists, "IsUnique did not return the expected error")
+		require.ErrorIs(err, ErrUserExists, "IsUnique did not return the expected error")
 	})
 }
 
-func TestSqliteUserGet(t *testing.T) {
+func TestSqliteDBUserGet(t *testing.T) {
 	require := require.New(t)
 	db := testSqliteAuthDBSetup(t)
 	defer db.Close()
@@ -383,7 +428,7 @@ func TestSqliteUserGet(t *testing.T) {
 	})
 }
 
-func TestSqliteUserGetByUsername(t *testing.T) {
+func TestSqliteDBUserGetByUsername(t *testing.T) {
 	require := require.New(t)
 	db := testSqliteAuthDBSetup(t)
 	defer db.Close()
@@ -421,7 +466,7 @@ func TestSqliteUserGetByUsername(t *testing.T) {
 	})
 }
 
-func TestSqliteUserUpdate(t *testing.T) {
+func TestSqliteDBUserUpdate(t *testing.T) {
 	require := require.New(t)
 	db := testSqliteAuthDBSetup(t)
 	defer db.Close()
@@ -468,7 +513,7 @@ func TestSqliteUserUpdate(t *testing.T) {
 	})
 }
 
-func TestSqliteUserDelete(t *testing.T) {
+func TestSqliteDBUserDelete(t *testing.T) {
 	require := require.New(t)
 	db := testSqliteAuthDBSetup(t)
 	defer db.Close()
@@ -501,6 +546,357 @@ func TestSqliteUserDelete(t *testing.T) {
 		err := db.UserDelete(9999)
 		require.Error(err, "UserDelete did not return an error")
 		require.ErrorIs(err, sql.ErrNoRows, "UserDelete did not return the expected error")
+	})
+}
+
+// ############################################################################################## //
+// ##################################        User Groups        ################################# //
+// ############################################################################################## //
+
+var (
+	testUserGroup1 = UserGroupData{
+		Name:     "Test UserGroup 1",
+		Members:  "[]",
+		Profiles: "{}",
+	}
+
+	testUserGroup2 = UserGroupData{
+		Name:     "Test UserGroup 2",
+		Members:  "[1,5,28,349]",
+		Profiles: `{"Web Servers": {"POST": false, "GET": true, "PUT": false, "DELETE": false}, "DB Servers": {"POST": false, "GET": true, "PUT": true, "DELETE": false}}`,
+	}
+)
+
+func TestSqliteDBUserGroupMigrate(t *testing.T) {
+	require := require.New(t)
+	db := testSqliteAuthDBSetup(t)
+	defer db.Close()
+	defer deleteDB(testAuthDBName)
+
+	createQuery := `CREATE TABLE ` + sqlite_tb_user_groups + ` (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	name VARCHAR(255) NOT NULL UNIQUE,
+	members TEXT NOT NULL,
+	profiles TEXT NOT NULL,
+	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)`
+	indexQuery := `CREATE INDEX idx_user_groups_name ON ` + sqlite_tb_user_groups + ` (name)`
+
+	t.Run("table", func(t *testing.T) {
+		err := UserGroupsMigrate(db)
+		require.NoError(err, "UserGroupMigrate returned an error: %s", err)
+		row := db.QueryRow("SELECT sql FROM sqlite_schema WHERE name = '" + sqlite_tb_user_groups + "'")
+
+		var schema string
+		err = row.Scan(&schema)
+		require.NoError(err, "Scan returned an error: %s", err)
+		require.Equal(createQuery, schema)
+	})
+
+	t.Run("index", func(t *testing.T) {
+		row := db.QueryRow("SELECT sql FROM sqlite_schema WHERE name = 'idx_user_groups_name'")
+
+		var schema string
+		err := row.Scan(&schema)
+		require.NoError(err, "Scan returned an error: %s", err)
+		require.Equal(indexQuery, schema)
+	})
+}
+
+func TestSqliteDBUserGroupCreate(t *testing.T) {
+	require := require.New(t)
+	db := testSqliteAuthDBSetup(t)
+	defer db.Close()
+	defer deleteDB(testAuthDBName)
+
+	// Setup the test tables.
+	err := db.AuthMigrate()
+	require.NoError(err, "AuthMigrate returned an error: %s", err)
+
+	t.Run("empty name", func(t *testing.T) {
+		_, err := db.UserGroupCreate("", testUserGroup1.Members, testUserGroup1.Profiles)
+		require.Error(err, "UserGroupCreate did not return an error")
+		require.ErrorIs(err, ErrInvalidName, "UserGroupCreate did not return the expected error")
+	})
+
+	t.Run("empty members", func(t *testing.T) {
+		got, err := db.UserGroupCreate(testUserGroup1.Name, "", testUserGroup1.Profiles)
+		require.NoError(err, "UserGroupCreate returned an error: %s", err)
+		require.Equal(testUserGroup1.Name, got.Name)
+		require.Equal(testUserGroup1.Members, got.Members)
+		require.Equal(testUserGroup1.Profiles, got.Profiles)
+		require.NotZero(got.Created)
+		require.NotZero(got.Updated)
+
+		err = db.UserGroupDelete(got.ID)
+		require.NoError(err, "UserGroupDelete returned an error: %s", err)
+	})
+
+	t.Run("empty profiles", func(t *testing.T) {
+		got, err := db.UserGroupCreate(testUserGroup1.Name, testUserGroup1.Members, "")
+		require.NoError(err, "UserGroupCreate returned an error: %s", err)
+		require.Equal(testUserGroup1.Name, got.Name)
+		require.Equal(testUserGroup1.Members, got.Members)
+		require.Equal(testUserGroup1.Profiles, got.Profiles)
+		require.NotZero(got.Created)
+		require.NotZero(got.Updated)
+
+		err = db.UserGroupDelete(got.ID)
+		require.NoError(err, "UserGroupDelete returned an error: %s", err)
+	})
+
+	t.Run("all values", func(t *testing.T) {
+		got, err := db.UserGroupCreate(testUserGroup2.Name, testUserGroup2.Members, testUserGroup2.Profiles)
+		require.NoError(err, "UserGroupCreate returned an error: %s", err)
+		require.Equal(testUserGroup2.Name, got.Name)
+		require.Equal(testUserGroup2.Members, got.Members)
+		require.Equal(testUserGroup2.Profiles, got.Profiles)
+		require.NotZero(got.Created)
+		require.NotZero(got.Updated)
+
+		err = db.UserGroupDelete(got.ID)
+		require.NoError(err, "UserGroupDelete returned an error: %s", err)
+	})
+
+	t.Run("duplicate", func(t *testing.T) {
+		got, err := db.UserGroupCreate(testUserGroup2.Name, testUserGroup2.Members, testUserGroup2.Profiles)
+		require.NoError(err, "UserGroupCreate returned an error: %s", err)
+
+		_, err = db.UserGroupCreate(testUserGroup2.Name, testUserGroup2.Members, testUserGroup2.Profiles)
+		require.Error(err, "UserGroupCreate did not return an error")
+		require.ErrorIs(err, ErrUserGroupExists, "UserGroupCreate did not return the expected error")
+
+		err = db.UserGroupDelete(got.ID)
+		require.NoError(err, "UserGroupDelete returned an error: %s", err)
+	})
+}
+
+func TestSqliteDBUserGroupIsUnique(t *testing.T) {
+	require := require.New(t)
+	db := testSqliteAuthDBSetup(t)
+	defer db.Close()
+	defer deleteDB(testAuthDBName)
+
+	// Setup the test tables.
+	err := db.AuthMigrate()
+	require.NoError(err, "AuthMigrate returned an error: %s", err)
+
+	t.Run("unique", func(t *testing.T) {
+		err := db.UserGroupIsUnique(testUserGroup1.Name)
+		require.NoError(err, "IsUnique returned an error: %s", err)
+	})
+
+	// Insert a row.
+	_, err = db.UserGroupCreate(testUserGroup1.Name, testUserGroup1.Members, testUserGroup1.Profiles)
+	require.NoError(err, "Exec returned an error: %s", err)
+
+	t.Run("not unique", func(t *testing.T) {
+		err := db.UserGroupIsUnique(testUserGroup1.Name)
+		require.Error(err, "IsUnique did not return an error")
+		require.ErrorIs(err, ErrUserGroupExists, "IsUnique did not return the expected error")
+	})
+}
+
+func TestSqliteDBUserGroupGet(t *testing.T) {
+	require := require.New(t)
+	db := testSqliteAuthDBSetup(t)
+	defer db.Close()
+	defer deleteDB(testAuthDBName)
+
+	// Setup the test tables.
+	err := db.AuthMigrate()
+	require.NoError(err, "AuthMigrate returned an error: %s", err)
+
+	// Insert a row.
+	want, err := db.UserGroupCreate(testUserGroup1.Name, testUserGroup1.Members, testUserGroup1.Profiles)
+	require.NoError(err, "Exec returned an error: %s", err)
+
+	t.Run("valid", func(t *testing.T) {
+		data, err := db.UserGroupGet(want.ID)
+		require.NoError(err, "UserGroupGet returned an error: %s", err)
+		require.Equal(want.Name, data.Name)
+		require.Equal(want.Members, data.Members)
+		require.Equal(want.Profiles, data.Profiles)
+		require.Equal(want.Created, data.Created)
+		require.Equal(want.Updated, data.Updated)
+	})
+
+	t.Run("invalid", func(t *testing.T) {
+		data, err := db.UserGroupGet(9999)
+		require.Error(err, "UserGroupGet did not return an error")
+		require.ErrorIs(err, sql.ErrNoRows, "UserGroupGet did not return the expected error")
+		require.Equal(UserGroupData{}, data)
+	})
+}
+
+func TestSqliteDBUserGroupGetByName(t *testing.T) {
+	require := require.New(t)
+	db := testSqliteAuthDBSetup(t)
+	defer db.Close()
+	defer deleteDB(testAuthDBName)
+
+	// Setup the test tables.
+	err := db.AuthMigrate()
+	require.NoError(err, "AuthMigrate returned an error: %s", err)
+
+	// Insert a row.
+	_, err = db.UserGroupCreate(testUserGroup1.Name, testUserGroup1.Members, testUserGroup1.Profiles)
+	require.NoError(err, "Exec returned an error: %s", err)
+
+	t.Run("empty name", func(t *testing.T) {
+		data, err := db.UserGroupGetByName("")
+		require.Error(err, "UserGroupGetByName did not return an error")
+		require.ErrorIs(err, ErrInvalidName, "UserGroupGetByName did not return the expected error")
+		require.Equal(UserGroupData{}, data)
+	})
+
+	t.Run("invalid", func(t *testing.T) {
+		data, err := db.UserGroupGetByName("not_a_user_group")
+		require.Error(err, "UserGroupGetByName did not return an error")
+		require.ErrorIs(err, sql.ErrNoRows, "UserGroupGetByName did not return the expected error")
+		require.Equal(UserGroupData{}, data)
+	})
+
+	t.Run("valid", func(t *testing.T) {
+		data, err := db.UserGroupGetByName(testUserGroup1.Name)
+		require.NoError(err, "UserGroupGet returned an error: %s", err)
+		require.Equal(testUserGroup1.Name, data.Name)
+		require.Equal(testUserGroup1.Members, data.Members)
+		require.Equal(testUserGroup1.Profiles, data.Profiles)
+	})
+}
+
+func TestSqliteDBUserGroupGetGroups(t *testing.T) {
+	require := require.New(t)
+	db := testSqliteAuthDBSetup(t)
+	defer db.Close()
+	defer deleteDB(testAuthDBName)
+
+	// Setup the test tables.
+	err := db.AuthMigrate()
+	require.NoError(err, "AuthMigrate returned an error: %s", err)
+
+	t.Run("empty gids", func(t *testing.T) {
+		groups, err := db.UserGroupGetGroups([]int{})
+		require.NoError(err, "UserGroupGetGroups returned an error: %s", err)
+		require.Empty(groups)
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		groups, err := db.UserGroupGetGroups([]int{1})
+		require.NoError(err, "UserGroupGetGroups returned an error: %s", err)
+		require.Empty(groups)
+	})
+
+	// Insert a row.
+	want1, err := db.UserGroupCreate(testUserGroup1.Name, testUserGroup1.Members, testUserGroup1.Profiles)
+	require.NoError(err, "Exec returned an error: %s", err)
+
+	t.Run("one", func(t *testing.T) {
+		data, err := db.UserGroupGetGroups([]int{want1.ID})
+		require.NoError(err, "UserGroupGetGroups returned an error: %s", err)
+		require.Len(data, 1)
+		require.Equal(want1.Name, data[0].Name)
+		require.Equal(want1.Members, data[0].Members)
+		require.Equal(want1.Profiles, data[0].Profiles)
+	})
+
+	// Insert a second row.
+	want2, err := db.UserGroupCreate(testUserGroup2.Name, testUserGroup2.Members, testUserGroup2.Profiles)
+	require.NoError(err, "Exec returned an error: %s", err)
+
+	t.Run("two", func(t *testing.T) {
+		data, err := db.UserGroupGetGroups([]int{want1.ID, want2.ID})
+		require.NoError(err, "UserGroupGetGroups returned an error: %s", err)
+		require.Len(data, 2)
+		require.Equal(want1.Name, data[0].Name)
+		require.Equal(want1.Members, data[0].Members)
+		require.Equal(want1.Profiles, data[0].Profiles)
+		require.Equal(want2.Name, data[1].Name)
+		require.Equal(want2.Members, data[1].Members)
+		require.Equal(want2.Profiles, data[1].Profiles)
+	})
+}
+
+func TestSqliteDBUserGroupUpdate(t *testing.T) {
+	require := require.New(t)
+	db := testSqliteAuthDBSetup(t)
+	defer db.Close()
+	defer deleteDB(testAuthDBName)
+
+	// Setup the test tables.
+	err := db.AuthMigrate()
+	require.NoError(err, "AuthMigrate returned an error: %s", err)
+
+	// Insert a row.
+	data, err := db.UserGroupCreate(testUserGroup1.Name, testUserGroup1.Members, testUserGroup1.Profiles)
+	require.NoError(err, "Exec returned an error: %s", err)
+
+	t.Run("invalid id", func(t *testing.T) {
+		_, err := db.UserGroupUpdate(UserGroupData{ID: 0})
+		require.Error(err, "UserGroupUpdate did not return an error")
+		require.ErrorIs(err, ErrInvalidID, "UserGroupUpdate did not return the expected error")
+	})
+
+	createdAt := data.Created
+	updatedAt := data.Updated
+
+	t.Run("valid", func(t *testing.T) {
+		data.Name = testUserGroup2.Name
+		data.Members = testUserGroup2.Members
+		data.Profiles = testUserGroup2.Profiles
+
+		updated, err := db.UserGroupUpdate(data)
+		require.NoError(err, "UserGroupUpdate returned an error: %s", err)
+		require.Equal(data.Name, updated.Name)
+		require.Equal(data.Members, updated.Members)
+		require.Equal(data.Profiles, updated.Profiles)
+		require.Equal(createdAt, updated.Created)
+		require.Greater(updated.Updated, updatedAt)
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		data.ID = 9999
+		_, err := db.UserGroupUpdate(data)
+		require.Error(err, "UserGroupUpdate did not return an error")
+		require.ErrorIs(err, sql.ErrNoRows, "UserGroupUpdate did not return the expected error")
+	})
+}
+
+func TestSqliteDBUserGroupDelete(t *testing.T) {
+	require := require.New(t)
+	db := testSqliteAuthDBSetup(t)
+	defer db.Close()
+	defer deleteDB(testAuthDBName)
+
+	// Setup the test tables.
+	err := db.AuthMigrate()
+	require.NoError(err, "AuthMigrate returned an error: %s", err)
+
+	// Insert a row.
+	data, err := db.UserGroupCreate(testUserGroup1.Name, testUserGroup1.Members, testUserGroup1.Profiles)
+	require.NoError(err, "Exec returned an error: %s", err)
+
+	t.Run("invalid id", func(t *testing.T) {
+		err := db.UserGroupDelete(0)
+		require.Error(err, "UserGroupDelete did not return an error")
+		require.ErrorIs(err, ErrInvalidID, "UserGroupDelete did not return the expected error")
+	})
+
+	t.Run("valid", func(t *testing.T) {
+		err := db.UserGroupDelete(data.ID)
+		require.NoError(err, "UserGroupDelete returned an error: %s", err)
+
+		_, err = db.UserGroupGet(data.ID)
+		require.Error(err, "UserGroupGet did not return an error")
+		require.ErrorIs(err, sql.ErrNoRows, "UserGroupGet did not return the expected error")
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		err := db.UserGroupDelete(9999)
+		require.Error(err, "UserGroupDelete did not return an error")
+		require.ErrorIs(err, sql.ErrNoRows, "UserGroupDelete did not return the expected error")
 	})
 }
 
