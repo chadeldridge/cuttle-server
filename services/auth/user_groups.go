@@ -2,16 +2,16 @@ package auth
 
 import "encoding/json"
 
-type Group struct {
+type UserGroup struct {
 	ID
 	Name     string
 	Members  []ID
 	Profiles map[string]Permissions
 }
 
-type Groups []Group
+type UserGroups []UserGroup
 
-func (g Groups) Match(id ID) bool {
+func (g UserGroups) Match(id ID) bool {
 	for _, group := range g {
 		if group.ID == id {
 			return true
@@ -21,7 +21,7 @@ func (g Groups) Match(id ID) bool {
 	return false
 }
 
-func (g Groups) MarshalIDs() ([]byte, error) {
+func (g UserGroups) MarshalIDs() ([]byte, error) {
 	var ids []ID
 	for _, group := range g {
 		ids = append(ids, group.ID)
@@ -42,7 +42,7 @@ func UnmarshGroupIDs(data []byte) ([]ID, error) {
 	return ids, err
 }
 
-func (g Group) UnmarshalIDs(data []byte) error {
+func (g UserGroup) UnmarshalIDs(data []byte) error {
 	ids, err := UnmarshGroupIDs(data)
 	if err != nil {
 		return err
