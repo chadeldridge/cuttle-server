@@ -6,8 +6,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var testDBRoot = "/tmp/cuttle/db"
-
 func TestDBSetDBRoot(t *testing.T) {
 	require := require.New(t)
 
@@ -19,8 +17,8 @@ func TestDBSetDBRoot(t *testing.T) {
 	})
 
 	t.Run("valid", func(t *testing.T) {
-		err := SetDBRoot(testDBRoot)
+		err := SetDBRoot(TestDBRoot)
 		require.NoError(err, "SetDBRoot returned an error: %s", err)
-		require.Equal(testDBRoot, db_folder)
+		require.Equal(TestDBRoot, db_folder)
 	})
 }
