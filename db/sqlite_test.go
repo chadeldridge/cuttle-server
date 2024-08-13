@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/chadeldridge/cuttle-server/core"
 	"github.com/stretchr/testify/require"
 )
 
@@ -240,13 +241,13 @@ func TestSqliteDBUserCreate(t *testing.T) {
 	t.Run("empty username", func(t *testing.T) {
 		_, err := db.UserCreate("", testUser1.Name, testUser1.Hash, testUser1.Groups)
 		require.Error(err, "UserCreate did not return an error")
-		require.ErrorIs(err, ErrInvalidUsername, "UserCreate returned an unexpected error")
+		require.ErrorIs(err, core.ErrParamEmpty, "UserCreate returned an unexpected error")
 	})
 
 	t.Run("empty name", func(t *testing.T) {
 		_, err := db.UserCreate(testUser1.Username, "", testUser1.Hash, testUser1.Groups)
 		require.Error(err, "UserCreate did not return an error")
-		require.ErrorIs(err, ErrInvalidName, "UserCreate returned an unexpected error")
+		require.ErrorIs(err, core.ErrParamEmpty, "UserCreate returned an unexpected error")
 	})
 
 	t.Run("empty pwHash", func(t *testing.T) {
@@ -383,7 +384,7 @@ func TestSqliteDBUserGetByUsername(t *testing.T) {
 	t.Run("empty username", func(t *testing.T) {
 		data, err := db.UserGetByUsername("")
 		require.Error(err, "UserGetByUsername did not return an error")
-		require.ErrorIs(err, ErrInvalidUsername, "UserGetByUsername did not return the expected error")
+		require.ErrorIs(err, core.ErrParamEmpty, "UserGetByUsername did not return the expected error")
 		require.Equal(UserData{}, data)
 	})
 
@@ -557,7 +558,7 @@ func TestSqliteDBUserGroupCreate(t *testing.T) {
 	t.Run("empty name", func(t *testing.T) {
 		_, err := db.UserGroupCreate("", testUserGroup1.Members, testUserGroup1.Profiles)
 		require.Error(err, "UserGroupCreate did not return an error")
-		require.ErrorIs(err, ErrInvalidName, "UserGroupCreate did not return the expected error")
+		require.ErrorIs(err, core.ErrParamEmpty, "UserGroupCreate did not return the expected error")
 	})
 
 	t.Run("empty members", func(t *testing.T) {
@@ -687,7 +688,7 @@ func TestSqliteDBUserGroupGetByName(t *testing.T) {
 	t.Run("empty name", func(t *testing.T) {
 		data, err := db.UserGroupGetByName("")
 		require.Error(err, "UserGroupGetByName did not return an error")
-		require.ErrorIs(err, ErrInvalidName, "UserGroupGetByName did not return the expected error")
+		require.ErrorIs(err, core.ErrParamEmpty, "UserGroupGetByName did not return the expected error")
 		require.Equal(UserGroupData{}, data)
 	})
 

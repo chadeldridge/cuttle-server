@@ -8,8 +8,6 @@ var (
 	ErrRecordExists = fmt.Errorf("record exists")
 	// Invalid parameters
 	ErrInvalidID         = fmt.Errorf("invalid ID")
-	ErrInvalidUsername   = fmt.Errorf("invalid username")
-	ErrInvalidName       = fmt.Errorf("invalid name")
 	ErrInvalidAuthType   = fmt.Errorf("invalid auth type")
 	ErrInvalidPassphrase = fmt.Errorf("invalid passphrase")
 	// Users

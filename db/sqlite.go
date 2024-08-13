@@ -274,6 +274,10 @@ func (db *SqliteDB) UsersMigrate() error {
 // UserIsUnique checks if the username is unique in the database. If the username is not unique, it
 // returns an ErrUserExists error.
 func (db *SqliteDB) UserIsUnique(username string) error {
+	if username == "" {
+		return fmt.Errorf("SqliteDB.UserIsUnique: username - %w", core.ErrParamEmpty)
+	}
+
 	err := db.IsUnique(sqlite_tb_users, "username = ?", username)
 	if errors.Is(err, ErrRecordExists) {
 		return fmt.Errorf("SqliteDB.UserIsUnique: %w", ErrUserExists)
@@ -286,11 +290,11 @@ func (db *SqliteDB) UserIsUnique(username string) error {
 // never be provided in plain text. UserCreate will check for hash formatting.
 func (db *SqliteDB) UserCreate(username, name, pwHash, groups string) (UserData, error) {
 	if username == "" {
-		return UserData{}, fmt.Errorf("SqliteDB.UserCreate: %w", ErrInvalidUsername)
+		return UserData{}, fmt.Errorf("SqliteDB.UserCreate: username - %w", core.ErrParamEmpty)
 	}
 
 	if name == "" {
-		return UserData{}, fmt.Errorf("SqliteDB.UserCreate: %w", ErrInvalidName)
+		return UserData{}, fmt.Errorf("SqliteDB.UserCreate: name - %w", core.ErrParamEmpty)
 	}
 
 	// Password hash should be a 120 byte hex string.
@@ -349,7 +353,7 @@ func (db *SqliteDB) UserGet(id int64) (UserData, error) {
 // UserGetByUsername retrieves a user from the database by username.
 func (db *SqliteDB) UserGetByUsername(username string) (UserData, error) {
 	if username == "" {
-		return UserData{}, fmt.Errorf("SqliteDB.UserGetByUsername: %w", ErrInvalidUsername)
+		return UserData{}, fmt.Errorf("SqliteDB.UserGetByUsername: username - %w", core.ErrParamEmpty)
 	}
 
 	query := `SELECT * FROM ` + sqlite_tb_users + ` WHERE username = ?`
@@ -462,7 +466,7 @@ func (db *SqliteDB) UserGroupIsUnique(name string) error {
 // Profiles Example: {124: {"POST": false, "GET": true, "PUT": false, "DELETE": false}, 5462: {"POST": false, "GET": true, "PUT": true, "DELETE": false}}
 func (db *SqliteDB) UserGroupCreate(name, members, profiles string) (UserGroupData, error) {
 	if name == "" {
-		return UserGroupData{}, ErrInvalidName
+		return UserGroupData{}, fmt.Errorf("SqliteDB.UserGroupsCreate: name - %w", core.ErrParamEmpty)
 	}
 
 	if members == "" {
@@ -511,7 +515,7 @@ func (db *SqliteDB) UserGroupGet(id int64) (UserGroupData, error) {
 // UserGroupGetByName retrieves a user group from the database by name.
 func (db *SqliteDB) UserGroupGetByName(name string) (UserGroupData, error) {
 	if name == "" {
-		return UserGroupData{}, fmt.Errorf("SqliteDB.UserGroupsGetByName: %w", ErrInvalidName)
+		return UserGroupData{}, fmt.Errorf("SqliteDB.UserGroupsGetByName: name - %w", core.ErrParamEmpty)
 	}
 
 	query := `SELECT * FROM ` + sqlite_tb_user_groups + ` WHERE name = ?`
