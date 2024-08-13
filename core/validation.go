@@ -22,15 +22,12 @@ func IsHex(s string) bool {
 
 func ValidatePasswordHash(hash string) error {
 	if hash == "" {
-		return fmt.Errorf("core.ValidatePasswordHash: hash was empty")
+		return fmt.Errorf("core.ValidatePasswordHash: hash - %w", ErrParamEmpty)
 	}
 
-	if len(hash) < 32 {
-		return fmt.Errorf("core.ValidatePasswordHash: incorrect hash length: %d", len(hash))
-	}
-
-	if !IsHex(hash) {
-		return fmt.Errorf("core.ValidatePasswordHash: hash is not a hex string")
+	match := regexp.MustCompile(`^\$2[ayb]\$[0-9]{2}\$[0-9a-zA-Z./]{53}$`)
+	if ok := match.MatchString(hash); !ok {
+		return fmt.Errorf("core.ValidatePasswordHash: hash - %w", ErrInvalidFormat)
 	}
 
 	return nil
