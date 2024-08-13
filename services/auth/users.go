@@ -2,6 +2,7 @@ package auth
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/chadeldridge/cuttle-server/db"
 )
@@ -13,6 +14,9 @@ type User struct {
 	Username string
 	Name     string
 	Groups   []ID
+	IsAdmin  bool
+	Created  time.Time
+	Updated  time.Time
 }
 
 func Signup(username, name, password string, authDB db.AuthDB) (db.UserData, error) {
