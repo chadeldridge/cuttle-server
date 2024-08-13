@@ -124,7 +124,7 @@ func handleSignupPost(logger *core.Logger, authDB db.AuthDB, w http.ResponseWrit
 	}
 
 	// TODO: Do something with the returned user data
-	_, err := auth.Signup(u, n, p, authDB)
+	_, err := auth.Signup(authDB, u, n, p)
 	if err != nil {
 		handleError(logger, w, r, http.StatusInternalServerError, "internal server error", nil)
 		return
