@@ -106,7 +106,7 @@ func testDBMigrater(db *SqliteDB) error {
 		name VARCHAR(32) NOT NULL
 	)`
 
-	if err := db.Exec(query); err != nil {
+	if _, err := db.Exec(query); err != nil {
 		return fmt.Errorf("testDBMigrater: %w", err)
 	}
 
@@ -220,7 +220,7 @@ func TestSqliteDBIsUnique(t *testing.T) {
 	})
 
 	// Insert a row.
-	err := db.Exec("INSERT INTO test (name) VALUES ('testRecord_1')")
+	_, err := db.Exec("INSERT INTO test (name) VALUES ('testRecord_1')")
 	require.NoError(err, "Exec returned an error: %s", err)
 
 	t.Run("not unique", func(t *testing.T) {
@@ -238,14 +238,14 @@ var (
 	testUser1 = UserData{
 		Username: "user1",
 		Name:     "Bob",
-		Password: "102650912390a29378e092378b29834f",
+		Hash:     "102650912390a29378e092378b29834f",
 		Groups:   "[]",
 	}
 
 	testUser2 = UserData{
 		Username: "user2",
 		Name:     "Jan",
-		Password: "102650912390a29378e092378b29834f",
+		Hash:     "102650912390a29378e092378b29834f",
 		Groups:   `[1, 45]`,
 	}
 )
@@ -300,13 +300,13 @@ func TestSqliteDBUserCreate(t *testing.T) {
 	require.NoError(err, "AuthMigrate returned an error: %s", err)
 
 	t.Run("empty username", func(t *testing.T) {
-		_, err := db.UserCreate("", testUser1.Name, testUser1.Password, testUser1.Groups)
+		_, err := db.UserCreate("", testUser1.Name, testUser1.Hash, testUser1.Groups)
 		require.Error(err, "UserCreate did not return an error")
 		require.ErrorIs(err, ErrInvalidUsername, "UserCreate returned an unexpected error")
 	})
 
 	t.Run("empty name", func(t *testing.T) {
-		_, err := db.UserCreate(testUser1.Username, "", testUser1.Password, testUser1.Groups)
+		_, err := db.UserCreate(testUser1.Username, "", testUser1.Hash, testUser1.Groups)
 		require.Error(err, "UserCreate did not return an error")
 		require.ErrorIs(err, ErrInvalidName, "UserCreate returned an unexpected error")
 	})
@@ -347,23 +347,23 @@ func TestSqliteDBUserCreate(t *testing.T) {
 	})
 
 	t.Run("empty groups", func(t *testing.T) {
-		_, err := db.UserCreate(testUser1.Username, testUser1.Name, testUser1.Password, "")
+		_, err := db.UserCreate(testUser1.Username, testUser1.Name, testUser1.Hash, "")
 		require.NoError(err, "UserCreate returned an error: %s", err)
 	})
 
 	t.Run("valid", func(t *testing.T) {
-		got, err := db.UserCreate(testUser2.Username, testUser2.Name, testUser2.Password, testUser2.Groups)
+		got, err := db.UserCreate(testUser2.Username, testUser2.Name, testUser2.Hash, testUser2.Groups)
 		require.NoError(err, "UserCreate returned an error: %s", err)
 		require.Equal(testUser2.Username, got.Username)
 		require.Equal(testUser2.Name, got.Name)
-		require.Equal(testUser2.Password, got.Password)
+		require.Equal(testUser2.Hash, got.Hash)
 		require.Equal(testUser2.Groups, got.Groups)
 		require.NotZero(got.Created)
 		require.NotZero(got.Updated)
 	})
 
 	t.Run("duplicate", func(t *testing.T) {
-		_, err := db.UserCreate(testUser2.Username, testUser2.Name, testUser2.Password, testUser2.Groups)
+		_, err := db.UserCreate(testUser2.Username, testUser2.Name, testUser2.Hash, testUser2.Groups)
 		require.Error(err, "UserCreate returned an error: %s", err)
 		require.ErrorIs(err, ErrUserExists, "UserCreate did not return the expected error")
 	})
@@ -385,7 +385,7 @@ func TestSqliteDBUserIsUnique(t *testing.T) {
 	})
 
 	// Insert a row.
-	_, err = db.UserCreate(testUser1.Username, testUser1.Name, testUser1.Password, testUser1.Groups)
+	_, err = db.UserCreate(testUser1.Username, testUser1.Name, testUser1.Hash, testUser1.Groups)
 	require.NoError(err, "Exec returned an error: %s", err)
 
 	t.Run("not unique", func(t *testing.T) {
@@ -406,7 +406,7 @@ func TestSqliteDBUserGet(t *testing.T) {
 	require.NoError(err, "AuthMigrate returned an error: %s", err)
 
 	// Insert a row.
-	want, err := db.UserCreate(testUser1.Username, testUser1.Name, testUser1.Password, testUser1.Groups)
+	want, err := db.UserCreate(testUser1.Username, testUser1.Name, testUser1.Hash, testUser1.Groups)
 	require.NoError(err, "Exec returned an error: %s", err)
 
 	t.Run("valid", func(t *testing.T) {
@@ -414,7 +414,7 @@ func TestSqliteDBUserGet(t *testing.T) {
 		require.NoError(err, "UserGet returned an error: %s", err)
 		require.Equal(want.Username, data.Username)
 		require.Equal(want.Name, data.Name)
-		require.Equal(want.Password, data.Password)
+		require.Equal(want.Hash, data.Hash)
 		require.Equal(want.Groups, data.Groups)
 		require.Equal(want.Created, data.Created)
 		require.Equal(want.Updated, data.Updated)
@@ -439,7 +439,7 @@ func TestSqliteDBUserGetByUsername(t *testing.T) {
 	require.NoError(err, "AuthMigrate returned an error: %s", err)
 
 	// Insert a row.
-	_, err = db.UserCreate(testUser1.Username, testUser1.Name, testUser1.Password, testUser1.Groups)
+	_, err = db.UserCreate(testUser1.Username, testUser1.Name, testUser1.Hash, testUser1.Groups)
 	require.NoError(err, "Exec returned an error: %s", err)
 
 	t.Run("empty username", func(t *testing.T) {
@@ -461,7 +461,7 @@ func TestSqliteDBUserGetByUsername(t *testing.T) {
 		require.NoError(err, "UserGet returned an error: %s", err)
 		require.Equal(testUser1.Username, data.Username)
 		require.Equal(testUser1.Name, data.Name)
-		require.Equal(testUser1.Password, data.Password)
+		require.Equal(testUser1.Hash, data.Hash)
 		require.Equal(testUser1.Groups, data.Groups)
 	})
 }
@@ -477,7 +477,7 @@ func TestSqliteDBUserUpdate(t *testing.T) {
 	require.NoError(err, "AuthMigrate returned an error: %s", err)
 
 	// Insert a row.
-	data, err := db.UserCreate(testUser1.Username, testUser1.Name, testUser1.Password, testUser1.Groups)
+	data, err := db.UserCreate(testUser1.Username, testUser1.Name, testUser1.Hash, testUser1.Groups)
 	require.NoError(err, "Exec returned an error: %s", err)
 
 	t.Run("invalid ID", func(t *testing.T) {
@@ -492,14 +492,14 @@ func TestSqliteDBUserUpdate(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		data.Username = testUser2.Username
 		data.Name = testUser2.Name
-		data.Password = testUser2.Password
+		data.Hash = testUser2.Hash
 		data.Groups = testUser2.Groups
 
 		updated, err := db.UserUpdate(data)
 		require.NoError(err, "UserUpdate returned an error: %s", err)
 		require.Equal(data.Username, updated.Username)
 		require.Equal(data.Name, updated.Name)
-		require.Equal(data.Password, updated.Password)
+		require.Equal(data.Hash, updated.Hash)
 		require.Equal(data.Groups, updated.Groups)
 		require.Equal(createdAt, updated.Created)
 		require.Greater(updated.Updated, updatedAt)
@@ -524,7 +524,7 @@ func TestSqliteDBUserDelete(t *testing.T) {
 	require.NoError(err, "AuthMigrate returned an error: %s", err)
 
 	// Insert a row.
-	data, err := db.UserCreate(testUser1.Username, testUser1.Name, testUser1.Password, testUser1.Groups)
+	data, err := db.UserCreate(testUser1.Username, testUser1.Name, testUser1.Hash, testUser1.Groups)
 	require.NoError(err, "Exec returned an error: %s", err)
 
 	t.Run("invalid ID", func(t *testing.T) {
@@ -778,13 +778,13 @@ func TestSqliteDBUserGroupGetGroups(t *testing.T) {
 	require.NoError(err, "AuthMigrate returned an error: %s", err)
 
 	t.Run("empty gids", func(t *testing.T) {
-		groups, err := db.UserGroupGetGroups([]int{})
+		groups, err := db.UserGroupGetGroups([]int64{})
 		require.NoError(err, "UserGroupGetGroups returned an error: %s", err)
 		require.Empty(groups)
 	})
 
 	t.Run("not found", func(t *testing.T) {
-		groups, err := db.UserGroupGetGroups([]int{1})
+		groups, err := db.UserGroupGetGroups([]int64{1})
 		require.NoError(err, "UserGroupGetGroups returned an error: %s", err)
 		require.Empty(groups)
 	})
@@ -794,7 +794,7 @@ func TestSqliteDBUserGroupGetGroups(t *testing.T) {
 	require.NoError(err, "Exec returned an error: %s", err)
 
 	t.Run("one", func(t *testing.T) {
-		data, err := db.UserGroupGetGroups([]int{want1.ID})
+		data, err := db.UserGroupGetGroups([]int64{want1.ID})
 		require.NoError(err, "UserGroupGetGroups returned an error: %s", err)
 		require.Len(data, 1)
 		require.Equal(want1.Name, data[0].Name)
@@ -807,7 +807,7 @@ func TestSqliteDBUserGroupGetGroups(t *testing.T) {
 	require.NoError(err, "Exec returned an error: %s", err)
 
 	t.Run("two", func(t *testing.T) {
-		data, err := db.UserGroupGetGroups([]int{want1.ID, want2.ID})
+		data, err := db.UserGroupGetGroups([]int64{want1.ID, want2.ID})
 		require.NoError(err, "UserGroupGetGroups returned an error: %s", err)
 		require.Len(data, 2)
 		require.Equal(want1.Name, data[0].Name)
