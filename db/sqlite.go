@@ -97,10 +97,13 @@ func (db *SqliteDB) IsUnique(table string, where string, args ...any) error {
 	}
 
 	query := fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE %s;", table, where)
-	row := db.QueryRowContext(db.ctx, query, args...)
+	row, err := db.QueryRow(query, args...)
+	if err != nil {
+		return fmt.Errorf("SqliteDB.IsUnique: %s", err)
+	}
 
 	var count int
-	err := row.Scan(&count)
+	err = row.Scan(&count)
 	if err != nil {
 		return fmt.Errorf("SqliteDB.IsUnique: %s", err)
 	}
@@ -112,8 +115,8 @@ func (db *SqliteDB) IsUnique(table string, where string, args ...any) error {
 	return nil
 }
 
-// ErrorIsNotUnique checks if the error is due to a unique constraint violation.
-func ErrorIsNotUnique(err error) bool {
+// IsErrNotUnique checks if the error is due to a unique constraint violation.
+func IsErrNotUnique(err error) bool {
 	return strings.Contains(err.Error(), "UNIQUE constraint failed:")
 }
 
@@ -125,6 +128,30 @@ func (db *SqliteDB) Close() error {
 
 	db.cancel()
 	return db.DB.Close()
+}
+
+func (db *SqliteDB) QueryRow(query string, args ...any) (*sql.Row, error) {
+	if db.DB == nil {
+		return &sql.Row{}, fmt.Errorf("SqliteDB.QueryRow: Sqlite.DB.DB is nil")
+	}
+
+	return db.DB.QueryRowContext(db.ctx, query, args...), nil
+}
+
+func (db *SqliteDB) Query(query string, args ...any) (*sql.Rows, error) {
+	if db.DB == nil {
+		return &sql.Rows{}, fmt.Errorf("SqliteDB.Query: Sqlite.DB.DB is nil")
+	}
+
+	return db.DB.QueryContext(db.ctx, query, args...)
+}
+
+func (db *SqliteDB) Exec(query string, args ...any) (sql.Result, error) {
+	if db.DB == nil {
+		return nil, fmt.Errorf("SqliteDB.Exec: Sqlite.DB.DB is nil")
+	}
+
+	return db.DB.ExecContext(db.ctx, query, args...)
 }
 
 /*
@@ -237,7 +264,7 @@ func (db *SqliteDB) UsersMigrate() error {
 	);
 	CREATE INDEX IF NOT EXISTS idx_users_username ON ` + sqlite_tb_users + ` (username);`
 
-	if _, err := db.ExecContext(db.ctx, query); err != nil {
+	if _, err := db.Exec(query); err != nil {
 		return fmt.Errorf("SqliteDB.UserMigrate: %w", err)
 	}
 
@@ -276,9 +303,9 @@ func (db *SqliteDB) UserCreate(username, name, pwHash, groups string) (UserData,
 	}
 
 	query := `INSERT INTO ` + sqlite_tb_users + ` (username, name, hash, groups) VALUES (?, ?, ?, ?)`
-	r, err := db.ExecContext(db.ctx, query, username, name, pwHash, groups)
+	r, err := db.Exec(query, username, name, pwHash, groups)
 	if err != nil {
-		if ErrorIsNotUnique(err) {
+		if IsErrNotUnique(err) {
 			return UserData{}, fmt.Errorf("SqliteDB.UserCreate: %w", ErrUserExists)
 		}
 
@@ -296,10 +323,13 @@ func (db *SqliteDB) UserCreate(username, name, pwHash, groups string) (UserData,
 // UserGet retrieves a user from the database by ID.
 func (db *SqliteDB) UserGet(id int64) (UserData, error) {
 	query := `SELECT * FROM ` + sqlite_tb_users + ` WHERE id = ?`
-	row := db.QueryRowContext(db.ctx, query, id)
+	row, err := db.QueryRow(query, id)
+	if err != nil {
+		return UserData{}, fmt.Errorf("SqliteDB.UserGet: %w", err)
+	}
 
 	var data UserData
-	err := row.Scan(
+	err = row.Scan(
 		&data.ID,
 		&data.Username,
 		&data.Name,
@@ -323,10 +353,13 @@ func (db *SqliteDB) UserGetByUsername(username string) (UserData, error) {
 	}
 
 	query := `SELECT * FROM ` + sqlite_tb_users + ` WHERE username = ?`
-	row := db.QueryRowContext(db.ctx, query, username)
+	row, err := db.QueryRow(query, username)
+	if err != nil {
+		return UserData{}, fmt.Errorf("SqliteDB.UserGetByUsername: %w", err)
+	}
 
 	var data UserData
-	err := row.Scan(
+	err = row.Scan(
 		&data.ID,
 		&data.Username,
 		&data.Name,
@@ -351,7 +384,7 @@ func (db *SqliteDB) UserUpdate(user UserData) (UserData, error) {
 
 	user.Updated = time.Now()
 	query := `UPDATE ` + sqlite_tb_users + ` SET username = ?, name = ?, hash = ?, groups = ?, is_admin = ?, updated_at = ? WHERE id = ?`
-	if _, err := db.ExecContext(db.ctx, query, user.Username, user.Name, user.Hash, user.Groups, user.IsAdmin, user.Updated, user.ID); err != nil {
+	if _, err := db.Exec(query, user.Username, user.Name, user.Hash, user.Groups, user.IsAdmin, user.Updated, user.ID); err != nil {
 		return UserData{}, fmt.Errorf("SqliteDB.UserUpdate: %w", err)
 	}
 
@@ -369,7 +402,7 @@ func (db *SqliteDB) UserDelete(id int64) error {
 	}
 
 	query := `DELETE FROM ` + sqlite_tb_users + ` WHERE id = ?`
-	if _, err := db.ExecContext(db.ctx, query, id); err != nil {
+	if _, err := db.Exec(query, id); err != nil {
 		return fmt.Errorf("SqliteDB.UserDelete: %w", err)
 	}
 
@@ -402,7 +435,7 @@ func UserGroupsMigrate(db *SqliteDB) error {
 		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	);
 	CREATE INDEX IF NOT EXISTS idx_user_groups_name ON ` + sqlite_tb_user_groups + ` (name);`
-	if _, err := db.ExecContext(db.ctx, query); err != nil {
+	if _, err := db.Exec(query); err != nil {
 		return fmt.Errorf("SqliteDB.UserGroupsMigrate: %w", err)
 	}
 
@@ -441,9 +474,9 @@ func (db *SqliteDB) UserGroupCreate(name, members, profiles string) (UserGroupDa
 	}
 
 	query := `INSERT INTO ` + sqlite_tb_user_groups + ` (name, members, profiles) VALUES (?, ?, ?)`
-	r, err := db.ExecContext(db.ctx, query, name, members, profiles)
+	r, err := db.Exec(query, name, members, profiles)
 	if err != nil {
-		if ErrorIsNotUnique(err) {
+		if IsErrNotUnique(err) {
 			return UserGroupData{}, fmt.Errorf("SqliteDB.UserGroupsCreate: %w", ErrUserGroupExists)
 		}
 
@@ -461,10 +494,13 @@ func (db *SqliteDB) UserGroupCreate(name, members, profiles string) (UserGroupDa
 // UserGroupGet retrieves a user group from the database by ID.
 func (db *SqliteDB) UserGroupGet(id int64) (UserGroupData, error) {
 	query := `SELECT * FROM ` + sqlite_tb_user_groups + ` WHERE id = ?`
-	row := db.QueryRowContext(db.ctx, query, id)
+	row, err := db.QueryRow(query, id)
+	if err != nil {
+		return UserGroupData{}, fmt.Errorf("SqliteDB.UserGroupsGet: %w", err)
+	}
 
 	var data UserGroupData
-	err := row.Scan(&data.ID, &data.Name, &data.Members, &data.Profiles, &data.Created, &data.Updated)
+	err = row.Scan(&data.ID, &data.Name, &data.Members, &data.Profiles, &data.Created, &data.Updated)
 	if err != nil {
 		return data, fmt.Errorf("SqliteDB.UserGroupsGetByID: %w", err)
 	}
@@ -479,10 +515,13 @@ func (db *SqliteDB) UserGroupGetByName(name string) (UserGroupData, error) {
 	}
 
 	query := `SELECT * FROM ` + sqlite_tb_user_groups + ` WHERE name = ?`
-	row := db.QueryRowContext(db.ctx, query, name)
+	row, err := db.QueryRow(query, name)
+	if err != nil {
+		return UserGroupData{}, fmt.Errorf("SqliteDB.UserGroupsGetByName: %w", err)
+	}
 
 	var data UserGroupData
-	err := row.Scan(&data.ID, &data.Name, &data.Members, &data.Profiles, &data.Created, &data.Updated)
+	err = row.Scan(&data.ID, &data.Name, &data.Members, &data.Profiles, &data.Created, &data.Updated)
 	if err != nil {
 		return data, fmt.Errorf("SqliteDB.UserGroupsGet: %w", err)
 	}
@@ -519,7 +558,7 @@ func (db *SqliteDB) UserGroupGetGroups(gids []int64) ([]UserGroupData, error) {
 		g[i] = v
 	}
 
-	rows, err := db.QueryContext(db.ctx, query, g...)
+	rows, err := db.Query(query, g...)
 	if err != nil {
 		return nil, fmt.Errorf("SqliteDB.UserGroupsGetGroups: %w", err)
 	}
@@ -547,7 +586,7 @@ func (db *SqliteDB) UserGroupUpdate(data UserGroupData) (UserGroupData, error) {
 
 	data.Updated = time.Now()
 	query := `UPDATE ` + sqlite_tb_user_groups + ` SET name = ?, members = ?, profiles = ?, updated_at = ? WHERE id = ?`
-	if _, err := db.ExecContext(db.ctx, query, data.Name, data.Members, data.Profiles, data.Updated, data.ID); err != nil {
+	if _, err := db.Exec(query, data.Name, data.Members, data.Profiles, data.Updated, data.ID); err != nil {
 		return UserGroupData{}, fmt.Errorf("SqliteDB.UserGroupsUpdate: %w", err)
 	}
 
@@ -565,7 +604,7 @@ func (db *SqliteDB) UserGroupDelete(id int64) error {
 	}
 
 	query := `DELETE FROM ` + sqlite_tb_user_groups + ` WHERE id = ?`
-	if _, err := db.ExecContext(db.ctx, query, id); err != nil {
+	if _, err := db.Exec(query, id); err != nil {
 		return fmt.Errorf("SqliteDB.UserGroupsDelete: %w", err)
 	}
 

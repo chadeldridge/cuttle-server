@@ -4,16 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
-)
-
-const (
-	testCuttleDBName = "test_cuttle.db"
-	testAuthDBName   = "test_auth.db"
 )
 
 /*
@@ -22,71 +15,14 @@ func testDBSetup(t *testing.T) DB {
 }
 */
 
-func testSqliteCuttleDBSetup(t *testing.T) *SqliteDB {
-	require := require.New(t)
-	SetDBRoot(testDBRoot)
-
-	db, err := NewSqliteDB(testCuttleDBName)
-	require.NoError(err, "NewSqliteDB returned an error: %s", err)
-
-	err = db.Open()
-	require.NoError(err, "testDBSetup returned an error: %s", err)
-	return db
-}
-
-func testSqliteAuthDBSetup(t *testing.T) *SqliteDB {
-	require := require.New(t)
-	SetDBRoot(testDBRoot)
-
-	db, err := NewSqliteDB(testAuthDBName)
-	require.NoError(err, "NewSqliteDB returned an error: %s", err)
-
-	err = db.Open()
-	require.NoError(err, "testDBSetup returned an error: %s", err)
-	return db
-}
-
-/*
-func deleteDBDir() {
-	if db_folder == "" || db_folder == "/" {
-		log.Printf("deleteDBDir: db_folder is dangerous: %s", db_folder)
-		return
-	}
-
-	err := os.RemoveAll(db_folder)
-	if err != nil && !os.IsNotExist(err) {
-		log.Fatalf("deleteDBDir: %s", err)
-	}
-}
-*/
-
-func deleteDB(filename string) {
-	if filename == "" || filename == "/" {
-		log.Printf("deleteDBDir: db_folder is dangerous: %s", db_folder)
-		return
-	}
-
-	deleteFile(filename)
-	deleteFile(filename + "-shm")
-	deleteFile(filename + "-wal")
-}
-
-func deleteFile(filename string) {
-	err := os.Remove(db_folder + "/" + filename)
-	if err != nil && !os.IsNotExist(err) {
-		log.Println(err)
-		log.Fatalf("deleteDB: %s", err)
-	}
-}
-
 func TestSqliteDBNewSqliteDB(t *testing.T) {
 	require := require.New(t)
 
 	t.Run("valid", func(t *testing.T) {
-		db, err := NewSqliteDB(testCuttleDBName)
+		db, err := NewSqliteDB(TestCuttleDBName)
 		require.NoError(err, "NewSqliteDB returned an error: %s", err)
 		require.NotNil(db)
-		require.Equal(testCuttleDBName, db.Name)
+		require.Equal(TestCuttleDBName, db.Name)
 		require.NotNil(db.ctx)
 		require.NotNil(db.cancel)
 	})
@@ -150,7 +86,7 @@ func testGetAll(db *SqliteDB) {
 
 func TestSqliteDBOpen(t *testing.T) {
 	require := require.New(t)
-	SetDBRoot(testDBRoot)
+	SetDBRoot(TestDBRoot)
 	var db *SqliteDB
 
 	t.Run("empty db.Name", func(t *testing.T) {
@@ -177,7 +113,7 @@ func TestSqliteDBOpen(t *testing.T) {
 	})
 
 	t.Run("valid", func(t *testing.T) {
-		db, err := NewSqliteDB(testCuttleDBName)
+		db, err := NewSqliteDB(TestCuttleDBName)
 		require.NoError(err, "NewSqliteDB returned an error: %s", err)
 
 		fmt.Printf("db: %s\n", db_folder+"/"+db.Name)
@@ -185,14 +121,14 @@ func TestSqliteDBOpen(t *testing.T) {
 		require.NoError(err, "Open returned an error: %s", err)
 		require.FileExists(db_folder+"/"+db.Name, "Open did not create the database file")
 		db.DB.Close()
-		deleteDB(testCuttleDBName)
+		DeleteDB(TestCuttleDBName)
 	})
 }
 
 func TestSqliteDBClose(t *testing.T) {
 	require := require.New(t)
-	db := testSqliteCuttleDBSetup(t)
-	defer deleteDB(testCuttleDBName)
+	db := TestSqliteCuttleDBSetup(t)
+	defer DeleteDB(TestCuttleDBName)
 
 	t.Run("valid", func(t *testing.T) {
 		err := db.Close()
@@ -208,11 +144,11 @@ func TestSqliteDBClose(t *testing.T) {
 
 func TestSqliteDBIsUnique(t *testing.T) {
 	require := require.New(t)
-	db := testSqliteCuttleDBSetup(t)
+	db := TestSqliteCuttleDBSetup(t)
 	// Setup the test table.
 	testDBMigrater(db)
 	defer db.Close()
-	defer deleteDB(testCuttleDBName)
+	defer DeleteDB(TestCuttleDBName)
 
 	t.Run("unique", func(t *testing.T) {
 		err := db.IsUnique("test", "name = ?", "testRecord_1")
@@ -252,9 +188,9 @@ var (
 
 func TestSqliteDBUserMigrate(t *testing.T) {
 	require := require.New(t)
-	db := testSqliteAuthDBSetup(t)
+	db := TestSqliteAuthDBSetup(t)
 	defer db.Close()
-	defer deleteDB(testAuthDBName)
+	defer DeleteDB(TestAuthDBName)
 
 	createQuery := `CREATE TABLE ` + sqlite_tb_users + ` (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -271,7 +207,8 @@ func TestSqliteDBUserMigrate(t *testing.T) {
 	t.Run("table", func(t *testing.T) {
 		err := db.AuthMigrate()
 		require.NoError(err, "AuthMigrate returned an error: %s", err)
-		row := db.QueryRow("SELECT sql FROM sqlite_schema WHERE name = '" + sqlite_tb_users + "'")
+		row, err := db.QueryRow("SELECT sql FROM sqlite_schema WHERE name = '" + sqlite_tb_users + "'")
+		require.NoError(err, "QueryRow returned an error: %s", err)
 
 		var schema string
 		err = row.Scan(&schema)
@@ -280,10 +217,11 @@ func TestSqliteDBUserMigrate(t *testing.T) {
 	})
 
 	t.Run("index", func(t *testing.T) {
-		row := db.QueryRow("SELECT sql FROM sqlite_schema WHERE name = 'idx_users_username'")
+		row, err := db.QueryRow("SELECT sql FROM sqlite_schema WHERE name = 'idx_users_username'")
+		require.NoError(err, "QueryRow returned an error: %s", err)
 
 		var schema string
-		err := row.Scan(&schema)
+		err = row.Scan(&schema)
 		require.NoError(err, "Scan returned an error: %s", err)
 		require.Equal(indexQuery, schema)
 	})
@@ -291,9 +229,9 @@ func TestSqliteDBUserMigrate(t *testing.T) {
 
 func TestSqliteDBUserCreate(t *testing.T) {
 	require := require.New(t)
-	db := testSqliteAuthDBSetup(t)
+	db := TestSqliteAuthDBSetup(t)
 	defer db.Close()
-	defer deleteDB(testAuthDBName)
+	defer DeleteDB(TestAuthDBName)
 
 	// Setup the test tables.
 	err := db.AuthMigrate()
@@ -371,9 +309,9 @@ func TestSqliteDBUserCreate(t *testing.T) {
 
 func TestSqliteDBUserIsUnique(t *testing.T) {
 	require := require.New(t)
-	db := testSqliteAuthDBSetup(t)
+	db := TestSqliteAuthDBSetup(t)
 	defer db.Close()
-	defer deleteDB(testAuthDBName)
+	defer DeleteDB(TestAuthDBName)
 
 	// Setup the test tables.
 	err := db.AuthMigrate()
@@ -397,9 +335,9 @@ func TestSqliteDBUserIsUnique(t *testing.T) {
 
 func TestSqliteDBUserGet(t *testing.T) {
 	require := require.New(t)
-	db := testSqliteAuthDBSetup(t)
+	db := TestSqliteAuthDBSetup(t)
 	defer db.Close()
-	defer deleteDB(testAuthDBName)
+	defer DeleteDB(TestAuthDBName)
 
 	// Setup the test tables.
 	err := db.AuthMigrate()
@@ -430,9 +368,9 @@ func TestSqliteDBUserGet(t *testing.T) {
 
 func TestSqliteDBUserGetByUsername(t *testing.T) {
 	require := require.New(t)
-	db := testSqliteAuthDBSetup(t)
+	db := TestSqliteAuthDBSetup(t)
 	defer db.Close()
-	defer deleteDB(testAuthDBName)
+	defer DeleteDB(TestAuthDBName)
 
 	// Setup the test tables.
 	err := db.AuthMigrate()
@@ -468,9 +406,9 @@ func TestSqliteDBUserGetByUsername(t *testing.T) {
 
 func TestSqliteDBUserUpdate(t *testing.T) {
 	require := require.New(t)
-	db := testSqliteAuthDBSetup(t)
+	db := TestSqliteAuthDBSetup(t)
 	defer db.Close()
-	defer deleteDB(testAuthDBName)
+	defer DeleteDB(TestAuthDBName)
 
 	// Setup the test tables.
 	err := db.AuthMigrate()
@@ -515,9 +453,9 @@ func TestSqliteDBUserUpdate(t *testing.T) {
 
 func TestSqliteDBUserDelete(t *testing.T) {
 	require := require.New(t)
-	db := testSqliteAuthDBSetup(t)
+	db := TestSqliteAuthDBSetup(t)
 	defer db.Close()
-	defer deleteDB(testAuthDBName)
+	defer DeleteDB(TestAuthDBName)
 
 	// Setup the test tables.
 	err := db.AuthMigrate()
@@ -569,9 +507,9 @@ var (
 
 func TestSqliteDBUserGroupMigrate(t *testing.T) {
 	require := require.New(t)
-	db := testSqliteAuthDBSetup(t)
+	db := TestSqliteAuthDBSetup(t)
 	defer db.Close()
-	defer deleteDB(testAuthDBName)
+	defer DeleteDB(TestAuthDBName)
 
 	createQuery := `CREATE TABLE ` + sqlite_tb_user_groups + ` (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -586,7 +524,8 @@ func TestSqliteDBUserGroupMigrate(t *testing.T) {
 	t.Run("table", func(t *testing.T) {
 		err := UserGroupsMigrate(db)
 		require.NoError(err, "UserGroupMigrate returned an error: %s", err)
-		row := db.QueryRow("SELECT sql FROM sqlite_schema WHERE name = '" + sqlite_tb_user_groups + "'")
+		row, err := db.QueryRow("SELECT sql FROM sqlite_schema WHERE name = '" + sqlite_tb_user_groups + "'")
+		require.NoError(err, "QueryRow returned an error: %s", err)
 
 		var schema string
 		err = row.Scan(&schema)
@@ -595,10 +534,11 @@ func TestSqliteDBUserGroupMigrate(t *testing.T) {
 	})
 
 	t.Run("index", func(t *testing.T) {
-		row := db.QueryRow("SELECT sql FROM sqlite_schema WHERE name = 'idx_user_groups_name'")
+		row, err := db.QueryRow("SELECT sql FROM sqlite_schema WHERE name = 'idx_user_groups_name'")
+		require.NoError(err, "QueryRow returned an error: %s", err)
 
 		var schema string
-		err := row.Scan(&schema)
+		err = row.Scan(&schema)
 		require.NoError(err, "Scan returned an error: %s", err)
 		require.Equal(indexQuery, schema)
 	})
@@ -606,9 +546,9 @@ func TestSqliteDBUserGroupMigrate(t *testing.T) {
 
 func TestSqliteDBUserGroupCreate(t *testing.T) {
 	require := require.New(t)
-	db := testSqliteAuthDBSetup(t)
+	db := TestSqliteAuthDBSetup(t)
 	defer db.Close()
-	defer deleteDB(testAuthDBName)
+	defer DeleteDB(TestAuthDBName)
 
 	// Setup the test tables.
 	err := db.AuthMigrate()
@@ -674,9 +614,9 @@ func TestSqliteDBUserGroupCreate(t *testing.T) {
 
 func TestSqliteDBUserGroupIsUnique(t *testing.T) {
 	require := require.New(t)
-	db := testSqliteAuthDBSetup(t)
+	db := TestSqliteAuthDBSetup(t)
 	defer db.Close()
-	defer deleteDB(testAuthDBName)
+	defer DeleteDB(TestAuthDBName)
 
 	// Setup the test tables.
 	err := db.AuthMigrate()
@@ -700,9 +640,9 @@ func TestSqliteDBUserGroupIsUnique(t *testing.T) {
 
 func TestSqliteDBUserGroupGet(t *testing.T) {
 	require := require.New(t)
-	db := testSqliteAuthDBSetup(t)
+	db := TestSqliteAuthDBSetup(t)
 	defer db.Close()
-	defer deleteDB(testAuthDBName)
+	defer DeleteDB(TestAuthDBName)
 
 	// Setup the test tables.
 	err := db.AuthMigrate()
@@ -732,9 +672,9 @@ func TestSqliteDBUserGroupGet(t *testing.T) {
 
 func TestSqliteDBUserGroupGetByName(t *testing.T) {
 	require := require.New(t)
-	db := testSqliteAuthDBSetup(t)
+	db := TestSqliteAuthDBSetup(t)
 	defer db.Close()
-	defer deleteDB(testAuthDBName)
+	defer DeleteDB(TestAuthDBName)
 
 	// Setup the test tables.
 	err := db.AuthMigrate()
@@ -769,9 +709,9 @@ func TestSqliteDBUserGroupGetByName(t *testing.T) {
 
 func TestSqliteDBUserGroupGetGroups(t *testing.T) {
 	require := require.New(t)
-	db := testSqliteAuthDBSetup(t)
+	db := TestSqliteAuthDBSetup(t)
 	defer db.Close()
-	defer deleteDB(testAuthDBName)
+	defer DeleteDB(TestAuthDBName)
 
 	// Setup the test tables.
 	err := db.AuthMigrate()
@@ -821,9 +761,9 @@ func TestSqliteDBUserGroupGetGroups(t *testing.T) {
 
 func TestSqliteDBUserGroupUpdate(t *testing.T) {
 	require := require.New(t)
-	db := testSqliteAuthDBSetup(t)
+	db := TestSqliteAuthDBSetup(t)
 	defer db.Close()
-	defer deleteDB(testAuthDBName)
+	defer DeleteDB(TestAuthDBName)
 
 	// Setup the test tables.
 	err := db.AuthMigrate()
@@ -866,9 +806,9 @@ func TestSqliteDBUserGroupUpdate(t *testing.T) {
 
 func TestSqliteDBUserGroupDelete(t *testing.T) {
 	require := require.New(t)
-	db := testSqliteAuthDBSetup(t)
+	db := TestSqliteAuthDBSetup(t)
 	defer db.Close()
-	defer deleteDB(testAuthDBName)
+	defer DeleteDB(TestAuthDBName)
 
 	// Setup the test tables.
 	err := db.AuthMigrate()
@@ -978,7 +918,7 @@ func TestSqliteIsAttached(t *testing.T) {
 		require.True(db.IsAttached(db_alias), "IsAttached returned false")
 	})
 
-	deleteDB(db_file)
+	DeleteDB(db_file)
 }
 
 func TestSqliteAddRepo(t *testing.T) {
@@ -1030,6 +970,6 @@ func TestSqliteAddRepo(t *testing.T) {
 		)
 	})
 
-	deleteDB(db_file)
+	DeleteDB(db_file)
 }
 */
