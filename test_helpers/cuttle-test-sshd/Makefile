@@ -1,8 +1,8 @@
 # Makefile
 
 build:
-	@cat ../testServer_ed25519_no_pass.pub > keys
-	@cat ../testServer_ed25519_pass.pub >> keys
+	@cat ../certs/testServer_ed25519_no_pass.pub > keys
+	@cat ../certs/testServer_ed25519_pass.pub >> keys
 	@chmod 600 keys
 	docker build -t cuttle-test-sshd .
 .PHONY: build
