@@ -3,6 +3,8 @@ package auth
 import (
 	"testing"
 
+	"github.com/chadeldridge/cuttle-server/core"
+	"github.com/chadeldridge/cuttle-server/db"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -107,19 +109,19 @@ func TestAuthenticationIsIntSequential(t *testing.T) {
 	require := require.New(t)
 
 	t.Run("false", func(t *testing.T) {
-		require.False(IsIntSequential(int("1"[0]), "9"[0]), "IsSequential returned true")
+		require.False(IsIntSequential(int("1"[0]), int("9"[0])), "IsSequential returned true")
 	})
 
 	t.Run("true", func(t *testing.T) {
-		require.True(IsIntSequential(int("0"[0]), `1`[0]), "IsSequential returned false")
+		require.True(IsIntSequential(int("0"[0]), int("1"[0])), "IsSequential returned false")
 	})
 
 	t.Run("true reverse", func(t *testing.T) {
-		require.True(IsIntSequential(int("1"[0]), "0"[0]), "IsSequential returned false")
+		require.True(IsIntSequential(int("1"[0]), int("0"[0])), "IsSequential returned false")
 	})
 
 	t.Run("true repeated", func(t *testing.T) {
-		require.True(IsIntSequential(int("1"[0]), "1"[0]), "IsSequential returned false")
+		require.True(IsIntSequential(int("1"[0]), int("1"[0])), "IsSequential returned false")
 	})
 }
 
@@ -130,7 +132,11 @@ func TestAuthenticationIsCharSequential(t *testing.T) {
 		require.False(IsCharSequential("a", "p"), "IsSequential returned true")
 	})
 
-	t.Run("false with int", func(t *testing.T) {
+	t.Run("false char1 int", func(t *testing.T) {
+		require.False(IsCharSequential("1", "p"), "IsSequential returned true")
+	})
+
+	t.Run("false char2 int", func(t *testing.T) {
 		require.False(IsCharSequential("a", "2"), "IsSequential returned true")
 	})
 
@@ -195,5 +201,82 @@ func TestAuthenticationHashPassword(t *testing.T) {
 
 		err = bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 		require.NoError(err, "bcrypt.CompareHashAndPassword did not return the expected hash")
+	})
+}
+
+func TestAuthenticationAuthenticateUser(t *testing.T) {
+	require := require.New(t)
+	want := struct{ username, name, password, groups string }{
+		username: "testUser1",
+		name:     "Test User 1",
+		password: "My T0tally C0mpl3x Passw0rd",
+		groups:   "[]",
+	}
+	authDB := db.TestSqliteAuthDBSetup(t)
+	defer authDB.Close()
+	defer db.DeleteDB(db.TestAuthDBName)
+
+	// Setup the test tables.
+	err := authDB.AuthMigrate()
+	require.NoError(err, "AuthMigrate returned an error: %s", err)
+
+	t.Run("nil authDB", func(t *testing.T) {
+		u, err := AuthenticateUser(nil, want.username, "")
+		require.Error(err, "AuthenticateUser did not return an error")
+		require.ErrorIs(err, core.ErrParamEmpty, "HashPassword did not return the correct error")
+		require.Empty(u, "AuthenticateUser returned an non-empty user")
+	})
+
+	t.Run("empty username", func(t *testing.T) {
+		u, err := AuthenticateUser(authDB, "", want.password)
+		require.Error(err, "AuthenticateUser did not return an error")
+		require.ErrorIs(err, core.ErrParamEmpty, "HashPassword did not return the correct error")
+		require.Empty(u, "AuthenticateUser returned an non-empty user")
+	})
+
+	t.Run("empty password", func(t *testing.T) {
+		u, err := AuthenticateUser(authDB, want.username, "")
+		require.Error(err, "AuthenticateUser did not return an error")
+		require.ErrorIs(err, core.ErrParamEmpty, "HashPassword did not return the correct error")
+		require.Empty(u, "AuthenticateUser returned an non-empty user")
+	})
+
+	t.Run("user not found", func(t *testing.T) {
+		u, err := AuthenticateUser(authDB, want.username, want.password)
+		require.Error(err, "AuthenticateUser did not return an error")
+		require.ErrorIs(err, ErrUserNotFound, "HashPassword did not return the correct error")
+		require.Empty(u, "AuthenticateUser returned an non-empty user")
+	})
+
+	t.Run("empty authDB", func(t *testing.T) {
+		u, err := AuthenticateUser(&db.SqliteDB{}, want.username, want.password)
+		require.Error(err, "AuthenticateUser did not return an error")
+		require.Empty(u, "AuthenticateUser returned an non-empty user")
+	})
+
+	hash, err := HashPassword(want.password)
+	require.NoError(err, "HashPassword returned an error: %s", err)
+
+	user, err := authDB.UserCreate(want.username, want.name, hash, want.groups)
+	require.NoError(err, "UserCreate returned an error: %s", err)
+	require.NotEmpty(user, "UserCreate did not return a user")
+
+	t.Run("wrong password", func(t *testing.T) {
+		u, err := AuthenticateUser(authDB, want.username, "wrongPassword")
+		require.Error(err, "AuthenticateUser did not return an error")
+		require.ErrorIs(err, bcrypt.ErrMismatchedHashAndPassword, "HashPassword did not return the correct error")
+		require.Empty(u, "AuthenticateUser returned an non-empty user")
+	})
+
+	t.Run("valid password", func(t *testing.T) {
+		u, err := AuthenticateUser(authDB, want.username, want.password)
+		require.NoError(err, "AuthenticateUser returned an error: %s", err)
+		require.Equal(ID(user.ID), u.ID, "AuthenticateUser returned the wrong user")
+		require.Equal(user.Username, u.Username, "AuthenticateUser returned the wrong user")
+		require.Equal(user.Name, u.Name, "AuthenticateUser returned the wrong user")
+		require.Empty(u.Groups, "AuthenticateUser returned the wrong user")
+		require.False(u.IsAdmin, "AuthenticateUser returned the wrong user")
+		require.Equal(user.Created, u.Created, "AuthenticateUser returned the wrong user")
+		require.Equal(user.Updated, u.Updated, "AuthenticateUser returned the wrong user")
 	})
 }

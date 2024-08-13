@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/chadeldridge/cuttle-server/core"
 	"github.com/chadeldridge/cuttle-server/db"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -136,7 +137,7 @@ func HasSequential(password string) bool {
 		}
 
 		// Check for sequential numbers.
-		if IsIntSequential(int(c), password[i+1]) {
+		if IsIntSequential(int(c), int(password[i+1])) {
 			score++
 			continue
 		}
@@ -150,11 +151,7 @@ func HasSequential(password string) bool {
 }
 
 // IsIntSequential checks if two integers are sequential.
-func IsIntSequential(i1 int, i2 byte) bool {
-	if !dg.MatchString(string(i2)) {
-		return false
-	}
-
+func IsIntSequential(i1 int, i2 int) bool {
 	next := int(i2)
 	log.Printf("i1: %d, next: %d\n", i1, next)
 	if i1 == next || i1+1 == next || i1-1 == next {
@@ -230,6 +227,18 @@ func HashPassword(password string) (string, error) {
 // the user data if successful. You can check error for bcrypt.ErrMismatchedHashAndPassword to
 // determine if the password was incorrect.
 func AuthenticateUser(authDB db.AuthDB, username string, password string) (User, error) {
+	if authDB == nil {
+		return User{}, fmt.Errorf("auth.AuthenticateUser: authDb - %w", core.ErrParamEmpty)
+	}
+
+	if username == "" {
+		return User{}, fmt.Errorf("auth.AuthenticateUser: username - %w", core.ErrParamEmpty)
+	}
+
+	if password == "" {
+		return User{}, fmt.Errorf("auth.AuthenticateUser: password - %w", core.ErrParamEmpty)
+	}
+
 	data, err := authDB.UserGetByUsername(username)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -253,5 +262,8 @@ func AuthenticateUser(authDB db.AuthDB, username string, password string) (User,
 		Username: data.Username,
 		Name:     data.Name,
 		Groups:   GIDs,
+		IsAdmin:  data.IsAdmin,
+		Created:  data.Created,
+		Updated:  data.Updated,
 	}, nil
 }
