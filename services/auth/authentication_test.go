@@ -2,6 +2,7 @@ package auth
 
 import (
 	"testing"
+	"time"
 
 	"github.com/chadeldridge/cuttle-server/core"
 	"github.com/chadeldridge/cuttle-server/db"
@@ -271,7 +272,7 @@ func TestAuthenticationAuthenticateUser(t *testing.T) {
 	t.Run("valid password", func(t *testing.T) {
 		u, err := AuthenticateUser(authDB, want.username, want.password)
 		require.NoError(err, "AuthenticateUser returned an error: %s", err)
-		require.Equal(ID(user.ID), u.ID, "AuthenticateUser returned the wrong user")
+		require.Equal(user.ID, u.ID, "AuthenticateUser returned the wrong user")
 		require.Equal(user.Username, u.Username, "AuthenticateUser returned the wrong user")
 		require.Equal(user.Name, u.Name, "AuthenticateUser returned the wrong user")
 		require.Empty(u.Groups, "AuthenticateUser returned the wrong user")
@@ -280,3 +281,159 @@ func TestAuthenticationAuthenticateUser(t *testing.T) {
 		require.Equal(user.Updated, u.Updated, "AuthenticateUser returned the wrong user")
 	})
 }
+
+func TestAuthenticationNewUserFromUserData(t *testing.T) {
+	require := require.New(t)
+	want := User{
+		ID:       1,
+		Username: "testUser1",
+		Name:     "Test User 1",
+		Groups:   make([]int64, 0),
+		IsAdmin:  false,
+		Created:  time.Now(),
+		Updated:  time.Now(),
+	}
+
+	ud := db.UserData{
+		ID:       1,
+		Username: want.Username,
+		Name:     want.Name,
+		Hash:     "hash",
+		Groups:   "[]",
+		IsAdmin:  false,
+		Created:  want.Created,
+		Updated:  want.Updated,
+	}
+
+	t.Run("empty data", func(t *testing.T) {
+		u, err := NewUserFromUserData(db.UserData{})
+		require.Error(err, "NewUserFromUserData did not return an error")
+		require.ErrorIs(err, core.ErrParamEmpty, "NewUserFromUserData did not return the correct error")
+		require.Empty(u, "NewUserFromUserData returned an non-empty user")
+	})
+
+	t.Run("empty groups", func(t *testing.T) {
+		badUD := ud
+		badUD.Groups = "{}"
+		u, err := NewUserFromUserData(badUD)
+		require.Error(err, "NewUserFromUserData did not return an error")
+		require.Empty(u, "NewUserFromUserData returned an non-empty user")
+	})
+
+	t.Run("valid", func(t *testing.T) {
+		u, err := NewUserFromUserData(ud)
+		require.NoError(err, "NewUserFromUserData returned an error: %s", err)
+		require.Equal(want.ID, u.ID, "NewUserFromUserData returned the wrong user")
+		require.Equal(want.Username, u.Username, "NewUserFromUserData returned the wrong user")
+		require.Equal(want.Name, u.Name, "NewUserFromUserData returned the wrong user")
+		require.Equal(want.Groups, u.Groups, "NewUserFromUserData returned the wrong user")
+		require.Equal(want.IsAdmin, u.IsAdmin, "NewUserFromUserData returned the wrong user")
+		require.Equal(want.Created, u.Created, "NewUserFromUserData returned the wrong user")
+		require.Equal(want.Updated, u.Updated, "NewUserFromUserData returned the wrong user")
+	})
+}
+
+func TestAuthenticationSignup(t *testing.T) {
+	require := require.New(t)
+	want := struct{ username, name, password, groups string }{
+		username: "testUser1",
+		name:     "Test User 1",
+		password: "My T0tally C0mpl3x Passw0rd",
+		groups:   "[]",
+	}
+
+	authDB := db.TestSqliteAuthDBSetup(t)
+	defer authDB.Close()
+	defer db.DeleteDB(db.TestAuthDBName)
+
+	// Setup the test tables.
+	err := authDB.AuthMigrate()
+	require.NoError(err, "AuthMigrate returned an error: %s", err)
+
+	t.Run("nil authDB", func(t *testing.T) {
+		u, err := Signup(nil, want.username, want.name, want.password)
+		require.Error(err, "Signup did not return an error")
+		require.ErrorIs(err, core.ErrParamEmpty, "Signup did not return the correct error")
+		require.Empty(u, "Signup returned an non-empty user")
+	})
+
+	t.Run("bad password", func(t *testing.T) {
+		u, err := Signup(authDB, want.username, want.name, "")
+		require.Error(err, "Signup did not return an error")
+		require.ErrorIs(err, ErrPwEmpty, "Signup did not return the correct error")
+		require.Empty(u, "Signup returned an non-empty user")
+	})
+
+	t.Run("empty username", func(t *testing.T) {
+		u, err := Signup(authDB, "", want.name, want.password)
+		require.Error(err, "Signup did not return an error")
+		require.ErrorIs(err, core.ErrParamEmpty, "Signup did not return the correct error")
+		require.Empty(u, "Signup returned an non-empty user")
+	})
+
+	hash, err := HashPassword(want.password)
+	require.NoError(err, "HashPassword returned an error: %s", err)
+
+	user, err := authDB.UserCreate("testUser2", "Test User 2", hash, want.groups)
+	require.NoError(err, "UserCreate returned an error: %s", err)
+	require.NotEmpty(user, "UserCreate did not return a user")
+
+	t.Run("user exists", func(t *testing.T) {
+		u, err := Signup(authDB, "testUser2", "Test User 2", want.password)
+		require.Error(err, "Signup did not return an error")
+		require.ErrorIs(err, db.ErrUserExists, "Signup did not return the correct error")
+		require.Empty(u, "Signup returned an non-empty user")
+	})
+
+	t.Run("valid", func(t *testing.T) {
+		u, err := Signup(authDB, want.username, want.name, want.password)
+		require.NoError(err, "Signup returned an error: %s", err)
+		require.Equal(want.username, u.Username, "Signup returned the wrong user")
+		require.Equal(want.name, u.Name, "Signup returned the wrong user")
+		require.Empty(u.Groups, "Signup returned the wrong user")
+		require.False(u.IsAdmin, "Signup returned the wrong user")
+		require.NotZero(u.Created, "Signup returned the wrong user")
+		require.NotZero(u.Updated, "Signup returned the wrong user")
+
+		data, err := authDB.UserGet(int64(u.ID))
+		require.NoError(err, "UserGet returned an error: %s", err)
+		err = bcrypt.CompareHashAndPassword([]byte(data.Hash), []byte(want.password))
+		require.NoError(err, "bcrypt.CompareHashAndPassword did not return the expected hash")
+	})
+}
+
+func TestAuthenticationUserHasGroup(t *testing.T) {
+	require := require.New(t)
+	// We only need a list of groups for this test.
+
+	t.Run("empty groups", func(t *testing.T) {
+		user := User{Groups: []int64{}}
+		require.False(user.HasGroup(1), "HasGroup returned true")
+	})
+
+	t.Run("valid", func(t *testing.T) {
+		user := User{Groups: []int64{1, 2, 3}}
+		require.True(user.HasGroup(2), "HasGroup returned false")
+	})
+}
+
+/*
+func TestAuthenticationUserGroupHasGroup(t *testing.T) {
+	require := require.New(t)
+
+	t.Run("empty groups", func(t *testing.T) {
+		groups := make([]int64, 0)
+		require.False(HasGroup(groups, 1), "HasGroup returned true")
+	})
+
+	t.Run("group not found", func(t *testing.T) {
+		groups := []int64{1, 2, 3}
+		require.False(HasGroup(groups, 4), "HasGroup returned true")
+	})
+
+	t.Run("group found", func(t *testing.T) {
+		groups := []int64{1, 2, 3}
+		require.True(HasGroup(groups, 2), "HasGroup returned false")
+	})
+}
+*/

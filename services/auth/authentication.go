@@ -2,11 +2,13 @@ package auth
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/chadeldridge/cuttle-server/core"
 	"github.com/chadeldridge/cuttle-server/db"
@@ -252,13 +254,35 @@ func AuthenticateUser(authDB db.AuthDB, username string, password string) (User,
 		return User{}, fmt.Errorf("auth.AuthenticateUser: %w", err)
 	}
 
+	return NewUserFromUserData(data)
+}
+
+// ############################################################################################## //
+// ####################################        Users         #################################### //
+// ############################################################################################## //
+
+type User struct {
+	ID       int64
+	Username string
+	Name     string
+	Groups   []int64
+	IsAdmin  bool
+	Created  time.Time
+	Updated  time.Time
+}
+
+func NewUserFromUserData(data db.UserData) (User, error) {
+	if data.ID == 0 && data.Username == "" && data.Name == "" {
+		return User{}, fmt.Errorf("auth.NewUserFromUserData: data %w", core.ErrParamEmpty)
+	}
+
 	GIDs, err := UnmarshGroupIDs([]byte(data.Groups))
 	if err != nil {
-		return User{}, fmt.Errorf("auth.AuthenticateUser: %w", err)
+		return User{}, fmt.Errorf("auth.NewUserFromUserData: %w", err)
 	}
 
 	return User{
-		ID:       ID(data.ID),
+		ID:       data.ID,
 		Username: data.Username,
 		Name:     data.Name,
 		Groups:   GIDs,
@@ -266,4 +290,75 @@ func AuthenticateUser(authDB db.AuthDB, username string, password string) (User,
 		Created:  data.Created,
 		Updated:  data.Updated,
 	}, nil
+}
+
+func Signup(authDB db.AuthDB, username, name, password string) (User, error) {
+	if authDB == nil {
+		return User{}, fmt.Errorf("auth.Signup: authDb - %w", core.ErrParamEmpty)
+	}
+
+	password, err := HashPassword(password)
+	if err != nil {
+		return User{}, fmt.Errorf("auth.Signup: %w", err)
+	}
+
+	data, err := authDB.UserCreate(username, name, password, "[]")
+	if err != nil {
+		return User{}, fmt.Errorf("auth.Signup: %w", err)
+	}
+	return NewUserFromUserData(data)
+}
+
+func (u *User) HasGroup(id int64) bool {
+	for _, group := range u.Groups {
+		if group == id {
+			return true
+		}
+	}
+
+	return false
+}
+
+// ############################################################################################## //
+// ##################################        User Groups        ################################# //
+// ############################################################################################## //
+
+type UserGroup struct {
+	ID       int64
+	Name     string
+	Members  []int64
+	Profiles map[string]Permissions
+}
+
+type UserGroups []UserGroup
+
+func (g UserGroups) HasGroup(id int64) bool {
+	for _, group := range g {
+		if group.ID == id {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (g UserGroups) MarshalIDs() ([]byte, error) {
+	var ids []int64
+	for _, group := range g {
+		ids = append(ids, group.ID)
+	}
+
+	data, err := json.Marshal(ids)
+	if err != nil {
+		return nil, err
+	}
+
+	return data, nil
+}
+
+func UnmarshGroupIDs(data []byte) ([]int64, error) {
+	var ids []int64
+	err := json.Unmarshal(data, &ids)
+
+	return ids, err
 }
