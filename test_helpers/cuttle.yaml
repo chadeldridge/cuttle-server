@@ -4,6 +4,6 @@ tls_cert_file: "/home/celdridge/.config/cuttle/certs/certificate.crt"
 tls_key_file: "/home/celdridge/.config/cuttle/certs/privatekey.key"
 api_host: 172.19.120.11
 api_port: "8080"
-db_root: /tmp/db
+db_root: /tmp/cuttle/db
 shutdown_timeout: 5
-jwt_secret: 47365e3234735f41355558314d5a4f73565045683357685836326d26532e372
+secret: 47365e3234735f41355558314d5a4f73565045683357685836326d26532e372

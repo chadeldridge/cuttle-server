@@ -46,6 +46,7 @@ type Config struct {
 	DBRoot          string `yaml:"db_root,omitempty"`                      // DBRoot is the root path for the database.
 	DocRoot         string `yaml:"doc_root,omitempty"`                     // DocRoot is the document root path for the serving static html files.
 	ShutdownTimeout int    `default:"5" yaml:"shutdown_timeout,omitempty"` // in seconds
+	Secret          string `yaml:"secret,omitempty"`
 }
 
 func DefaultConfig() *Config {
@@ -59,6 +60,7 @@ func DefaultConfig() *Config {
 		DBRoot:          DefaultDBRoot,
 		DocRoot:         DefaultDocRoot,
 		ShutdownTimeout: DefaultShutdownTimeout,
+		Secret:          "",
 	}
 }
 
@@ -141,6 +143,8 @@ func (c *Config) setConfigValue(k, v string) error {
 			return ErrInvalidEnv
 		}
 		c.Env = v
+	case "secret":
+		c.Secret = v
 	case "tls_cert_file":
 		c.TLSCertFile = v
 	case "tls_key_file":

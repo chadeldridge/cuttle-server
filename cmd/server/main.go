@@ -67,10 +67,16 @@ func run(ctx context.Context, out io.Writer, args []string, env map[string]strin
 	defer cuttleDB.Close()
 	defer authDB.Close()
 
+	tokenCache, err := db.NewTokenCache(config.Secret, 0, 0)
+	if err != nil {
+		return err
+	}
+
 	// Setup the HTTP server.
 	srv := router.NewHTTPServer(logger, config)
 	srv.CuttleDB = cuttleDB
 	srv.AuthDB = authDB
+	srv.TokenCache = tokenCache
 	// Add routes and do anything else we need to do before starting the server.
 
 	// Add web routes.

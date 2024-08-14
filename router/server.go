@@ -17,6 +17,7 @@ type HTTPServer struct {
 	Config *core.Config
 	db.CuttleDB
 	db.AuthDB
+	*db.TokenCache
 	Handler http.Handler
 	// Mux saves the http.ServeMux instance. This provides easier access to the
 	// mux without having to enforce a ref type on HTTPServer.Handler everytime.

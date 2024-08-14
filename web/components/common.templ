@@ -54,13 +54,14 @@ script OnKeyFocusID(keyCode int, id string) {
 //
 // Inputs
 //
-templ InputOutlined(inputID, inputType, label string, attrs templ.Attributes) {
+templ InputOutlined(inputID, inputType, inputName, label string, attrs templ.Attributes) {
 	<span class="inline-flex flex-col relative min-w-0 w-full align-top mt-6 border-0">
 		<label id={ inputID + "-label" } class="bg-primary-base text-primary-light text-base font-normal font-base block whitespace-nowrap overflow-hidden text-ellipsis p-1 max-w-prose absolute z-10 select-none pointer-events-auto origin-top-left top-0 left-0 translate-x-3 -translate-y-3 scale-75 peer-has-[:hover]:text-primary-highlight peer-has-[:focus]:text-secondary-base" data-shrink="true" for={ inputID }>{ label }</label>
 		<div id={ inputID + "-div" } class="peer cursor-text bg-inherit text-primary-light placeholder:text-primary-light box-border inline-flex relative items-center border rounded border-primary-light hover:border-primary-highlight has-[:focus]:border-secondary-base">
 			<input
 				id={ inputID }
 				type={ inputType }
+				name={ inputName }
 				if attrs != nil && len(attrs) > 0 {
 					{ attrs... }
 				}

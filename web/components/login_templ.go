@@ -26,7 +26,7 @@ func Login(redirect string) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div id=\"app\" class=\"\"><form hx-post=\"/login.html\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div id=\"app\" class=\"\"><form hx-post=\"/login.html\" hx-target=\"#errors\" hx-swap=\"outerHTML\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -41,7 +41,7 @@ func Login(redirect string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</form><output id=\"errors\" class=\"CardErrors\"></output></div>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</form></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -77,7 +77,7 @@ func LoginFields(redirect string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = InputOutlined("username", "text", "Username",
+		templ_7745c5c3_Err = InputOutlined("username", "text", "username", "Username",
 			templ.Attributes{
 				"placeholder": "Username",
 				"tabindex":    "1",
@@ -86,7 +86,7 @@ func LoginFields(redirect string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = InputOutlined("password", "password", "Password",
+		templ_7745c5c3_Err = InputOutlined("password", "password", "password", "Password",
 			templ.Attributes{
 				"placeholder": "Password",
 				"tabindex":    "2",
@@ -102,13 +102,13 @@ func LoginFields(redirect string) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(redirect)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `login.templ`, Line: 36, Col: 53}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `login.templ`, Line: 35, Col: 53}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\"></div>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\"><div id=\"errors\" class=\"display-hidden content-center relative mt-6 min-h-0 flex-auto flex flex-col text-text-disabled border border-primary-base border-opacity-75\"></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -134,7 +134,7 @@ func Signup() templ.Component {
 			templ_7745c5c3_Var4 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div id=\"app\" class=\"\"><form hx-post=\"/signup.html\" hx-target=\"errors\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div id=\"app\" class=\"\"><form hx-post=\"/signup.html\" hx-target=\"#errors\" hx-swap=\"outerHTML\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -149,7 +149,7 @@ func Signup() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</form></div><script>\n\t\tlet pwMatch = false;\n\t\tlet name = document.getElementById(\"name\");\n\t\tlet username = document.getElementById(\"username\");\n\t\tlet signupButton = document.getElementById(\"signupButton\");\n\t\tlet password = document.getElementById(\"password\");\n\t\tlet confirmPassword = document.getElementById(\"confirmPassword\");\n\t\tlet confirmPasswordDiv = document.getElementById(\"confirmPassword-div\");\n\t\tlet confirmPasswordLabel = document.getElementById(\"confirmPassword-label\");\n\t\tlet errorOutput = document.getElementById(\"errors\");\n\n\t\tif (password.value == \"\" || password.value !== confirmPassword.value) {\n\t\t\tsignupButton.disabled = true;\n\t\t}\n\t\n\t\tlet checkPasswords = () => {\n\t\t\tif (password.value === \"\" || password.value !== confirmPassword.value) {\n\t\t\t\tpwMatch = false;\n\t\t\t\tsignupButton.disabled = true;\n\t\t\t\terrorOutput.style.display = \"block\";\n\t\t\t\terrorOutput.innerHTML = \"Passwords do not match.\";\n\t\t\t\tconfirmPasswordDiv.classList.remove(\"border-primary-light\");\n\t\t\t\tconfirmPasswordDiv.classList.remove(\"hover:border-primary-highlight\");\n\t\t\t\tconfirmPasswordDiv.classList.remove(\"has-[:focus]:border-secondary-base\");\n\t\t\t\tconfirmPasswordLabel.classList.remove(\"peer-has-[:hover]:text-primary-highlight\");\n\t\t\t\tconfirmPasswordLabel.classList.remove(\"peer-has-[:focus]:text-secondary-base\");\n\t\t\t\tconfirmPasswordDiv.classList.remove(\"border-success\");\n\t\t\t\tconfirmPasswordLabel.classList.remove(\"text-success\");\n\t\t\t\tconfirmPasswordDiv.classList.add(\"border-error\");\n\t\t\t\tconfirmPasswordLabel.classList.add(\"text-error\");\n\t\t\t} else {\n\t\t\t\tpwMatch = true;\n\t\t\t\tsignupButton.disabled = false;\n\t\t\t\terrorOutput.style.display = \"none\";\n\t\t\t\terrorOutput.innerHTML = \"\";\n\t\t\t\tconfirmPasswordDiv.classList.remove(\"border-primary-light\");\n\t\t\t\tconfirmPasswordDiv.classList.remove(\"hover:border-primary-highlight\");\n\t\t\t\tconfirmPasswordDiv.classList.remove(\"has-[:focus]:border-secondary-base\");\n\t\t\t\tconfirmPasswordLabel.classList.remove(\"peer-has-[:hover]:text-primary-highlight\");\n\t\t\t\tconfirmPasswordLabel.classList.remove(\"peer-has-[:focus]:text-secondary-base\");\n\t\t\t\tconfirmPasswordLabel.classList.remove(\"text-error\");\n\t\t\t\tconfirmPasswordDiv.classList.remove(\"border-error\");\n\t\t\t\tconfirmPasswordDiv.classList.add(\"border-success\");\n\t\t\t\tconfirmPasswordLabel.classList.add(\"text-success\");\n\t\t\t}\n\n\t\t\tenableButton();\n\t\t};\n\n\t\tname.addEventListener('keyup', enableButton);\n\t\tusername.addEventListener('keyup', enableButton);\n\t\tpassword.addEventListener('keyup', checkPasswords);\n\t\tconfirmPassword.addEventListener('keyup', checkPasswords);\n\n\t\tfunction enableButton() {\n\t\t\tif (allFilled()) {\n\t\t\t\tsignupButton.disabled = false;\n\t\t\t} else {\n\t\t\t\tsignupButton.disabled = true;\n\t\t\t}\n\t\t}\n\n\t\tfunction allFilled() {\n\t\t\treturn document.getElementById(\"name\").value !== \"\" &&\n\t\t\t\tdocument.getElementById(\"username\").value !== \"\" &&\n\t\t\t\tdocument.getElementById(\"password\").value !== \"\" &&\n\t\t\t\tdocument.getElementById(\"confirmPassword\").value !== \"\" &&\n\t\t\t\tpwMatch;\n\t\t}\n\t</script>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</form></div><script>\n\t\tlet pwMatch = false;\n\t\tlet name = document.getElementById(\"name\");\n\t\tlet username = document.getElementById(\"username\");\n\t\tlet signupButton = document.getElementById(\"signupButton\");\n\t\tlet password = document.getElementById(\"password\");\n\t\tlet confirmPassword = document.getElementById(\"confirmPassword\");\n\t\tlet errorOutput = document.getElementById(\"errors\");\n\n\t\tif (password.value == \"\" || password.value !== confirmPassword.value) {\n\t\t\tsignupButton.disabled = true;\n\t\t}\n\t\n\t\tlet checkPasswords = () => {\n\t\t\tif (password.value === \"\" || password.value !== confirmPassword.value) {\n\t\t\t\tpwMatch = false;\n\t\t\t\tsignupButton.disabled = true;\n\t\t\t\terrorOutput.style.display = \"block\";\n\t\t\t\terrorOutput.innerHTML = \"Passwords do not match.\";\n\t\t\t} else {\n\t\t\t\tpwMatch = true;\n\t\t\t\tsignupButton.disabled = false;\n\t\t\t\terrorOutput.style.display = \"none\";\n\t\t\t\terrorOutput.innerHTML = \"\";\n\t\t\t}\n\n\t\t\tenableButton();\n\t\t};\n\n\t\tname.addEventListener('change', enableButton);\n\t\tusername.addEventListener('change', enableButton);\n\t\tpassword.addEventListener('change', checkPasswords);\n\t\tconfirmPassword.addEventListener('change', checkPasswords);\n\n\t\tfunction enableButton() {\n\t\t\tif (allFilled()) {\n\t\t\t\tsignupButton.disabled = false;\n\t\t\t} else {\n\t\t\t\tsignupButton.disabled = true;\n\t\t\t}\n\t\t}\n\n\t\tfunction allFilled() {\n\t\t\treturn document.getElementById(\"name\").value !== \"\" &&\n\t\t\t\tdocument.getElementById(\"username\").value !== \"\" &&\n\t\t\t\tdocument.getElementById(\"password\").value !== \"\" &&\n\t\t\t\tdocument.getElementById(\"confirmPassword\").value !== \"\" &&\n\t\t\t\tpwMatch;\n\t\t}\n\t</script>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -175,7 +175,7 @@ func SignupFields() templ.Component {
 			templ_7745c5c3_Var5 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = InputOutlined("name", "text", "Name",
+		templ_7745c5c3_Err = InputOutlined("name", "text", "name", "Name",
 			templ.Attributes{
 				"placeholder": "Bob",
 				"tabindex":    "1",
@@ -184,7 +184,7 @@ func SignupFields() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = InputOutlined("username", "text", "Username",
+		templ_7745c5c3_Err = InputOutlined("username", "text", "username", "Username",
 			templ.Attributes{
 				"placeholder": "myusername",
 				"tabindex":    "2",
@@ -193,7 +193,7 @@ func SignupFields() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = InputOutlined("password", "password", "Password",
+		templ_7745c5c3_Err = InputOutlined("password", "password", "password", "Password",
 			templ.Attributes{
 				"placeholder": "Make It A Strong One",
 				"tabindex":    "3",
@@ -202,7 +202,7 @@ func SignupFields() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = InputOutlined("confirmPassword", "password", "Confirm Password",
+		templ_7745c5c3_Err = InputOutlined("confirmPassword", "password", "confirmPassword", "Confirm Password",
 			templ.Attributes{
 				"placeholder": "Retype Password",
 				"tabindex":    "4",
@@ -212,6 +212,32 @@ func SignupFields() templ.Component {
 			return templ_7745c5c3_Err
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div id=\"errors\" class=\"display-hidden content-center relative mt-6 min-h-0 flex-auto flex flex-col text-text-disabled border border-primary-base border-opacity-75\"></div>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		return templ_7745c5c3_Err
+	})
+}
+
+func LoginError(err string) templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var6 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var6 == nil {
+			templ_7745c5c3_Var6 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div id=\"errors\" class=\"display-block content-center relative mt-6 min-h-0 flex-auto flex flex-col text-text-disabled border border-primary-base border-opacity-75\"></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

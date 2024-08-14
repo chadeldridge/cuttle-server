@@ -19,6 +19,7 @@ Options:
 	-h, --host <host>		Host to bind the API to.
 	-k, --key-file <path>		Path to the TLS key.
 	-p, --port <port>		Port to bind the API to.
+	-s, --secret <secret>		Secret key for JWT.
 	-v, --verbose			Enable verbose logging.`
 )
 
@@ -53,6 +54,8 @@ func parseFlags(logger *core.Logger, args []string) (map[string]string, []string
 		case "-p", "--port":
 			flags["api_port"] = args[i+1]
 			i++
+		case "-s", "--secret":
+			flags["secret"] = args[i+1]
 		case "-v", "--verbose":
 			flags["debug"] = "true"
 		default:

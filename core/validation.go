@@ -27,7 +27,7 @@ func ValidatePasswordHash(hash string) error {
 
 	match := regexp.MustCompile(`^\$2[ayb]\$[0-9]{2}\$[0-9a-zA-Z./]{53}$`)
 	if ok := match.MatchString(hash); !ok {
-		return fmt.Errorf("core.ValidatePasswordHash: hash - %w", ErrInvalidFormat)
+		return fmt.Errorf("core.ValidatePasswordHash: hash - %w", ErrParamBadFormat)
 	}
 
 	return nil

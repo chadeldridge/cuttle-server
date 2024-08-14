@@ -1,6 +1,7 @@
 package router
 
 import (
+	"context"
 	"encoding/json"
 	"net"
 	"net/http"
@@ -109,7 +110,7 @@ func LoggerMiddleware(logger *core.Logger) Middleware {
 	}
 }
 
-func AuthMiddleware(logger *core.Logger, users db.CuttleDB) Middleware {
+func APIAuthMiddleware(logger *core.Logger, users db.CuttleDB) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(
 			func(w http.ResponseWriter, r *http.Request) {
@@ -136,6 +137,47 @@ func AuthMiddleware(logger *core.Logger, users db.CuttleDB) Middleware {
 
 				// Allow original handler to run.
 				next.ServeHTTP(w, r)
+			})
+	}
+}
+
+type ContextKey string
+
+const ClaimsKey ContextKey = "claims"
+
+func WebAuthMiddleware(logger *core.Logger, tokenCache *db.TokenCache, secret string) Middleware {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(
+			func(w http.ResponseWriter, r *http.Request) {
+				// Look for the session cookie in the request and validate it if found.
+				cookie, err := GetSessionCookie(r)
+				// If no cookie was found, the cookie is expired, or something else
+				// goes wrong, redirect to the login page.
+				if err != nil {
+					logger.Debugf("WebAuthMiddleware: %s\n", err)
+					w.Header().Set("HX-Redirect", "/login.html")
+					return
+				}
+
+				// Get the claims from the cache using the bearer token. This call
+				// also refreshes the JWT in the cache.
+				claims, err := tokenCache.GetClaims(cookie.Value)
+				if err != nil {
+					logger.Printf("WebAuthMiddleware: %s\n", err)
+					cookie.Delete(w)
+					w.Header().Set("HX-Redirect", "/login.html")
+					return
+				}
+
+				// Wrap context with claims so it can be used by other handlers.
+				ctx := context.WithValue(r.Context(), ClaimsKey, claims)
+
+				// Create a new Request with the new context. Per net/http commnents
+				// you should not modify the original Request.
+				newRequest := r.WithContext(ctx)
+
+				// Run the next handler with the new Request.
+				next.ServeHTTP(w, newRequest)
 			})
 	}
 }
