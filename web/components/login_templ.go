@@ -35,7 +35,7 @@ func Login(redirect string) templ.Component {
 			LoginFields(redirect),
 			CardActions(
 				ButtonSubmit("3", "Login", "3", nil),
-				ButtonOutlined("4", "Sign Up", "4", templ.Attributes{"onclick": "location.href='/signup.html'"}),
+				ButtonText("4", "Sign Up", "4", templ.Attributes{"onclick": "location.href='/signup.html'"}),
 			),
 		).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
@@ -77,7 +77,7 @@ func LoginFields(redirect string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = InputOutlined("username", "text", "username", "Username",
+		templ_7745c5c3_Err = InputOutlined("username", "text", "username",
 			templ.Attributes{
 				"placeholder": "Username",
 				"tabindex":    "1",
@@ -86,7 +86,7 @@ func LoginFields(redirect string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = InputOutlined("password", "password", "password", "Password",
+		templ_7745c5c3_Err = InputOutlined("password", "password", "password",
 			templ.Attributes{
 				"placeholder": "Password",
 				"tabindex":    "2",
@@ -108,7 +108,15 @@ func LoginFields(redirect string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\"><div id=\"errors\" class=\"display-hidden content-center relative mt-6 min-h-0 flex-auto flex flex-col text-text-disabled border border-primary-base border-opacity-75\"></div></div>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = DisplayError("", true).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -143,7 +151,7 @@ func Signup() templ.Component {
 			CardContent(SignupFields()),
 			CardActions(
 				ButtonSubmit("signupButton", "Sign Up", "5", nil),
-				ButtonOutlined("6", "Login", "6", templ.Attributes{"onclick": "location.href='/login.html'"}),
+				ButtonText("6", "Go To Login", "6", templ.Attributes{"onclick": "location.href='/login.html'"}),
 			),
 		).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
@@ -175,69 +183,43 @@ func SignupFields() templ.Component {
 			templ_7745c5c3_Var5 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = InputOutlined("name", "text", "name", "Name",
+		templ_7745c5c3_Err = InputOutlined("name", "text", "name",
 			templ.Attributes{
-				"placeholder": "Bob",
+				"placeholder": "Name: Bob",
 				"tabindex":    "1",
 				"onkeypress":  OnKeyFocusID(13, "2"),
 			}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = InputOutlined("username", "text", "username", "Username",
+		templ_7745c5c3_Err = InputOutlined("username", "text", "username",
 			templ.Attributes{
-				"placeholder": "myusername",
+				"placeholder": "Username: bsmith",
 				"tabindex":    "2",
 				"onkeypress":  OnKeyFocusID(13, "3"),
 			}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = InputOutlined("password", "password", "password", "Password",
+		templ_7745c5c3_Err = InputOutlined("password", "password", "password",
 			templ.Attributes{
-				"placeholder": "Make It A Strong One",
+				"placeholder": "Password: Make It A Strong One",
 				"tabindex":    "3",
 				"onkeypress":  OnKeyFocusID(13, "4"),
 			}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = InputOutlined("confirmPassword", "password", "confirmPassword", "Confirm Password",
+		templ_7745c5c3_Err = InputOutlined("confirmPassword", "password", "confirmPassword",
 			templ.Attributes{
-				"placeholder": "Retype Password",
+				"placeholder": "Confirm Password: Retype Password",
 				"tabindex":    "4",
 				"onkeypress":  OnKeyFocusID(13, "5"),
 			}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div id=\"errors\" class=\"display-hidden content-center relative mt-6 min-h-0 flex-auto flex flex-col text-text-disabled border border-primary-base border-opacity-75\"></div>")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		return templ_7745c5c3_Err
-	})
-}
-
-func LoginError(err string) templ.Component {
-	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
-		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
-		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
-		if !templ_7745c5c3_IsBuffer {
-			defer func() {
-				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
-				if templ_7745c5c3_Err == nil {
-					templ_7745c5c3_Err = templ_7745c5c3_BufErr
-				}
-			}()
-		}
-		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var6 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var6 == nil {
-			templ_7745c5c3_Var6 = templ.NopComponent
-		}
-		ctx = templ.ClearChildren(ctx)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div id=\"errors\" class=\"display-block content-center relative mt-6 min-h-0 flex-auto flex flex-col text-text-disabled border border-primary-base border-opacity-75\"></div>")
+		templ_7745c5c3_Err = DisplayError("", true).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

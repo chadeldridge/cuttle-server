@@ -8,7 +8,7 @@ templ Login(redirect string) {
 				LoginFields(redirect),
 				CardActions(
 					ButtonSubmit("3", "Login", "3", nil),
-					ButtonOutlined("4", "Sign Up", "4", templ.Attributes{"onclick": "location.href='/signup.html'"}),
+					ButtonText("4", "Sign Up", "4", templ.Attributes{"onclick": "location.href='/signup.html'"}),
 				),
 			)
 		</form>
@@ -20,20 +20,20 @@ templ LoginFields(redirect string) {
 		redirect = "/"
 	}
 	<div class="block py-5">
-		@InputOutlined("username", "text", "username", "Username",
+		@InputOutlined("username", "text", "username",
 			templ.Attributes{
 				"placeholder": "Username",
 				"tabindex":    "1",
 				"onkeypress":  OnKeyFocusID(13, "2"),
 			})
-		@InputOutlined("password", "password", "password", "Password",
+		@InputOutlined("password", "password", "password",
 			templ.Attributes{
 				"placeholder": "Password",
 				"tabindex":    "2",
 				"onkeypress":  OnKeyFocusID(13, "3"),
 			})
 		<input id="redirect" type="hidden" value={ redirect }/>
-		<div id="errors" class="display-hidden content-center relative mt-6 min-h-0 flex-auto flex flex-col text-text-disabled border border-primary-base border-opacity-75"></div>
+		@DisplayError("", true)
 	</div>
 }
 
@@ -45,7 +45,7 @@ templ Signup() {
 				CardContent(SignupFields()),
 				CardActions(
 					ButtonSubmit("signupButton", "Sign Up", "5", nil),
-					ButtonOutlined("6", "Login", "6", templ.Attributes{"onclick": "location.href='/login.html'"}),
+					ButtonText("6", "Go To Login", "6", templ.Attributes{"onclick": "location.href='/login.html'"}),
 				),
 			)
 		</form>
@@ -103,33 +103,29 @@ templ Signup() {
 }
 
 templ SignupFields() {
-	@InputOutlined("name", "text", "name", "Name",
+	@InputOutlined("name", "text", "name",
 		templ.Attributes{
-			"placeholder": "Bob",
+			"placeholder": "Name: Bob",
 			"tabindex":    "1",
 			"onkeypress":  OnKeyFocusID(13, "2"),
 		})
-	@InputOutlined("username", "text", "username", "Username",
+	@InputOutlined("username", "text", "username",
 		templ.Attributes{
-			"placeholder": "myusername",
+			"placeholder": "Username: bsmith",
 			"tabindex":    "2",
 			"onkeypress":  OnKeyFocusID(13, "3"),
 		})
-	@InputOutlined("password", "password", "password", "Password",
+	@InputOutlined("password", "password", "password",
 		templ.Attributes{
-			"placeholder": "Make It A Strong One",
+			"placeholder": "Password: Make It A Strong One",
 			"tabindex":    "3",
 			"onkeypress":  OnKeyFocusID(13, "4"),
 		})
-	@InputOutlined("confirmPassword", "password", "confirmPassword", "Confirm Password",
+	@InputOutlined("confirmPassword", "password", "confirmPassword",
 		templ.Attributes{
-			"placeholder": "Retype Password",
+			"placeholder": "Confirm Password: Retype Password",
 			"tabindex":    "4",
 			"onkeypress":  OnKeyFocusID(13, "5"),
 		})
-	<div id="errors" class="display-hidden content-center relative mt-6 min-h-0 flex-auto flex flex-col text-text-disabled border border-primary-base border-opacity-75"></div>
-}
-
-templ LoginError(err string) {
-	<div id="errors" class="display-block content-center relative mt-6 min-h-0 flex-auto flex flex-col text-text-disabled border border-primary-base border-opacity-75"></div>
+	@DisplayError("", true)
 }
