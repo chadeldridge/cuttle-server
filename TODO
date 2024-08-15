@@ -3,6 +3,8 @@
 // [x]: Write full tests for all existing packages.
 // [x]: Change Server testing to use MockHandler.
 
+// [ ]: Convert to https.
+// [ ]: Figure out how to store AuthMethod in DB.
 // [ ]: Add special character replacement in Profiles for {{Server}}, etc.
 // [ ]: Add sqlite db for storing profiles.
 // [ ]: Add RBAC.

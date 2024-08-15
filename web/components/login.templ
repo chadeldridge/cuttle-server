@@ -1,0 +1,131 @@
+package components
+
+templ Login(redirect string) {
+	<div id="app" class="max-container flex flex-row w-full max-auto justify-between items-center py-3">
+		<form hx-post="/login.html" hx-target="#errors" hx-swap="outerHTML">
+			@Card(
+				CardTitle("Cuttle Login"),
+				LoginFields(redirect),
+				CardActions(
+					ButtonSubmit("3", "Login", "3", nil),
+					ButtonText("4", "Sign Up", "4", templ.Attributes{"onclick": "location.href='/signup.html'"}),
+				),
+			)
+		</form>
+	</div>
+}
+
+templ LoginFields(redirect string) {
+	if redirect == "" {
+		redirect = "/"
+	}
+	<div class="block py-5">
+		@InputOutlined("username", "text", "username",
+			templ.Attributes{
+				"placeholder": "Username",
+				"tabindex":    "1",
+				"onkeypress":  OnKeyFocusID(13, "2"),
+			})
+		@InputOutlined("password", "password", "password",
+			templ.Attributes{
+				"placeholder": "Password",
+				"tabindex":    "2",
+				"onkeypress":  OnKeyFocusID(13, "3"),
+			})
+		<input id="redirect" type="hidden" value={ redirect }/>
+		@DisplayError("", true)
+	</div>
+}
+
+templ Signup() {
+	<div id="app" class="">
+		<form hx-post="/signup.html" hx-target="#errors" hx-swap="outerHTML">
+			@Card(
+				CardTitle("Cuttle Login"),
+				CardContent(SignupFields()),
+				CardActions(
+					ButtonSubmit("signupButton", "Sign Up", "5", nil),
+					ButtonText("6", "Go To Login", "6", templ.Attributes{"onclick": "location.href='/login.html'"}),
+				),
+			)
+		</form>
+	</div>
+	<script>
+		let pwMatch = false;
+		let name = document.getElementById("name");
+		let username = document.getElementById("username");
+		let signupButton = document.getElementById("signupButton");
+		let password = document.getElementById("password");
+		let confirmPassword = document.getElementById("confirmPassword");
+		let errorOutput = document.getElementById("errors");
+
+		if (password.value == "" || password.value !== confirmPassword.value) {
+			signupButton.disabled = true;
+		}
+	
+		let checkPasswords = () => {
+			if (password.value === "" || password.value !== confirmPassword.value) {
+				pwMatch = false;
+				signupButton.disabled = true;
+				errorOutput.style.display = "block";
+				errorOutput.innerHTML = "Passwords do not match.";
+			} else {
+				pwMatch = true;
+				signupButton.disabled = false;
+				errorOutput.style.display = "none";
+				errorOutput.innerHTML = "";
+			}
+
+			enableButton();
+		};
+
+		name.addEventListener('change', enableButton);
+		username.addEventListener('change', enableButton);
+		password.addEventListener('change', checkPasswords);
+		confirmPassword.addEventListener('change', checkPasswords);
+
+		function enableButton() {
+			if (allFilled()) {
+				signupButton.disabled = false;
+			} else {
+				signupButton.disabled = true;
+			}
+		}
+
+		function allFilled() {
+			return document.getElementById("name").value !== "" &&
+				document.getElementById("username").value !== "" &&
+				document.getElementById("password").value !== "" &&
+				document.getElementById("confirmPassword").value !== "" &&
+				pwMatch;
+		}
+	</script>
+}
+
+templ SignupFields() {
+	@InputOutlined("name", "text", "name",
+		templ.Attributes{
+			"placeholder": "Name: Bob",
+			"tabindex":    "1",
+			"onkeypress":  OnKeyFocusID(13, "2"),
+		})
+	@InputOutlined("username", "text", "username",
+		templ.Attributes{
+			"placeholder": "Username: bsmith",
+			"tabindex":    "2",
+			"onkeypress":  OnKeyFocusID(13, "3"),
+		})
+	@InputOutlined("password", "password", "password",
+		templ.Attributes{
+			"placeholder": "Password: Make It A Strong One",
+			"tabindex":    "3",
+			"onkeypress":  OnKeyFocusID(13, "4"),
+		})
+	@InputOutlined("confirmPassword", "password", "confirmPassword",
+		templ.Attributes{
+			"placeholder": "Confirm Password: Retype Password",
+			"tabindex":    "4",
+			"onkeypress":  OnKeyFocusID(13, "5"),
+		})
+	@DisplayError("", true)
+}

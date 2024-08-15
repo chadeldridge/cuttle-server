@@ -1,0 +1,524 @@
+:root {
+    --primary-color: #232323;
+    --primary-color-light: #4f4f4f;
+    --primary-color-dark: #181818;
+    --secondary-color: #2196f3;
+    --secondary-color-light: #4dabf5;
+    --secondary-color-dark: #1769aa;
+    --text-color-primary-light: #cccccc;
+    --text-color-primary-dark: #4f4f4f;
+    --text-color-secondary-light: #cccccc;
+    --text-color-secondary-dark: #181818;
+    --text-color-disabled: #757575;
+    --text-color-hint: #757575;
+    --text-color-icon: #d7d7d7;
+    --divider-color: #d7d7d7;
+    --rgb-primary-color: 24 24 24;
+    --rgb-primary-color-light: 31 31 31;
+    --rgb-primary-color-dark: 16 16 16;
+    --rgb-secondary-color: 33 150 243;
+    --rgb-secondary-color-light: 77 171 245;
+    --rgb-secondary-color-dark: 23 105 170;
+    --border-radius: 4px;
+}
+html, body {
+    /*background: rgb(176, 70, 50);*/
+    background: var(--primary-color-dark);
+    color: var(--text-color-primary-light);
+}
+
+/* Rules for sizing the icon. */
+.material-icons.md-18 { font-size: 18px; }
+.material-icons.md-24 { font-size: 24px; }
+.material-icons.md-36 { font-size: 36px; }
+.material-icons.md-48 { font-size: 48px; }
+
+/* Rules for using icons as black on a light background. */
+.material-icons.md-dark { color: rgba(0, 0, 0, 0.54); }
+.material-icons.md-dark.md-inactive { color: rgba(0, 0, 0, 0.26); }
+
+/* Rules for using icons as white on a dark background. */
+.material-icons.md-light { color: rgba(255, 255, 255, 1); }
+.material-icons.md-light.md-inactive { color: rgba(255, 255, 255, 0.3); }
+
+.footer {
+    font-size: 12;
+}
+
+.App {
+    min-height: 100vh; 
+    height: 100%;
+    width: 100%;
+}
+
+.App {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.main .content {
+    flex: 12 0 0;
+    align-items: center;
+    justify-content: center;
+    flex-basis: 20em;
+    padding: 0 20px 10px 20px;
+}
+
+.listIndent {
+    text-indent: 50px;
+}
+
+.gridList {
+    width: 100%;
+    overflow-y: auto;
+}
+
+.entryTile {
+    cursor: pointer;
+}
+
+.entryCard {
+    min-height: 40vh;
+    margin: 5px 20px 0 20px;
+}
+
+.entryCard .topActions {
+    display: inline-block;
+    width: 100%;
+    height: 40px;
+}
+
+.bottomActions {
+    height: 40px;
+}
+
+.entryCard .content {
+    min-height: 30%;
+    margin: 5px 5px 0 5px;
+}
+
+.moveEntryCard {
+    margin: 5px 20px 0 20px;
+}
+
+.vaultList {
+    max-height: 60%;
+}
+
+.notes {
+    overflow-y: auto;
+}
+
+.vaultCard {
+    min-height: 20vh;
+    margin-top: 10px;
+}
+
+.font18 {
+    font-size: 18px;
+}
+div.input-field {
+    display: inline-flex;
+	flex-direction: column;
+	position: relative;
+	min-width: 0px;
+	padding: 0px;
+	margin: 0px;
+	border: 0px;
+	vertical-align: top;
+}
+
+div.input-outlined {
+    font-weight: 400;
+    font-size: 1rem;
+    line-height: 1.4375;
+    letter-spacing: 0.00938em;
+    color: var(--text-color-primary-light);
+    background-color: inherit;
+    box-sizing: border-box;
+    cursor: text;
+    display: inline-flex;
+    position: relative;
+    align-items: center;
+    border: 1px solid var(--primary-color-light);
+    border-radius: var(--border-radius);
+}
+
+label.input-outlined {
+    color: var(--text-color-secondary-light);
+	font-family: "IBM Plex Sans", "Roboto", "Helvetica", "Arial", sans-serif;
+	font-weight: 400;
+	font-size: 1rem;
+	line-height: 1.4375em;
+	letter-spacing: 0.00938em;
+	padding: 0px;
+	display: block;
+	transform-origin: left top 0px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-width: calc(133% - 32px);
+	position: absolute;
+	left: 0px;
+	top: 0px;
+	transform: translate(14px, -9px) scale(0.75);
+	transition: color 200ms cubic-bezier(0, 0, 0.2, 1), transform 200ms cubic-bezier(0, 0, 0.2, 1), max-width 200ms cubic-bezier(0, 0, 0.2, 1);
+	z-index: 1;
+	pointer-events: auto;
+	user-select: none;
+    box-sizing: inherit;
+}
+
+input.outlined, textarea.outlined {
+    font: inherit;
+	letter-spacing: inherit;
+	color: currentcolor;
+	border: 0px;
+	box-sizing: content-box;
+	background: none;
+	height: 1.4375em;
+	margin: 0px;
+	display: block;
+	min-width: 0px;
+	width: 100%;
+	padding: 16.5px 14px;
+    background-color: transparent;
+    color: var(--text-color-primary-light);
+}
+
+button {
+    border-radius: 4px;
+    margin: 0;
+    outline: 0px;
+    display: inline-flex;
+    text-align: center;
+    text-decoration: none;
+    text-wrap: nowrap;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    box-sizing: border-box;
+	font-family: "IBM Plex Sans", "Roboto", "Helvetica", "Arial", sans-serif;
+    font-weight: 500;
+    font-size: 0.875rem;
+    line-height: 1.75;
+    letter-spacing: 0.02857em;
+    text-transform: uppercase;
+    transition: background-color 250ms cubic-bezier(0.4, 0, 0.2, 1) 0ms,box-shadow 250ms cubic-bezier(0.4, 0, 0.2, 1) 0ms,border-color 250ms cubic-bezier(0.4, 0, 0.2, 1) 0ms,color 250ms cubic-bezier(0.4, 0, 0.2, 1) 0ms;
+    cursor: pointer;
+    user-select: none;
+    width: 100%;
+}
+
+button.contained {
+    background-color: var(--secondary-color);
+    color: var(--text-color-secondary-dark);
+    max-width: 64;
+    padding: 6px 16px;
+    border: 0;
+}
+
+button.contained:hover {
+    background-color: var(--secondary-color-dark);
+    color: var(--text-color-secondary-dark);
+    box-shadow: 0px 2px 4px -1px rgba(0,0,0,0.2), 0px 4px 5px 0px rgba(0,0,0,0.14), 0px 1px 10px 0px rgba(0,0,0,0.12);
+}
+
+button.outlined {
+    background-color: transparent;
+    color: var(--secondary-color);
+    max-width: 64;
+    padding: 5px 15px;
+    box-sizing: border-box;
+    border: 1px solid var(--secondary-color-dark);
+}
+
+button.outlined:hover {
+    background-color: rgba(var(--rgb-secondary-color) / 0.08);
+    color: var(--secondary-color);
+    border: 1px solid var(--secondary-color);
+}
+
+/*button:hover {
+    background-color: #d7d7d7;
+    color: #181818;
+    box-shadow: 0px 2px 4px -1px rgba(0,0,0,0.2), 0px 4px 5px 0px rgba(0,0,0,0.14), 0px 1px 10px 0px rgba(0,0,0,0.12);
+}*/
+
+button.large {
+    font-size: 15px;
+}
+
+.Card {
+    background-color: var(--primary-color);
+    color: var(--text-color-primary-light);
+    border-radius: var(--border-radius);
+    box-shadow: 0px 2px 4px -1px rgba(0,0,0,0.2), 0px 4px 5px 0px rgba(0,0,0,0.14), 0px 1px 10px 0px rgba(0,0,0,0.12);
+    padding: 10px;
+    margin: 10px;
+    display: flex;
+    flex-direction: column;
+}
+
+.card-content {
+    padding: 16px;
+    box-sizing: inherit;
+    font: Arial, sans-serif;
+    font-size: 1rem;
+    line-height: 1.5;
+    letter-spacing: 0px;
+    font-weight: 400;
+}
+
+.breakWrap {
+    word-wrap: break-word;
+}
+
+.ellipses {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.scrollableY {
+    overflow-y: auto;
+}
+
+.size100 {
+    height: 100%;
+    width: 100%;
+}
+
+.flexContainerCol {
+    display: flex;
+    flex-direction: column;
+}
+
+.flexContainerRow {
+    display: flex;
+    flex-direction: row;
+}
+
+.flexSpread {
+    /* Spread items to the far lef/right or top/bottom */
+    justify-content: space-between;
+}
+
+.flexRowVTop {
+    align-items: flex-start;
+}
+
+.flexRowVCenter {
+    align-items: center;
+}
+
+.flexRowVBottom {
+    align-items: flex-end;
+}
+
+.flexRowHLeft {
+    justify-content: flex-start;
+}
+
+.flexRowHCenter {
+    justify-content: center;
+}
+
+.flexRowHRight {
+    justify-content: flex-end;
+}
+
+.flexColHTop {
+    align-items: flex-start;
+}
+
+.flexColHCenter {
+    align-items: center;
+}
+
+.flexColHBottom {
+    align-items: flex-end;
+}
+
+.flexColVLeft {
+    justify-content: flex-start;
+}
+
+.flexColVCenter {
+    justify-content: center;
+}
+
+.flexColVRight {
+    justify-content: flex-end;
+}
+
+.flexCenter {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.flexScrollAuto {
+    overflow: auto;
+}
+
+.flex1 {
+    flex: 1 0 0;
+}
+
+.flex2 {
+    flex: 2 0 0;
+}
+
+.flex3 {
+    flex: 3 0 0;
+}
+
+.flex4 {
+    flex: 4 0 0;
+}
+
+.flexWrap {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.actionButton {
+    margin: 0 10px 0 10px;
+}
+
+.mTop5 {
+    margin-top: 5px;
+}
+
+.mSides5 {
+    margin-left: 5px;
+    margin-right: 5px;
+}
+
+.mBottom5 {
+    margin-bottom: 5px;
+}
+
+.mLeft5 {
+    margin-left: 5px;
+}
+
+.mTop10 {
+    margin-top: 10px;
+}
+
+.mTop40 {
+    margin-top: 40px;
+}
+
+.mTop15vh {
+    margin-top: 15vh;
+}
+
+.mSides10 {
+    margin-left: 10px;
+    margin-right: 10px;
+}
+
+.mBottom10 {
+    margin-bottom: 10px;
+}
+
+.mLeft10 {
+    margin-left: 10px;
+}
+
+.pTop5 {
+    padding-top: 5px;
+}
+
+.pSides5 {
+    padding-left: 5px;
+    padding-right: 5px;
+}
+
+.pBottom5 {
+    padding-bottom: 5px;
+}
+
+.pLeft5 {
+    padding-left: 5px;
+}
+
+.pTop10 {
+    padding-top: 10px;
+}
+
+.pSides10 {
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+.pBottom10 {
+    padding-bottom: 10px;
+}
+
+.pLeft10 {
+    padding-left: 10px;
+}
+
+.width100 {
+    width: 100%;
+}
+
+.width95 {
+    width: 95%;
+}
+
+.width90 {
+    width: 90%;
+}
+
+.height90 {
+    height: 90%
+}
+
+.height100 {
+    height: 100%;
+}
+
+.widthMax50 {
+    max-width: 50%;
+}
+
+.heightMax50 {
+    max-height: 50%;
+}
+
+.heightMax65 {
+    max-height: 65vh;
+}
+
+.floatLeft {
+    float: left;
+}
+
+.floatCenter {
+    float: center;
+}
+
+.floatRight {
+    float: right;
+}
+
+.alignLeft {
+    text-align: left;
+}
+.alignCenter {
+    text-align: center;
+}
+
+.alignRight {
+    text-align: right;
+}
