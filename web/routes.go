@@ -27,7 +27,6 @@ func AddRoutes(server *router.HTTPServer) error {
 	root.ANY("/login.html", handleLogin(server))
 	root.ANY("/signup.html", handleSignup(server))
 	root.GET("/index.html", handleIndex(server), mwAuth)
-	// root.GET("/login", handleLoginGet(server.logger, server))
 
 	return nil
 }

@@ -21,7 +21,7 @@ type SessionCookie struct {
 
 func NewSessionCookie(bearer string) (SessionCookie, error) {
 	if bearer == "" {
-		return SessionCookie{}, fmt.Errorf("NewJWTCookie: bearer - %s", core.ErrParamEmpty)
+		return SessionCookie{}, fmt.Errorf("NewSessionCookie: bearer - %s", core.ErrParamEmpty)
 	}
 
 	expires := time.Now().Add(db.JWT_DEFAULT_SESSION_EXPIRES)
@@ -34,13 +34,11 @@ func NewSessionCookie(bearer string) (SessionCookie, error) {
 
 func NewSessionCookieFromCookie(cookie *http.Cookie) (SessionCookie, error) {
 	if cookie == nil {
-		return SessionCookie{}, fmt.Errorf("NewJWTCookieFromCookie: cookie %s", core.ErrParamEmpty)
+		return SessionCookie{}, fmt.Errorf("NewSessionCookieFromCookie: cookie %s", core.ErrParamEmpty)
 	}
 
 	s := SessionCookie{
-		Value:   cookie.Value,
-		Path:    cookie.Path,
-		Expires: cookie.Expires,
+		Value: cookie.Value,
 	}
 
 	return s, s.Validate()
@@ -58,19 +56,7 @@ func GetSessionCookie(r *http.Request) (SessionCookie, error) {
 
 func (s SessionCookie) Validate() error {
 	if s.Value == "" {
-		return fmt.Errorf("JWTCookie.Validate: value - %s", core.ErrParamEmpty)
-	}
-
-	if s.Path == "" {
-		return fmt.Errorf("JWTCookie.Validate: path - %s", core.ErrParamEmpty)
-	}
-
-	if s.Expires.IsZero() {
-		return fmt.Errorf("JWTCookie.Validate: expires - %s", core.ErrParamEmpty)
-	}
-
-	if s.Expires.Before(time.Now()) {
-		return fmt.Errorf("JWTCookie.Validate: %s", ErrExpiredCookie)
+		return fmt.Errorf("SessionCookie.Validate: value - %s", core.ErrParamEmpty)
 	}
 
 	return nil
@@ -79,7 +65,7 @@ func (s SessionCookie) Validate() error {
 func (s SessionCookie) Write(w http.ResponseWriter) error {
 	err := s.Validate()
 	if err != nil {
-		return fmt.Errorf("JWTWriteCookie: %w", err)
+		return fmt.Errorf("SessionCookie.Write: %w", err)
 	}
 
 	http.SetCookie(w, &http.Cookie{
@@ -98,7 +84,7 @@ func (s SessionCookie) Write(w http.ResponseWriter) error {
 func (s SessionCookie) Refresh(secret string) (SessionCookie, error) {
 	err := s.Validate()
 	if err != nil {
-		return SessionCookie{}, fmt.Errorf("JWTRefreshCookie: %w", err)
+		return SessionCookie{}, fmt.Errorf("SessionCookie.Refresh: %w", err)
 	}
 
 	return SessionCookie{

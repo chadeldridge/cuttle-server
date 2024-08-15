@@ -1,6 +1,7 @@
 package web
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/a-h/templ"
@@ -9,6 +10,7 @@ import (
 	"github.com/chadeldridge/cuttle-server/router"
 	"github.com/chadeldridge/cuttle-server/services/auth"
 	"github.com/chadeldridge/cuttle-server/web/components"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type ErrorHandler func(error) templ.Component
@@ -88,7 +90,7 @@ func handleSignupPost(logger *core.Logger, authDB db.AuthDB, w http.ResponseWrit
 	_, err := auth.Signup(authDB, u, n, p)
 	if err != nil {
 		logger.Printf("%s %s: %s\n", r.Method, r.RequestURI, err)
-		err := components.LoginError(err.Error()).Render(r.Context(), w)
+		err := components.DisplayError(err.Error(), false).Render(r.Context(), w)
 		if err != nil {
 			handleError(logger, w, r, http.StatusInternalServerError, "internal server error", nil)
 		}
@@ -137,6 +139,10 @@ func handleLoginPost(
 	p := r.FormValue("password")
 	redirect := r.FormValue("redirect")
 
+	if redirect == "" {
+		redirect = "/index.html"
+	}
+
 	logger.Debugf("login - username: %s, password: %s, redirect: %s\n", u, p, redirect)
 	// handle login
 	if u == "" {
@@ -154,7 +160,17 @@ func handleLoginPost(
 	user, err := auth.AuthenticateUser(authDB, u, p)
 	if err != nil {
 		logger.Printf("(%s) %s - login failed: %s\n", router.ClientIP(r), u, err)
-		returnError(logger, w, r, err.Error())
+		if errors.Is(err, auth.ErrUserNotFound) {
+			returnError(logger, w, r, "User not found!")
+			return
+		}
+
+		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
+			returnError(logger, w, r, "Password failed! Please try again.")
+			return
+		}
+
+		returnError(logger, w, r, "internal server error")
 		return
 	}
 
@@ -192,7 +208,7 @@ func handleLoginPost(
 }
 
 func returnError(logger *core.Logger, w http.ResponseWriter, r *http.Request, errMsg string) {
-	err := components.LoginError(errMsg).Render(r.Context(), w)
+	err := components.DisplayError(errMsg, false).Render(r.Context(), w)
 	if err != nil {
 		handleError(logger, w, r, http.StatusInternalServerError, "internal server error", nil)
 	}

@@ -156,6 +156,7 @@ func WebAuthMiddleware(logger *core.Logger, tokenCache *db.TokenCache, secret st
 				if err != nil {
 					logger.Debugf("WebAuthMiddleware: %s\n", err)
 					w.Header().Set("HX-Redirect", "/login.html")
+					http.Redirect(w, r, "/login.html", http.StatusSeeOther)
 					return
 				}
 
@@ -166,6 +167,7 @@ func WebAuthMiddleware(logger *core.Logger, tokenCache *db.TokenCache, secret st
 					logger.Printf("WebAuthMiddleware: %s\n", err)
 					cookie.Delete(w)
 					w.Header().Set("HX-Redirect", "/login.html")
+					http.Redirect(w, r, "/login.html", http.StatusSeeOther)
 					return
 				}
 
