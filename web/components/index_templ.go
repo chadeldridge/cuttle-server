@@ -26,7 +26,7 @@ func Index() templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"flex flex-col items-center justify-center w-full h-full\"><h1 class=\"text-4xl font-bold text-primary-light\">Welcome to the index page</h1><p class=\"text-lg text-primary-light\">This is the index page</p></div>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"max-container z-10\"><div class=\"flex flex-row justify-between md:justify-start items-center py-3\"></div></div><div class=\"flex flex-col items-center justify-center h-full\"><h1 class=\"text-4xl font-bold text-primary-light\">Welcome to the index page</h1><p class=\"text-lg text-primary-light\">This is the index page</p></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

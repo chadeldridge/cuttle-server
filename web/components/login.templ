@@ -1,7 +1,7 @@
 package components
 
 templ Login(redirect string) {
-	<div id="app" class="">
+	<div id="app" class="max-container flex flex-row w-full max-auto justify-between items-center py-3">
 		<form hx-post="/login.html" hx-target="#errors" hx-swap="outerHTML">
 			@Card(
 				CardTitle("Cuttle Login"),

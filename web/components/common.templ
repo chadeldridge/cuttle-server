@@ -22,7 +22,7 @@ templ Page(title string, content templ.Component) {
 	<html lang="en">
 		@head(title)
 		<body class={ "bg-primary-dark text-text-dark" }>
-			<div id="app" class="w-full min-h-screen h-full place-content-center">
+			<div id="app" class="mx-auto flex flex-wrap md:py-5 flex-col md:flex-row items-center">
 				@content
 			</div>
 		</body>

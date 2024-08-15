@@ -26,7 +26,7 @@ func Login(redirect string) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div id=\"app\" class=\"\"><form hx-post=\"/login.html\" hx-target=\"#errors\" hx-swap=\"outerHTML\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div id=\"app\" class=\"max-container flex flex-row w-full max-auto justify-between items-center py-3\"><form hx-post=\"/login.html\" hx-target=\"#errors\" hx-swap=\"outerHTML\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
