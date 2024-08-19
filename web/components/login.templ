@@ -3,7 +3,7 @@ package components
 templ Login(redirect string) {
 	<div id="app" class="max-container flex flex-row w-full max-auto justify-between items-center py-3">
 		<form hx-post="/login.html" hx-target="#errors" hx-swap="outerHTML">
-			@Card(
+			@Card("",
 				CardTitle("Cuttle Login"),
 				LoginFields(redirect),
 				CardActions(
@@ -40,7 +40,7 @@ templ LoginFields(redirect string) {
 templ Signup() {
 	<div id="app" class="">
 		<form hx-post="/signup.html" hx-target="#errors" hx-swap="outerHTML">
-			@Card(
+			@Card("",
 				CardTitle("Cuttle Login"),
 				CardContent(SignupFields()),
 				CardActions(

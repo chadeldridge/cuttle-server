@@ -21,7 +21,7 @@ templ Page(title string, content templ.Component) {
 	<!DOCTYPE html>
 	<html lang="en">
 		@head(title)
-		<body class={ "bg-primary-dark text-text-dark" }>
+		<body class="bg-primary-dark text-text-dark">
 			<div id="app" class="mx-auto flex flex-wrap md:py-5 flex-col md:flex-row items-center">
 				@content
 			</div>
@@ -118,8 +118,11 @@ templ DisplayError(err string, hide bool) {
 //
 // Cards
 //
-templ Card(cardHeader, cardContent, cardFooter templ.Component) {
-	<div class="place-content-center bg-primary-base/65 px-10 py-5 shrink-0 max-w-sm mx-auto rounded shadow-xl shadow-black/10 ring-1 ring-black/10">
+templ Card(idSuffix string, cardHeader, cardContent, cardFooter templ.Component) {
+	if idSuffix != "" && idSuffix[0] != '-' {
+		idSuffix = "-"
+	}
+	<div id={ "card" + idSuffix } class="place-content-center bg-primary-base/65 px-10 py-5 shrink-0 max-w-sm mx-auto rounded shadow-xl shadow-black/10 ring-1 ring-black/10">
 		if cardHeader != nil {
 			@cardHeader
 		}

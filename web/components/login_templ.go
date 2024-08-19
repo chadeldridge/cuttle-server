@@ -30,7 +30,7 @@ func Login(redirect string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = Card(
+		templ_7745c5c3_Err = Card("",
 			CardTitle("Cuttle Login"),
 			LoginFields(redirect),
 			CardActions(
@@ -146,7 +146,7 @@ func Signup() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = Card(
+		templ_7745c5c3_Err = Card("",
 			CardTitle("Cuttle Login"),
 			CardContent(SignupFields()),
 			CardActions(
