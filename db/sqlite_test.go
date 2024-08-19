@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/chadeldridge/cuttle-server/core"
 	"github.com/stretchr/testify/require"
@@ -838,6 +839,254 @@ func TestSqliteDBUserGroupDelete(t *testing.T) {
 		err := db.UserGroupDelete(9999)
 		require.Error(err, "UserGroupDelete did not return an error")
 		require.ErrorIs(err, sql.ErrNoRows, "UserGroupDelete did not return the expected error")
+	})
+}
+
+// ############################################################################################## //
+// ##################################        Tokens        ###################################### //
+// ############################################################################################## //
+
+func TestSqliteDBTokenMigrate(t *testing.T) {
+	require := require.New(t)
+	db := TestSqliteAuthDBSetup(t)
+	defer db.Close()
+	defer DeleteDB(TestAuthDBName)
+
+	createQuery := `CREATE TABLE ` + sqlite_tb_tokens + ` (
+		bearer VARCHAR(73) NOT NULL UNIQUE,
+		jwt TEXT NOT NULL,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		expires_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	)`
+	indexQuery := `CREATE INDEX idx_tokens_bearer ON ` + sqlite_tb_tokens + ` (bearer)`
+
+	err := TokensMigrate(db)
+	require.NoError(err, "TokensMigrate returned an error: %s", err)
+
+	t.Run("table", func(t *testing.T) {
+		row, err := db.QueryRow("SELECT sql FROM sqlite_schema WHERE name = '" + sqlite_tb_tokens + "'")
+		require.NoError(err, "QueryRow returned an error: %s", err)
+
+		var schema string
+		err = row.Scan(&schema)
+		require.NoError(err, "Scan returned an error: %s", err)
+		require.Equal(createQuery, schema)
+	})
+
+	t.Run("index", func(t *testing.T) {
+		row, err := db.QueryRow("SELECT sql FROM sqlite_schema WHERE name = 'idx_tokens_bearer'")
+		require.NoError(err, "QueryRow returned an error: %s", err)
+
+		var schema string
+		err = row.Scan(&schema)
+		require.NoError(err, "Scan returned an error: %s", err)
+		require.Equal(indexQuery, schema)
+	})
+}
+
+func TestSqliteDBTokenCreate(t *testing.T) {
+	require := require.New(t)
+	SetAuthSecret(test_secret)
+	db := TestSqliteAuthDBSetup(t)
+	defer db.Close()
+	defer DeleteDB(TestAuthDBName)
+
+	err := TokensMigrate(db)
+	require.NoError(err, "TokensMigrate returned an error: %s", err)
+
+	t.Run("empty userID", func(t *testing.T) {
+		_, err := db.TokenCreate(0, want.username, want.name, false)
+		require.Error(err, "TokenCreate did not return an error")
+		require.ErrorIs(err, core.ErrParamEmpty, "TokenCreate did not return the expected error")
+	})
+
+	t.Run("empty username", func(t *testing.T) {
+		_, err := db.TokenCreate(want.userID, "", want.name, false)
+		require.Error(err, "TokenCreate did not return an error")
+		require.ErrorIs(err, core.ErrParamEmpty, "TokenCreate did not return the expected error")
+	})
+
+	t.Run("empty name", func(t *testing.T) {
+		_, err := db.TokenCreate(want.userID, "", want.name, false)
+		require.Error(err, "TokenCreate did not return an error")
+		require.ErrorIs(err, core.ErrParamEmpty, "TokenCreate did not return the expected error")
+	})
+
+	t.Run("valid", func(t *testing.T) {
+		bearer, err := db.TokenCreate(want.userID, want.username, want.name, false)
+		require.NoError(err, "TokenCreate returned an error: %s", err)
+		require.Len(bearer, 72)
+	})
+}
+
+func TestSqliteDBTokenGet(t *testing.T) {
+	require := require.New(t)
+	SetAuthSecret(test_secret)
+	db := TestSqliteAuthDBSetup(t)
+	defer db.Close()
+	defer DeleteDB(TestAuthDBName)
+
+	err := TokensMigrate(db)
+	require.NoError(err, "TokensMigrate returned an error: %s", err)
+
+	bearer, err := db.TokenCreate(want.userID, want.username, want.name, false)
+	require.NoError(err, "TokenCreate returned an error: %s", err)
+
+	t.Run("empty bearer", func(t *testing.T) {
+		_, err := db.TokenGet("")
+		require.Error(err, "TokenGet did not return an error")
+		require.ErrorIs(err, core.ErrParamEmpty, "TokenGet did not return the expected error")
+	})
+
+	t.Run("invalid bearer", func(t *testing.T) {
+		_, err := db.TokenGet("not_a_bearer")
+		require.Error(err, "TokenGet did not return an error")
+		require.ErrorIs(err, sql.ErrNoRows, "TokenGet did not return the expected error")
+	})
+
+	t.Run("valid", func(t *testing.T) {
+		token, err := db.TokenGet(bearer)
+		require.NoError(err, "TokenGet returned an error: %s", err)
+		require.Equal(want.userID, token.UserID)
+		require.Equal(want.username, token.Username)
+		require.Equal(want.name, token.Name)
+		require.False(token.IsAdmin)
+	})
+}
+
+func TestSqliteDBTokenUpdate(t *testing.T) {
+	require := require.New(t)
+	SetAuthSecret(test_secret)
+	db := TestSqliteAuthDBSetup(t)
+	defer db.Close()
+	defer DeleteDB(TestAuthDBName)
+
+	err := TokensMigrate(db)
+	require.NoError(err, "TokensMigrate returned an error: %s", err)
+
+	bearer, err := db.TokenCreate(want.userID, want.username, want.name, false)
+	require.NoError(err, "TokenCreate returned an error: %s", err)
+
+	got, err := db.TokenGet(bearer)
+	require.NoError(err, "TokenGet returned an error: %s", err)
+
+	got.UserID = 5678
+	got.Username = "bobs"
+	got.Name = "Bob Smith"
+	got.IsAdmin = true
+
+	t.Run("empty bearer", func(t *testing.T) {
+		err := db.TokenUpdate("", got)
+		require.Error(err, "TokenUpdate did not return an error")
+		require.ErrorIs(err, core.ErrParamEmpty, "TokenUpdate did not return the expected error")
+	})
+
+	t.Run("nil claims", func(t *testing.T) {
+		err := db.TokenUpdate(bearer, nil)
+		require.Error(err, "TokenUpdate did not return an error")
+		require.ErrorIs(err, core.ErrParamEmpty, "TokenUpdate did not return the expected error")
+	})
+
+	t.Run("empty claims", func(t *testing.T) {
+		err := db.TokenUpdate(bearer, &Claims{})
+		require.NoError(err, "TokenUpdate did not return an error")
+	})
+
+	t.Run("valid", func(t *testing.T) {
+		err := db.TokenUpdate(bearer, got)
+		require.NoError(err, "TokenUpdate returned an error: %s", err)
+
+		token, err := db.TokenGet(bearer)
+		require.NoError(err, "TokenGet returned an error: %s", err)
+		require.Equal(got.UserID, token.UserID)
+		require.Equal(got.Username, token.Username)
+		require.Equal(got.Name, token.Name)
+		require.Equal(got.IsAdmin, token.IsAdmin)
+	})
+}
+
+func TestSqliteDBTokenDelete(t *testing.T) {
+	require := require.New(t)
+	SetAuthSecret(test_secret)
+	db := TestSqliteAuthDBSetup(t)
+	defer db.Close()
+	defer DeleteDB(TestAuthDBName)
+
+	err := TokensMigrate(db)
+	require.NoError(err, "TokensMigrate returned an error: %s", err)
+
+	bearer, err := db.TokenCreate(want.userID, want.username, want.name, false)
+	require.NoError(err, "TokenCreate returned an error: %s", err)
+
+	t.Run("empty bearer", func(t *testing.T) {
+		err := db.TokenDelete("")
+		require.Error(err, "TokenDelete did not return an error")
+		require.ErrorIs(err, core.ErrParamEmpty, "TokenDelete did not return the expected error")
+	})
+
+	t.Run("invalid bearer", func(t *testing.T) {
+		err := db.TokenDelete("not_a_bearer")
+		require.NoError(err, "TokenDelete did not return an error")
+	})
+
+	t.Run("valid", func(t *testing.T) {
+		err := db.TokenDelete(bearer)
+		require.NoError(err, "TokenDelete returned an error: %s", err)
+
+		_, err = db.TokenGet(bearer)
+		require.Error(err, "TokenGet did not return an error")
+		require.ErrorIs(err, sql.ErrNoRows, "TokenGet did not return the expected error")
+	})
+}
+
+func TestSqliteDBTokenClean(t *testing.T) {
+	require := require.New(t)
+	SetAuthSecret(test_secret)
+	db := TestSqliteAuthDBSetup(t)
+	defer db.Close()
+	defer DeleteDB(TestAuthDBName)
+
+	err := TokensMigrate(db)
+	require.NoError(err, "TokensMigrate returned an error: %s", err)
+
+	bearer1, err := db.TokenCreate(want.userID, want.username, want.name, false)
+	require.NoError(err, "TokenCreate returned an error: %s", err)
+
+	bearer2, err := db.TokenCreate(want.userID, want.username, want.name, false)
+	require.NoError(err, "TokenCreate returned an error: %s", err)
+
+	bearer3, err := db.TokenCreate(want.userID, want.username, want.name, false)
+	require.NoError(err, "TokenCreate returned an error: %s", err)
+
+	_, err = db.Exec(
+		"UPDATE "+sqlite_tb_tokens+" SET expires_at = ? where bearer = ?",
+		time.Now().Add(-(sessionMaxExpires + 1*time.Minute)),
+		bearer1,
+	)
+	require.NoError(err, "Exec returned an error: %s", err)
+
+	_, err = db.Exec(
+		"UPDATE "+sqlite_tb_tokens+" SET created_at = ? where bearer = ?",
+		time.Now().Add(-(sessionMaxExpires + 1*time.Minute)),
+		bearer2,
+	)
+	require.NoError(err, "Exec returned an error: %s", err)
+
+	t.Run("valid", func(t *testing.T) {
+		err := db.TokenClean()
+		require.NoError(err, "TokenClean returned an error: %s", err)
+
+		_, err = db.TokenGet(bearer1)
+		require.Error(err, "TokenGet did not return an error")
+		require.ErrorIs(err, sql.ErrNoRows, "TokenGet did not return the expected error")
+
+		_, err = db.TokenGet(bearer2)
+		require.Error(err, "TokenGet did not return an error")
+		require.ErrorIs(err, sql.ErrNoRows, "TokenGet did not return the expected error")
+
+		got, err := db.TokenGet(bearer3)
+		require.NoError(err, "TokenGet returned an error: %s", err)
+		require.NotNil(got)
 	})
 }
 

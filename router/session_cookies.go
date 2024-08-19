@@ -81,19 +81,6 @@ func (s SessionCookie) Write(w http.ResponseWriter) error {
 	return nil
 }
 
-func (s SessionCookie) Refresh(secret string) (SessionCookie, error) {
-	err := s.Validate()
-	if err != nil {
-		return SessionCookie{}, fmt.Errorf("SessionCookie.Refresh: %w", err)
-	}
-
-	return SessionCookie{
-		Value:   s.Value,
-		Path:    s.Path,
-		Expires: s.Expires.Add(db.JWT_DEFAULT_SESSION_EXPIRES),
-	}, nil
-}
-
 func (s SessionCookie) Delete(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     SESSION_COOKIE_NAME,

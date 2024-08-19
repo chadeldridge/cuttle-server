@@ -145,7 +145,7 @@ type ContextKey string
 
 const ClaimsKey ContextKey = "claims"
 
-func WebAuthMiddleware(logger *core.Logger, tokenCache *db.TokenCache, secret string) Middleware {
+func WebAuthMiddleware(logger *core.Logger, authDB db.AuthDB, secret string) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(
 			func(w http.ResponseWriter, r *http.Request) {
@@ -162,7 +162,7 @@ func WebAuthMiddleware(logger *core.Logger, tokenCache *db.TokenCache, secret st
 
 				// Get the claims from the cache using the bearer token. This call
 				// also refreshes the JWT in the cache.
-				claims, err := tokenCache.GetClaims(cookie.Value)
+				claims, err := authDB.TokenGet(cookie.Value)
 				if err != nil {
 					logger.Printf("WebAuthMiddleware: %s\n", err)
 					cookie.Delete(w)

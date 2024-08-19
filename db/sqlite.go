@@ -3,13 +3,16 @@ package db
 import (
 	"context"
 	"database/sql"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	// libray has to be imported to register the driver.
+
 	"github.com/chadeldridge/cuttle-server/core"
+	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -17,6 +20,7 @@ const (
 	// Auth Tables.
 	sqlite_tb_users       = "users"
 	sqlite_tb_user_groups = "user_groups"
+	sqlite_tb_tokens      = "tokens"
 )
 
 // SqliteDB is a wrapper around the sqlite3 database. It also holds the db filename and context.
@@ -76,6 +80,10 @@ func (db *SqliteDB) AuthMigrate() error {
 
 	if err := UserGroupsMigrate(db); err != nil {
 		return fmt.Errorf("db.AuthMigrate: failed to migrate %s: %w", sqlite_tb_user_groups, err)
+	}
+
+	if err := TokensMigrate(db); err != nil {
+		return fmt.Errorf("db.AuthMigrate: failed to migrate %s: %w", sqlite_tb_tokens, err)
 	}
 
 	return nil
@@ -610,6 +618,156 @@ func (db *SqliteDB) UserGroupDelete(id int64) error {
 	query := `DELETE FROM ` + sqlite_tb_user_groups + ` WHERE id = ?`
 	if _, err := db.Exec(query, id); err != nil {
 		return fmt.Errorf("SqliteDB.UserGroupsDelete: %w", err)
+	}
+
+	return nil
+}
+
+// ############################################################################################## //
+// ####################################        Tokens         ################################### //
+// ############################################################################################## //
+
+// UserGroupData represents a user group in the database.
+type TokenData struct {
+	Bearer  string
+	JWT     string    // Group name.
+	Created time.Time // Time created.
+	Expires time.Time // Time last updated.
+}
+
+// UserGroupsMigrate creates the 'user_groups' table if it does not exist.
+func TokensMigrate(db *SqliteDB) error {
+	query := `
+	CREATE TABLE IF NOT EXISTS ` + sqlite_tb_tokens + ` (
+		bearer VARCHAR(72) NOT NULL UNIQUE,
+		jwt TEXT NOT NULL,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		expires_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	);
+	CREATE INDEX IF NOT EXISTS idx_tokens_bearer ON ` + sqlite_tb_tokens + ` (bearer);`
+	if _, err := db.Exec(query); err != nil {
+		return fmt.Errorf("SqliteDB.UserGroupsMigrate: %w", err)
+	}
+
+	return nil
+}
+
+func (db *SqliteDB) TokenCreate(userID int64, username, name string, isAdmin bool) (string, error) {
+	if userID == 0 {
+		return "", fmt.Errorf("SqliteDB.TokenCreate: userID - %w", core.ErrParamEmpty)
+	}
+
+	if username == "" {
+		return "", fmt.Errorf("SqliteDB.TokenCreate: username - %w", core.ErrParamEmpty)
+	}
+
+	if name == "" {
+		return "", fmt.Errorf("SqliteDB.TokenCreate: name - %w", core.ErrParamEmpty)
+	}
+
+	bearer := hex.EncodeToString([]byte(uuid.New().String()))
+
+	token, err := CreateJWT(userID, username, name, auth_secret, isAdmin)
+	if err != nil {
+		return "", fmt.Errorf("SqliteDB.TokenCreate: %w", err)
+	}
+
+	created := time.Now()
+	expires := time.Now().Add(sessionExpires)
+	_, err = db.Exec(
+		`INSERT INTO `+sqlite_tb_tokens+`(bearer, jwt, created_at, expires_at) VALUES (?, ?, ?, ?)`,
+		bearer,
+		token,
+		created,
+		expires,
+	)
+	if err != nil {
+		return "", fmt.Errorf("SqliteDB.TokenCreate: %w", err)
+	}
+
+	return bearer, nil
+}
+
+func (db *SqliteDB) TokenGet(bearer string) (*Claims, error) {
+	claims := &Claims{}
+	if bearer == "" {
+		return claims, fmt.Errorf("SqliteDB.TokenGet: bearer - %w", core.ErrParamEmpty)
+	}
+
+	row, err := db.QueryRow(`SELECT * FROM `+sqlite_tb_tokens+` WHERE bearer = ?`, bearer)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return claims, fmt.Errorf("SqliteDB.TokenGet: %w", ErrTokenNotFound)
+		}
+
+		return claims, fmt.Errorf("SqliteDB.TokenGet: %w", err)
+	}
+
+	var token TokenData
+	if err = row.Scan(&token.Bearer, &token.JWT, &token.Created, &token.Expires); err != nil {
+		return claims, fmt.Errorf("SqliteDB.TokenGet: %w", err)
+	}
+
+	if token.Expires.Before(time.Now()) || token.Created.Before(time.Now().Add(-sessionMaxExpires)) {
+		return claims, fmt.Errorf("SqliteDB.TokenGet: %w", ErrTokenExpired)
+	}
+
+	claims, err = ParseJWT(token.JWT, auth_secret)
+	if err != nil {
+		return claims, fmt.Errorf("SqliteDB.TokenGet: %w", err)
+	}
+
+	return claims, nil
+}
+
+func (db *SqliteDB) TokenUpdate(bearer string, claims *Claims) error {
+	if bearer == "" {
+		return fmt.Errorf("SqliteDB.TokenUpdate: bearer - %w", core.ErrParamEmpty)
+	}
+
+	if claims == nil {
+		return fmt.Errorf("SqliteDB.TokenUpdate: claims - %w", core.ErrParamEmpty)
+	}
+
+	token, err := RefreshJWT(claims, auth_secret)
+	if err != nil {
+		return fmt.Errorf("SqliteDB.TokenUpdate: %w", err)
+	}
+
+	_, err = db.Exec(
+		`UPDATE `+sqlite_tb_tokens+` SET jwt = ?, expires_at = ? WHERE bearer = ?`,
+		token,
+		time.Now().Add(sessionExpires),
+		bearer,
+	)
+	if err != nil {
+		return fmt.Errorf("SqliteDB.TokenUpdate: %w", err)
+	}
+
+	return nil
+}
+
+func (db *SqliteDB) TokenDelete(bearer string) error {
+	if bearer == "" {
+		return fmt.Errorf("SqliteDB.TokenDelete: bearer - %w", core.ErrParamEmpty)
+	}
+
+	_, err := db.Exec(`DELETE FROM `+sqlite_tb_tokens+` WHERE bearer = ?`, bearer)
+	if err != nil {
+		return fmt.Errorf("SqliteDB.TokenDelete: %w", err)
+	}
+
+	return nil
+}
+
+func (db *SqliteDB) TokenClean() error {
+	_, err := db.Exec(
+		`DELETE FROM `+sqlite_tb_tokens+` WHERE expires_at < ? OR created_at < ?`,
+		time.Now(),
+		time.Now().Add(-sessionMaxExpires),
+	)
+	if err != nil {
+		return fmt.Errorf("SqliteDB.TokenClean: %w", err)
 	}
 
 	return nil

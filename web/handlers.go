@@ -106,7 +106,7 @@ func handleLogin(server *router.HTTPServer) http.Handler {
 		func(w http.ResponseWriter, r *http.Request) {
 			if r.Method == http.MethodPost {
 				// handle login
-				handleLoginPost(server.Logger, server.TokenCache, server.AuthDB, w, r)
+				handleLoginPost(server.Logger, server.AuthDB, w, r)
 				return
 			}
 
@@ -129,7 +129,6 @@ func handleLoginGet(logger *core.Logger, w http.ResponseWriter, r *http.Request)
 
 func handleLoginPost(
 	logger *core.Logger,
-	tokenCache *db.TokenCache,
 	authDB db.AuthDB,
 	w http.ResponseWriter,
 	r *http.Request,
@@ -175,7 +174,7 @@ func handleLoginPost(
 	}
 
 	logger.Debug("login - creating bearer token")
-	bearer, err := tokenCache.NewBearerToken(user.ID, user.Username, user.Name, user.IsAdmin)
+	bearer, err := authDB.TokenCreate(user.ID, user.Username, user.Name, user.IsAdmin)
 	if err != nil {
 		logger.Printf("handleLoginPost: (%s) failed to create bearer token: %s\n", u, err)
 		returnError(logger, w, r, "internal server error")

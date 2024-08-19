@@ -3,13 +3,18 @@ package db
 import (
 	"fmt"
 	"os"
+
+	"github.com/chadeldridge/cuttle-server/core"
 )
 
 const (
 	DefaultDBFolder = "db"
 )
 
-var db_folder string
+var (
+	db_folder   string
+	auth_secret string
+)
 
 func init() {
 	db_folder = GenDBFolder()
@@ -53,6 +58,11 @@ type AuthDB interface {
 	UserGroupGetGroups(ids []int64) ([]UserGroupData, error)
 	UserGroupUpdate(group UserGroupData) (UserGroupData, error)
 	UserGroupDelete(id int64) error
+	// Tokens
+	TokenCreate(userID int64, username, name string, isAdmin bool) (string, error)
+	TokenGet(bearer string) (*Claims, error)
+	TokenUpdate(bearer string, claims *Claims) error
+	TokenDelete(bearer string) error
 }
 
 // SetDBRoot sets the root directory for the database. If this is not set, the default behavior is to
@@ -85,5 +95,15 @@ func SetDBRoot(rootDir string) error {
 	}
 
 	db_folder = rootDir
+	return nil
+}
+
+// SetAuthSecret sets the secret used to sign JWTs.
+func SetAuthSecret(secret string) error {
+	if secret == "" {
+		return fmt.Errorf("db.SetAuthSecret: secret - %s", core.ErrParamEmpty)
+	}
+
+	auth_secret = secret
 	return nil
 }

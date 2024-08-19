@@ -11,7 +11,7 @@ var BodyInternalServerError = "internal server error"
 func AddRoutes(server *router.HTTPServer) error {
 	// Initialize middleware
 	mwLogger := router.LoggerMiddleware(server.Logger)
-	mwAuth := router.WebAuthMiddleware(server.Logger, server.TokenCache, server.Config.Secret)
+	mwAuth := router.WebAuthMiddleware(server.Logger, server.AuthDB, server.Config.Secret)
 
 	// Create a new router group
 	root, err := router.NewRouterGroup(server.Mux, "/", mwLogger)

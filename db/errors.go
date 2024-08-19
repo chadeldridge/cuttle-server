@@ -16,6 +16,9 @@ var (
 	// User Groups
 	ErrUserGroupNotFound = fmt.Errorf("user group not found")
 	ErrUserGroupExists   = fmt.Errorf("user group exists")
+	// Tokens
+	ErrTokenNotFound = fmt.Errorf("token not found")
+	ErrTokenExpired  = fmt.Errorf("token has expired")
 )
 
 /*
