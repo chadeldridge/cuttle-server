@@ -57,9 +57,10 @@ sshTestServer-stop:
 .PHONY: sshTestServer-stop
 
 setup:
-	@cp ~/cuttle/cuttle.yaml ${CONFIG_DIR}/cuttle.yaml
-	@cp ~/cuttle/certs/certificate.crt ${CONFIG_DIR}/
-	@cp ~/cuttle/certs/privatekey.key ${CONFIG_DIR}/
+	@cp ./test_helpers/cuttle.yaml ${CONFIG_DIR}/cuttle.yaml
+	@cp ./test_helpers/certs/certificate.crt ${CONFIG_DIR}/certs/
+	@cp ./test_helpers/certs/privatekey.key ${CONFIG_DIR}/certs/
+	@ln -s web/assets assets
 .PHONY: setup
 
 clean:
