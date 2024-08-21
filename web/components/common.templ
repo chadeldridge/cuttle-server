@@ -17,12 +17,14 @@ templ head(title string) {
 	</head>
 }
 
+// item-center: center the content vertically
+// content-center: center the content horizontally
 templ Page(title string, content templ.Component) {
 	<!DOCTYPE html>
 	<html lang="en">
 		@head(title)
 		<body class="bg-primary-dark text-text-dark">
-			<div id="app" class="mx-auto flex flex-wrap md:py-5 flex-col md:flex-row items-center">
+			<div id="app" class="min-h-full h-full w-full fixed top-0 left-0 flex flex-col items-center content-center">
 				@content
 			</div>
 		</body>
@@ -118,11 +120,16 @@ templ DisplayError(err string, hide bool) {
 //
 // Cards
 //
-templ Card(idSuffix string, cardHeader, cardContent, cardFooter templ.Component) {
+
+func getSuffix(idSuffix string) string {
 	if idSuffix != "" && idSuffix[0] != '-' {
-		idSuffix = "-"
+		return "-" + idSuffix
 	}
-	<div id={ "card" + idSuffix } class="place-content-center bg-primary-base/65 px-10 py-5 shrink-0 max-w-sm mx-auto rounded shadow-xl shadow-black/10 ring-1 ring-black/10">
+	return idSuffix
+}
+
+templ Card(idSuffix string, cardHeader, cardContent, cardFooter templ.Component) {
+	<div id={ "card" + getSuffix(idSuffix) } class="place-content-center bg-primary-base/65 px-10 py-5 shrink-0 max-w-sm mx-auto rounded shadow-xl shadow-black/10 ring-1 ring-black/10">
 		if cardHeader != nil {
 			@cardHeader
 		}

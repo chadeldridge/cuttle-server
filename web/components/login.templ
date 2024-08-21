@@ -1,18 +1,16 @@
 package components
 
 templ Login(redirect string) {
-	<div id="app" class="max-container flex flex-row w-full max-auto justify-between items-center py-3">
-		<form hx-post="/login.html" hx-target="#errors" hx-swap="outerHTML">
-			@Card("",
-				CardTitle("Cuttle Login"),
-				LoginFields(redirect),
-				CardActions(
-					ButtonSubmit("3", "Login", "3", nil),
-					ButtonText("4", "Sign Up", "4", templ.Attributes{"onclick": "location.href='/signup.html'"}),
-				),
-			)
-		</form>
-	</div>
+	<form hx-post="/login.html" hx-target="#errors" hx-swap="outerHTML">
+		@Card("",
+			CardTitle("Cuttle Login"),
+			LoginFields(redirect),
+			CardActions(
+				ButtonSubmit("3", "Login", "3", nil),
+				ButtonText("4", "Sign Up", "4", templ.Attributes{"onclick": "location.href='/signup.html'"}),
+			),
+		)
+	</form>
 }
 
 templ LoginFields(redirect string) {

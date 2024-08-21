@@ -33,7 +33,8 @@ func handleError(
 func handleIndex(server *router.HTTPServer) http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
-			err := components.Page("Cuttle", components.Index()).Render(r.Context(), w)
+			claims := r.Context().Value(router.ClaimsKey).(*db.Claims)
+			err := components.Page("Cuttle", components.Index(claims.Username)).Render(r.Context(), w)
 			if err != nil {
 				handleError(server.Logger, w, r, http.StatusInternalServerError, "internal server error", nil)
 			}

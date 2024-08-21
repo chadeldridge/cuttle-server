@@ -1,11 +1,157 @@
 package components
 
-templ Index() {
+/*
 	<div class="max-container z-10">
 		<div class="flex flex-row justify-between md:justify-start items-center py-3"></div>
 	</div>
 	<div class="flex flex-col items-center justify-center h-full">
-		<h1 class="text-4xl font-bold text-primary-light">Welcome to the index page</h1>
-		<p class="text-lg text-primary-light">This is the index page</p>
+		<h1 class="text-4xl font-bold text-text-light">Welcome to the index page</h1>
+		<p class="text-lg text-text-light">This is the index page</p>
 	</div>
+*/
+
+templ Index(username string) {
+	@Header(username)
+	<div class="flex flex-row items-center content-center min-w-full h-full w-full">
+		@Tiles()
+		@Results()
+	</div>
+	@Logs()
+}
+
+templ Header(username string) {
+	<script>
+		function toggleAccountMenu() {
+			const menu = document.getElementById('accountMenu');
+			menu.classList.toggle('hidden');
+		}
+	</script>
+	<header class="flex flex-row w-full justify-between items-center p-3 border-b-[0.5px] border-text-disabled">
+		<div id="left-box" class="flex flex-row items-center justify-between">
+			<div class="text-2xl font-bold text-secondary-base mr-4">Cuttle~</div>
+			<div class="text-1xl font-semibold text-text-light">Profiles</div>
+			<div class="text-1xl font-semibold text-text-light px-2">/</div>
+			<div class="text-1xl font-semibold text-text-light">Groups</div>
+		</div>
+		<div id="right-box" class="flex flex-row items-center">
+			<div class="text-1xl font-semibold text-text-light">{ username }</div>
+			<button
+				type="button"
+				class="material-icons text-2xl text-text-light ml-2 cursor-pointer hover:text-text-highlight"
+				onclick="toggleAccountMenu()"
+			>account_circle</button>
+			<ul
+				id="accountMenu"
+				class="hidden absolute right-0 top-10 z-[1000] float-left m-0 min-w-max list-none overlow-hidden rounded-lg border-none bg-text-light text-text-dark"
+				role="menu"
+			>
+				<li>
+					<a
+						href="#"
+						id="menu-item-0"
+						class="block w-full whitespace-nowrap px-4 py-2 rounded-t-lg text-sm text-primary-dark hover:bg-text-highlight"
+						role="menuitem"
+					>Account settings</a>
+				</li>
+				<!--- menuitems in the middle do not need to be rounded. -->
+				<li>
+					<form hx-method="POST" hx-target="/logout.html" action="#" role="none">
+						<button
+							type="submit"
+							id="menu-item-1"
+							class="block w-full px-4 py-2 rounded-b-lg text-left text-sm text-primary-dark hover:bg-text-highlight"
+							role="menuitem"
+							tabindex="-1"
+						>Logout</button>
+					</form>
+				</li>
+			</ul>
+		</div>
+	</header>
+}
+
+templ Results() {
+	<lu id="results" class="flex flex-col w-1/4 h-full items-start justify-start text-sm font-semibold text-text-disabled scroll-auto bg-primary-dark border-l border-text-disabled/10">
+		@ResultsItem("test-server1", false, true)
+		@ResultsItem("test-server2", true, false)
+		@ResultsItem("debian01", false, false)
+		@ResultsItem("debian02", true, true)
+	</lu>
+}
+
+templ ResultsItem(name string, waiting, success bool) {
+	<li class="flex flex-row w-full justify-between items-center">
+		<div class="w-full justify-start text-text-disabled">{ name }</div>
+		if waiting {
+			<span class="material-icons text-text-disabled ml-2">radio_button_unchecked</span>
+		} else {
+			if success {
+				<span class="material-icons text-success ml-2">radio_button_unchecked</span>
+			} else {
+				<span class="material-icons text-error ml-2">radio_button_checked</span>
+			}
+		}
+	</li>
+}
+
+templ Logs() {
+	<div id="logs" class="flex flex-col w-full h-1/4 items-start justify-start text-sm font-semibold text-text-disabled scroll-auto bg-primary-dark border-t border-text-disabled/10">
+		<p>2024-08-19 21:59:02 test-server1:~ Hello!</p>
+		<p>2024-08-19 21:59:02 test-server2:~ Hello!</p>
+		<p>2024-08-19 21:59:03 debian01:~ Hello!</p>
+		<p>2024-08-19 21:59:04 debian02:~ Hello!</p>
+	</div>
+}
+
+templ Tiles() {
+	<main class="w-full h-full py-5">
+		<lu class="grid grid-cols-6 sm:gap-y-10 xl:gap-x-8 gap-x-6 gap-y-6 mt-6 px-4">
+			@Tile("1", "SSH Echo")
+			@Tile("2", "Ping")
+			@Tile("3", "Some Big Long Title")
+			@Tile("4", "Ping")
+			@Tile("5", "Ping")
+			@Tile("6", "Ping")
+			@Tile("7", "Ping")
+			@Tile("8", "Ping")
+			@Tile("9", "Ping")
+			@Tile("10", "Ping")
+			@Tile("11", "Ping")
+			@Tile("12", "Ping")
+		</lu>
+	</main>
+}
+
+templ Tile(idSuffix, title string) {
+	<li id={ "tile" + getSuffix(idSuffix) } class="group inline-block list-none relative w-full max-h-28 h-28 text-wrap overflow-hidden cursor-pointer select-none items-end content-center bg-primary-base shrink-0 max-w-sm mx-auto rounded-2xl shadow-xl shadow-black/10 ring-1 ring-black/10 hover:bg-primary-light/75 hover:text-text-highlight">
+		<div class="flex flex-col w-full h-full">
+			<div class="flex w-full h-full mx-auto mt-2 px-1 content-center items-center justify-center">
+				<p class="text-center text-md tracking-tight text-text-light sm:text-sm">{ title }</p>
+			</div>
+			<div class="flex flex-row min-w-full mt-auto py-1 px-2 item-center content-end justify-end bg-primary-light rounded-b-2xl group-hover:bg-primary-highlight/50">
+				@TileIndicatorSuccessIncomplete("success-indicator" + getSuffix(idSuffix))
+				@TileIndicatorFailComplete("fail-indicator" + getSuffix(idSuffix))
+			</div>
+		</div>
+	</li>
+}
+
+templ TileIndicatorIncomplete(id string) {
+	<span id={ id } class="material-icons text-text-disabled ml-2">radio_button_unchecked</span>
+}
+
+templ TileIndicatorSuccessIncomplete(id string) {
+	<span id={ id } class="material-icons text-success ml-2">radio_button_unchecked</span>
+}
+
+templ TileIndicatorSuccessComplete(id string) {
+	<span id={ id } class="material-icons text-success ml-2">radio_button_checked</span>
+}
+
+templ TileIndicatorFailIncomplete(id string) {
+	<span id={ id } class="material-icons text-error ml-2">radio_button_unchecked</span>
+}
+
+templ TileIndicatorFailComplete(id string) {
+	<span id={ id } class="material-icons text-error ml-2">radio_button_checked</span>
 }
