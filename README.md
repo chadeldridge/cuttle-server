@@ -1,7 +1,21 @@
 # cuttle
+
 Server macros for quick actions.
 
+# Planned v1 Features
+
+- Select a profile then a server group. Be presented with a list of actions. Clicking on an action will perform the action against all servers in the group. Servers will be listed with a status icon on the right. Logs from the actions will be shown at the bottom.
+- Profiles dictate which actions can be ran against which groups.
+- Only Admins can create actions, add servers and connections, create groups, and profiles.
+- User Groups must be used to provide users with access to profiles.
+
+## Post v1 Planned Features
+
+- Satellite servers. Main server can send action requests to satellite servers in other vlans or locations. This would allow for easier testing in environments where special vlan access is needed, dns spoofing is setup, etc.
+- Allow external auth and group queries. Active Directory, LDAP, Oauth2, or allow users to provide their own script the server calls out to (performance concerns?).
+
 ### Enable Ping on Linux
+
 You need to run the following in the container build or on the server to enable UDP ping. I'm avoiding ICMP ping to eliminate the need to run this application with privilege.
 
 ```
@@ -14,9 +28,11 @@ On WSL2 add this to %HOMEPATH%/.wslconfig
 kernelCommandLine=sysctl.net.ipv4.ping_group_range=\"0 2147483647\"
 ```
 ## Config
+
 cli flags > env vars > config file > defaults
 
 ### Config Environment Variables
+
 All cuttle environment variables should be the all uppercase version of the yaml config names and should contain the prefix "CUTTLE_".
 Example:
 ```
@@ -24,6 +40,7 @@ export CUTTLE_API_HOST=192.169.1.50
 ```
 
 ### Config File
+
 If a config file is specified through the cli flag or environment variable, cuttle will consider it mission critical and will panic if the file is missing or cannot be loaded.
 
 CLI Arg:
