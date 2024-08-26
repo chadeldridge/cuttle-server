@@ -21,6 +21,7 @@ const (
 	sqlite_tb_users       = "users"
 	sqlite_tb_user_groups = "user_groups"
 	sqlite_tb_tokens      = "tokens"
+	sqlite_tb_servers     = "servers"
 )
 
 // SqliteDB is a wrapper around the sqlite3 database. It also holds the db filename and context.
@@ -162,85 +163,6 @@ func (db *SqliteDB) Exec(query string, args ...any) (sql.Result, error) {
 	return db.DB.ExecContext(db.ctx, query, args...)
 }
 
-/*
-// Attach the filename database tot he current database with the given alias.
-func (db *SqliteDB) Attach(filename, alias string) error {
-	if filename == "" {
-		return fmt.Errorf("SqliteDB.Attach: filename is empty")
-	}
-
-	if alias == "" {
-		return fmt.Errorf("SqliteDB.Attach: alias is empty")
-	}
-
-	_, err := db.DB.ExecContext(db.ctx, "ATTACH DATABASE ? AS ?", filename, alias)
-	return err
-}
-
-func (db *SqliteDB) IsAttached(alias string) bool {
-	rows, err := db.QueryContext(db.ctx, "PRAGMA database_list")
-	if err != nil {
-		log.Fatalf("SqliteDB.IsAttached: %s", err)
-		return false
-	}
-
-	for rows.Next() {
-		var id int
-		var name, file string
-
-		err := rows.Scan(&id, &name, &file)
-		if err != nil {
-			log.Fatalf("SqliteDB.IsAttached: %s", err)
-			return false
-		}
-
-		fmt.Printf("id: %d, name: %s, file: %s, alias: %s\n", id, name, file, alias)
-		if name == alias {
-			return true
-		}
-	}
-
-	return false
-}
-
-type migrater func(DB) error
-
-func (db *SqliteDB) AddRepo(file, alias string, migrate migrater) error {
-	if db.DB == nil {
-		return fmt.Errorf("SqliteDB.AddRepo: db.DB is nil")
-	}
-
-	if db.IsAttached(alias) {
-		return fmt.Errorf("SqliteDB.AddRepo: %w", ErrAliasInUse)
-	}
-
-	repo, err := NewSqliteDB(file)
-	if err != nil {
-		return fmt.Errorf("SqliteDB.AddRepo: %w", err)
-	}
-
-	err = repo.Open()
-	if err != nil {
-		return fmt.Errorf("SqliteDB.AddRepo: failed to open repo db: %w", err)
-	}
-	defer repo.Close()
-
-	err = migrate(repo)
-	if err != nil {
-		return fmt.Errorf("SqliteDB.AddRepo: failed to migrate repo: %w", err)
-	}
-
-	// Attach the repo database to the main database so we can perform joins.
-	// Access tables in the attached repo with "alias.table_name".
-	err = db.Attach(file, alias)
-	if err != nil {
-		return fmt.Errorf("SqliteDB.AddRepo: failed to attach repo: %w", err)
-	}
-
-	return nil
-}
-*/
-
 // ############################################################################################## //
 // ####################################        Users         #################################### //
 // ############################################################################################## //
@@ -279,7 +201,7 @@ func (db *SqliteDB) UsersMigrate() error {
 	return nil
 }
 
-// UserIsUnique checks if the username is unique in the database. If the username is not unique, it
+// IsUserUnique checks if the username is unique in the database. If the username is not unique, it
 // returns an ErrUserExists error.
 func (db *SqliteDB) UserIsUnique(username string) error {
 	if username == "" {
@@ -288,7 +210,7 @@ func (db *SqliteDB) UserIsUnique(username string) error {
 
 	err := db.IsUnique(sqlite_tb_users, "username = ?", username)
 	if errors.Is(err, ErrRecordExists) {
-		return fmt.Errorf("SqliteDB.UserIsUnique: %w", ErrUserExists)
+		return fmt.Errorf("SqliteDB.UserIsUnique: %w", ErrExists)
 	}
 
 	return err
@@ -318,7 +240,7 @@ func (db *SqliteDB) UserCreate(username, name, pwHash, groups string) (UserData,
 	r, err := db.Exec(query, username, name, pwHash, groups)
 	if err != nil {
 		if IsErrNotUnique(err) {
-			return UserData{}, fmt.Errorf("SqliteDB.UserCreate: %w", ErrUserExists)
+			return UserData{}, fmt.Errorf("SqliteDB.UserCreate: %w", ErrExists)
 		}
 
 		return UserData{}, fmt.Errorf("SqliteDB.UserCreate: %w", err)
@@ -459,7 +381,7 @@ func UserGroupsMigrate(db *SqliteDB) error {
 func (db *SqliteDB) UserGroupIsUnique(name string) error {
 	err := db.IsUnique(sqlite_tb_user_groups, "name = ?", name)
 	if errors.Is(err, ErrRecordExists) {
-		return fmt.Errorf("SqliteDB.UserGroupIsUnique: %w", ErrUserGroupExists)
+		return fmt.Errorf("SqliteDB.UserGroupIsUnique: %w", ErrExists)
 	}
 
 	return err
@@ -489,7 +411,7 @@ func (db *SqliteDB) UserGroupCreate(name, members, profiles string) (UserGroupDa
 	r, err := db.Exec(query, name, members, profiles)
 	if err != nil {
 		if IsErrNotUnique(err) {
-			return UserGroupData{}, fmt.Errorf("SqliteDB.UserGroupsCreate: %w", ErrUserGroupExists)
+			return UserGroupData{}, fmt.Errorf("SqliteDB.UserGroupsCreate: %w", ErrExists)
 		}
 
 		return UserGroupData{}, fmt.Errorf("SqliteDB.UserGroupsCreate: %w", err)
@@ -627,7 +549,7 @@ func (db *SqliteDB) UserGroupDelete(id int64) error {
 // ####################################        Tokens         ################################### //
 // ############################################################################################## //
 
-// UserGroupData represents a user group in the database.
+// TokenData represents a user group in the database.
 type TokenData struct {
 	Bearer  string
 	JWT     string    // Group name.
@@ -635,7 +557,7 @@ type TokenData struct {
 	Expires time.Time // Time last updated.
 }
 
-// UserGroupsMigrate creates the 'user_groups' table if it does not exist.
+// TokensMigrate creates the 'user_groups' table if it does not exist.
 func TokensMigrate(db *SqliteDB) error {
 	query := `
 	CREATE TABLE IF NOT EXISTS ` + sqlite_tb_tokens + ` (
@@ -646,7 +568,7 @@ func TokensMigrate(db *SqliteDB) error {
 	);
 	CREATE INDEX IF NOT EXISTS idx_tokens_bearer ON ` + sqlite_tb_tokens + ` (bearer);`
 	if _, err := db.Exec(query); err != nil {
-		return fmt.Errorf("SqliteDB.UserGroupsMigrate: %w", err)
+		return fmt.Errorf("SqliteDB.TokensMigrate: %w", err)
 	}
 
 	return nil
@@ -697,7 +619,7 @@ func (db *SqliteDB) TokenGet(bearer string) (*Claims, error) {
 	row, err := db.QueryRow(`SELECT * FROM `+sqlite_tb_tokens+` WHERE bearer = ?`, bearer)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return claims, fmt.Errorf("SqliteDB.TokenGet: %w", ErrTokenNotFound)
+			return claims, fmt.Errorf("SqliteDB.TokenGet: %w", ErrNotFound)
 		}
 
 		return claims, fmt.Errorf("SqliteDB.TokenGet: %w", err)
@@ -768,6 +690,209 @@ func (db *SqliteDB) TokenClean() error {
 	)
 	if err != nil {
 		return fmt.Errorf("SqliteDB.TokenClean: %w", err)
+	}
+
+	return nil
+}
+
+// ############################################################################################## //
+// ###################################        Servers        #################################### //
+// ############################################################################################## //
+
+// ServerData represents a user group in the database.
+type ServerData struct {
+	ID           int64
+	Name         string
+	Hostname     string
+	IP           string
+	UseIP        bool
+	ConnectorIDs string
+	Created      time.Time
+	Updated      time.Time
+}
+
+// ServersMigrate creates the 'user_groups' table if it does not exist.
+func ServersMigrate(db *SqliteDB) error {
+	query := `
+	CREATE TABLE IF NOT EXISTS ` + sqlite_tb_servers + ` (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		name VARCHAR(255) NOT NULL UNIQUE,
+		hostname VARCHAR(255) NOT NULL,
+		ip VARCHAR(15),
+		use_ip BOOLEAN NOT NULL DEFAULT FALSE,
+		connector_ids TEXT NOT NULL DEFAULT "[]",
+		create_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	);
+	CREATE INDEX IF NOT EXISTS idx_servers_name ON ` + sqlite_tb_servers + ` (name);`
+
+	if _, err := db.Exec(query); err != nil {
+		return fmt.Errorf("SqliteDB.ServersMigrate: %w", err)
+	}
+
+	/*
+		// Create the table for the Server to Connector relation.
+		query = `
+		CREATE TABLE IF NOT EXISTS server_connectors (
+			server_id INTEGER NOT NULL,
+			connector_id INTEGER NOT NULL,
+			FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE,
+			FOREIGN KEY (connector_id) REFERENCES connectors(id) ON DELETE CASCADE
+		)`
+
+		if err := r.Exec(query); err != nil {
+			return fmt.Errorf("db.Servers.Exec: %w", err)
+		}
+	*/
+
+	return nil
+}
+
+func (db *SqliteDB) ServerCreate(server ServerData) (ServerData, error) {
+	if server.Name == "" {
+		return ServerData{}, fmt.Errorf("SqliteDB.ServerCreate: server.Name- %w", core.ErrParamEmpty)
+	}
+
+	if server.Hostname == "" {
+		return ServerData{}, fmt.Errorf("SqliteDB.ServerCreate: hostserver.Name- %w", core.ErrParamEmpty)
+	}
+
+	if server.ConnectorIDs == "" {
+		server.ConnectorIDs = "[]"
+	}
+
+	query := `INSERT INTO ` + sqlite_tb_servers + ` (name, hostname, ip, use_ip, connector_ids) VALUES (?, ?, ?, ?, ?)`
+	r, err := db.Exec(query, server.Name, server.Hostname, server.IP, server.UseIP, server.ConnectorIDs)
+	if err != nil {
+		if IsErrNotUnique(err) {
+			return ServerData{}, fmt.Errorf("SqliteDB.ServerCreate: %w", ErrExists)
+		}
+
+		return ServerData{}, fmt.Errorf("SqliteDB.ServerCreate: %w", err)
+	}
+
+	id, err := r.LastInsertId()
+	if err != nil {
+		return ServerData{}, fmt.Errorf("SqliteDB.ServerCreate: %w", err)
+	}
+
+	return db.ServerGet(id)
+}
+
+func (db *SqliteDB) IsServerUnique(name string) error {
+	err := db.IsUnique(sqlite_tb_servers, "name = ?", name)
+	if errors.Is(err, ErrRecordExists) {
+		return fmt.Errorf("SqliteDB.IsServerUnique: %w", ErrExists)
+	}
+
+	return err
+}
+
+func (db *SqliteDB) ServerGet(id int64) (ServerData, error) {
+	query := `SELECT * FROM ` + sqlite_tb_servers + ` WHERE id = ?`
+	row, err := db.QueryRow(query, id)
+	if err != nil {
+		return ServerData{}, fmt.Errorf("SqliteDB.ServerGet: %w", err)
+	}
+
+	var data ServerData
+	err = row.Scan(
+		&data.ID,
+		&data.Name,
+		&data.Hostname,
+		&data.IP,
+		&data.UseIP,
+		&data.ConnectorIDs,
+		&data.Created,
+		&data.Updated,
+	)
+	if err != nil {
+		return data, fmt.Errorf("SqliteDB.ServerGet: %w", err)
+	}
+
+	return data, nil
+}
+
+func (db *SqliteDB) ServerGetAll(by, value string) ([]ServerData, error) {
+	if by != "name" && by != "hostname" && by != "ip" {
+		return nil, fmt.Errorf(
+			"SqliteDB.ServerGetAll: by - %w: allowed columns (name, hostname, ip)",
+			core.ErrParamInvalid,
+		)
+	}
+
+	if value == "" {
+		return nil, fmt.Errorf("SqliteDB.ServerGetAll: value - %w", core.ErrParamEmpty)
+	}
+
+	query := `SELECT * FROM ` + sqlite_tb_servers + ` WHERE ` + by + ` = ?`
+	rows, err := db.Query(query, value)
+	if err != nil {
+		return nil, fmt.Errorf("SqliteDB.ServerGetAll: %w", err)
+	}
+	defer rows.Close()
+
+	var servers []ServerData
+	for rows.Next() {
+		var data ServerData
+		err := rows.Scan(
+			&data.ID,
+			&data.Name,
+			&data.Hostname,
+			&data.IP,
+			&data.UseIP,
+			&data.ConnectorIDs,
+			&data.Created,
+			&data.Updated,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("SqliteDB.ServerGetAll: %w", err)
+		}
+
+		servers = append(servers, data)
+	}
+
+	return servers, nil
+}
+
+func (db *SqliteDB) ServerUpdate(server ServerData) (ServerData, error) {
+	if server.ID == 0 {
+		return ServerData{}, fmt.Errorf("SqliteDB.ServerUpdate: server.ID - %w", ErrInvalidID)
+	}
+
+	if server.Name == "" {
+		return ServerData{}, fmt.Errorf("SqliteDB.ServerUpdate: server.Name - %w", core.ErrParamEmpty)
+	}
+
+	if server.Hostname == "" {
+		return ServerData{}, fmt.Errorf("SqliteDB.ServerUpdate: server.Hostname - %w", core.ErrParamEmpty)
+	}
+
+	if server.ConnectorIDs == "" {
+		server.ConnectorIDs = "[]"
+	}
+
+	updated := time.Now()
+	query := `UPDATE ` + sqlite_tb_servers + ` SET name = ?, hostname = ?, ip = ?, use_ip = ?, connector_ids = ?, updated_at = ? WHERE id = ?`
+	if _, err := db.Exec(query, server.Name, server.Hostname, server.IP, server.UseIP, server.ConnectorIDs, updated, server.ID); err != nil {
+		return ServerData{}, fmt.Errorf("SqliteDB.ServerUpdate: %w", err)
+	}
+
+	return db.ServerGet(server.ID)
+}
+
+func (db *SqliteDB) ServerDelete(id int64) error {
+	if id == 0 {
+		return fmt.Errorf("SqliteDB.ServerDelete: %w", ErrInvalidID)
+	}
+
+	if _, err := db.ServerGet(id); err != nil {
+		return fmt.Errorf("SqliteDB.ServerDelete: %w", err)
+	}
+
+	query := `DELETE FROM ` + sqlite_tb_servers + ` WHERE id = ?`
+	if _, err := db.Exec(query, id); err != nil {
+		return fmt.Errorf("SqliteDB.ServerDelete: %w", err)
 	}
 
 	return nil

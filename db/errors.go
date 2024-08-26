@@ -10,15 +10,11 @@ var (
 	ErrInvalidID         = fmt.Errorf("invalid ID")
 	ErrInvalidAuthType   = fmt.Errorf("invalid auth type")
 	ErrInvalidPassphrase = fmt.Errorf("invalid passphrase")
-	// Users
-	ErrUserNotFound = fmt.Errorf("user not found")
-	ErrUserExists   = fmt.Errorf("user exists")
-	// User Groups
-	ErrUserGroupNotFound = fmt.Errorf("user group not found")
-	ErrUserGroupExists   = fmt.Errorf("user group exists")
+	// Record errors
+	ErrNotFound = fmt.Errorf("not found")
+	ErrExists   = fmt.Errorf("already exists")
 	// Tokens
-	ErrTokenNotFound = fmt.Errorf("token not found")
-	ErrTokenExpired  = fmt.Errorf("token has expired")
+	ErrTokenExpired = fmt.Errorf("token expired")
 )
 
 /*

@@ -176,14 +176,14 @@ var (
 	testUser1 = UserData{
 		Username: "user1",
 		Name:     "Bob",
-		Hash:     "102650912390a29378e092378b29834f",
+		Hash:     "$2a$10$duSxau9Spc8vyZqcr0Fk2O7c.YVcPBO3ZhKEU85Nx.b7bf34IMsj2",
 		Groups:   "[]",
 	}
 
 	testUser2 = UserData{
 		Username: "user2",
 		Name:     "Jan",
-		Hash:     "102650912390a29378e092378b29834f",
+		Hash:     "$2a$10$duSxau9Spc8vyZqcr0Fk2O7c.YVcPBO3ZhKEU85Nx.b7bf34IMsj2",
 		Groups:   `[1, 45]`,
 	}
 )
@@ -254,21 +254,13 @@ func TestSqliteDBUserCreate(t *testing.T) {
 	t.Run("empty pwHash", func(t *testing.T) {
 		_, err := db.UserCreate(testUser1.Username, testUser1.Name, "", testUser1.Groups)
 		require.Error(err, "UserCreate did not return an error")
-		require.Equal(
-			"SqliteDB.UserCreate: core.ValidatePasswordHash: hash was empty",
-			err.Error(),
-			"UserCreate returned an unexpected error",
-		)
+		require.ErrorIs(err, core.ErrParamEmpty, "UserCreate returned an unexpected error")
 	})
 
 	t.Run("short pwHash", func(t *testing.T) {
 		_, err := db.UserCreate(testUser1.Username, testUser1.Name, "102650912390a29", testUser1.Groups)
 		require.Error(err, "UserCreate did not return an error")
-		require.Equal(
-			"SqliteDB.UserCreate: core.ValidatePasswordHash: incorrect hash length: 15",
-			err.Error(),
-			"UserCreate returned an unexpected error",
-		)
+		require.ErrorIs(err, core.ErrParamBadFormat, "UserCreate returned an unexpected error")
 	})
 
 	t.Run("non-hex pwHash", func(t *testing.T) {
@@ -279,11 +271,7 @@ func TestSqliteDBUserCreate(t *testing.T) {
 			testUser1.Groups,
 		)
 		require.Error(err, "UserCreate did not return an error")
-		require.Equal(
-			"SqliteDB.UserCreate: core.ValidatePasswordHash: hash is not a hex string",
-			err.Error(),
-			"UserCreate returned an unexpected error",
-		)
+		require.ErrorIs(err, core.ErrParamBadFormat, "UserCreate returned an unexpected error")
 	})
 
 	t.Run("empty groups", func(t *testing.T) {
@@ -305,7 +293,7 @@ func TestSqliteDBUserCreate(t *testing.T) {
 	t.Run("duplicate", func(t *testing.T) {
 		_, err := db.UserCreate(testUser2.Username, testUser2.Name, testUser2.Hash, testUser2.Groups)
 		require.Error(err, "UserCreate returned an error: %s", err)
-		require.ErrorIs(err, ErrUserExists, "UserCreate did not return the expected error")
+		require.ErrorIs(err, ErrExists, "UserCreate did not return the expected error")
 	})
 }
 
@@ -331,7 +319,7 @@ func TestSqliteDBUserIsUnique(t *testing.T) {
 	t.Run("not unique", func(t *testing.T) {
 		err := db.UserIsUnique(testUser1.Username)
 		require.Error(err, "IsUnique did not return an error")
-		require.ErrorIs(err, ErrUserExists, "IsUnique did not return the expected error")
+		require.ErrorIs(err, ErrExists, "IsUnique did not return the expected error")
 	})
 }
 
@@ -607,7 +595,7 @@ func TestSqliteDBUserGroupCreate(t *testing.T) {
 
 		_, err = db.UserGroupCreate(testUserGroup2.Name, testUserGroup2.Members, testUserGroup2.Profiles)
 		require.Error(err, "UserGroupCreate did not return an error")
-		require.ErrorIs(err, ErrUserGroupExists, "UserGroupCreate did not return the expected error")
+		require.ErrorIs(err, ErrExists, "UserGroupCreate did not return the expected error")
 
 		err = db.UserGroupDelete(got.ID)
 		require.NoError(err, "UserGroupDelete returned an error: %s", err)
@@ -636,7 +624,7 @@ func TestSqliteDBUserGroupIsUnique(t *testing.T) {
 	t.Run("not unique", func(t *testing.T) {
 		err := db.UserGroupIsUnique(testUserGroup1.Name)
 		require.Error(err, "IsUnique did not return an error")
-		require.ErrorIs(err, ErrUserGroupExists, "IsUnique did not return the expected error")
+		require.ErrorIs(err, ErrExists, "IsUnique did not return the expected error")
 	})
 }
 
@@ -1090,136 +1078,348 @@ func TestSqliteDBTokenClean(t *testing.T) {
 	})
 }
 
-/*
-func TestSqliteAttach(t *testing.T) {
+// ############################################################################################## //
+// ###################################        Servers        #################################### //
+// ############################################################################################## //
+
+func TestSqliteDBServersMigrate(t *testing.T) {
 	require := require.New(t)
-	db_folder = testDBRoot
-	db := testSqliteDBSetup(t)
+	db := TestSqliteAuthDBSetup(t)
 	defer db.Close()
+	defer DeleteDB(TestAuthDBName)
 
-	db_file := "tmp.db"
-	db_alias := "t"
+	createQuery := `CREATE TABLE ` + sqlite_tb_servers + ` (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		name VARCHAR(255) NOT NULL UNIQUE,
+		hostname VARCHAR(255) NOT NULL,
+		ip VARCHAR(15),
+		port INTEGER NOT NULL DEFAULT 0,
+		use_ip BOOLEAN NOT NULL DEFAULT FALSE,
+		connector_ids TEXT NOT NULL DEFAULT "[]",
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	)`
+	indexQuery := `CREATE INDEX idx_servers_name ON ` + sqlite_tb_servers + ` (name)`
 
-	tmpDB, err := NewSqliteDB(db_file)
-	require.NoError(err, "NewSqliteDB returned an error: %s", err)
-	err = tmpDB.Open()
-	require.NoError(err, "Open returned an error: %s", err)
-	tmpDB.Close()
+	err := ServersMigrate(db)
+	require.NoError(err, "ServersMigrate returned an error: %s", err)
 
-	t.Run("empty filename", func(t *testing.T) {
-		err := db.Attach("", db_alias)
-		require.Error(err, "Attach did not return an error")
-		require.Equal("SqliteDB.Attach: filename is empty", err.Error(), "Attach returned an unexpected error")
+	t.Run("table", func(t *testing.T) {
+		row, err := db.QueryRow("SELECT sql FROM sqlite_schema WHERE name = '" + sqlite_tb_servers + "'")
+		require.NoError(err, "QueryRow returned an error: %s", err)
+
+		var schema string
+		err = row.Scan(&schema)
+		require.NoError(err, "Scan returned an error: %s", err)
+		require.Equal(createQuery, schema)
 	})
 
-	t.Run("empty alias", func(t *testing.T) {
-		err := db.Attach(db_file, "")
-		require.Error(err, "Attach did not return an error")
-		require.Equal("SqliteDB.Attach: alias is empty", err.Error(), "Attach returned an unexpected error")
+	t.Run("index", func(t *testing.T) {
+		row, err := db.QueryRow("SELECT sql FROM sqlite_schema WHERE name = 'idx_servers_name'")
+		require.NoError(err, "QueryRow returned an error: %s", err)
+
+		var schema string
+		err = row.Scan(&schema)
+		require.NoError(err, "Scan returned an error: %s", err)
+		require.Equal(indexQuery, schema)
+	})
+}
+
+var testServer1 = ServerData{
+	Name:         "Test Server 1",
+	Hostname:     "test-server-1",
+	IP:           "127.0.0.1",
+	UseIP:        true,
+	ConnectorIDs: "[1, 2, 3]",
+}
+
+var testServer2 = ServerData{
+	Name:         "Test Server 2",
+	Hostname:     "testserver02",
+	IP:           "192.168.10.58",
+	UseIP:        true,
+	ConnectorIDs: "[1, 5, 8]",
+}
+
+var testServer3 = ServerData{
+	Name:         "Test Server 3",
+	Hostname:     "test-server-1",
+	IP:           "127.0.0.1",
+	UseIP:        true,
+	ConnectorIDs: "[12]",
+}
+
+func TestSqliteDBServerCreate(t *testing.T) {
+	require := require.New(t)
+	db := TestSqliteAuthDBSetup(t)
+	defer db.Close()
+	defer DeleteDB(TestAuthDBName)
+
+	err := ServersMigrate(db)
+	require.NoError(err, "ServersMigrate returned an error: %s", err)
+
+	t.Run("empty name", func(t *testing.T) {
+		sd := testServer1
+		sd.Name = ""
+		_, err := db.ServerCreate(sd)
+		require.Error(err, "ServerCreate did not return an error")
+		require.ErrorIs(err, core.ErrParamEmpty, "ServerCreate did not return the expected error")
+	})
+
+	t.Run("empty Hostname", func(t *testing.T) {
+		sd := testServer1
+		sd.Hostname = ""
+		_, err := db.ServerCreate(sd)
+		require.Error(err, "ServerCreate did not return an error")
+		require.ErrorIs(err, core.ErrParamEmpty, "ServerCreate did not return the expected error")
+	})
+
+	t.Run("empty conns", func(t *testing.T) {
+		sd := testServer1
+		sd.ConnectorIDs = ""
+		got, err := db.ServerCreate(sd)
+		require.NoError(err, "ServerCreate returned an error: %s", err)
+		require.Equal(testServer1.Name, got.Name)
+		require.Equal(testServer1.Hostname, got.Hostname)
+		require.Equal(testServer1.IP, got.IP)
+		require.Equal(testServer1.UseIP, got.UseIP)
+		require.Equal("[]", got.ConnectorIDs)
 	})
 
 	t.Run("valid", func(t *testing.T) {
-		err := db.Attach(db_file, db_alias)
-		require.NoError(err, "Attach returned an error: %s", err)
-
-		rows, err := db.Query("PRAGMA database_list")
-		require.NoError(err, "Query returned an error: %s", err)
-
-		var found bool
-		for rows.Next() {
-			var id int
-			var name, file string
-
-			err := rows.Scan(&id, &name, &file)
-			require.NoError(err, "Scan returned an error: %s", err)
-
-			if name == db_alias {
-				found = true
-			}
-		}
-
-		require.True(found, "Attach did not attach the database")
+		got, err := db.ServerCreate(testServer2)
+		require.NoError(err, "ServerCreate returned an error: %s", err)
+		require.Equal(testServer2.Name, got.Name)
+		require.Equal(testServer2.Hostname, got.Hostname)
+		require.Equal(testServer2.IP, got.IP)
+		require.Equal(testServer2.UseIP, got.UseIP)
+		require.Equal(testServer2.ConnectorIDs, got.ConnectorIDs)
 	})
 }
 
-func TestSqliteIsAttached(t *testing.T) {
+func TestSqliteDBServerIsUnique(t *testing.T) {
 	require := require.New(t)
-	db_folder = testDBRoot
-	db := testSqliteDBSetup(t)
+	db := TestSqliteAuthDBSetup(t)
 	defer db.Close()
+	defer DeleteDB(TestAuthDBName)
 
-	db_file := "tmp.db"
-	db_alias := "t"
+	err := ServersMigrate(db)
+	require.NoError(err, "ServersMigrate returned an error: %s", err)
 
-	tmpDB, err := NewSqliteDB(db_file)
-	require.NoError(err, "NewSqliteDB returned an error: %s", err)
-	err = tmpDB.Open()
-	require.NoError(err, "Open returned an error: %s", err)
-	tmpDB.Close()
-
-	t.Run("false", func(t *testing.T) {
-		require.False(db.IsAttached(db_alias), "IsAttached returned true")
+	t.Run("unique", func(t *testing.T) {
+		err := db.IsServerUnique(testServer1.Name)
+		require.NoError(err, "ServerIsUnique returned an error: %s", err)
 	})
 
-	err = db.Attach(db_file, db_alias)
-	require.NoError(err, "Attach returned an error: %s", err)
+	_, err = db.ServerCreate(testServer1)
+	require.NoError(err, "ServerCreate returned an error: %s", err)
 
-	t.Run("true", func(t *testing.T) {
-		require.True(db.IsAttached(db_alias), "IsAttached returned false")
+	t.Run("not unique", func(t *testing.T) {
+		err := db.IsServerUnique(testServer1.Name)
+		require.Error(err, "ServerIsUnique did not return an error")
+		require.ErrorIs(err, ErrExists, "ServerIsUnique did not return the expected error")
 	})
-
-	DeleteDB(db_file)
 }
 
-func TestSqliteAddRepo(t *testing.T) {
+func TestSqliteDBServerGet(t *testing.T) {
 	require := require.New(t)
-	db_folder = testDBRoot
-	db := testSqliteDBSetup(t)
+	db := TestSqliteAuthDBSetup(t)
 	defer db.Close()
+	defer DeleteDB(TestAuthDBName)
 
-	db_file := "tmp.db"
-	db_alias := "t"
+	err := ServersMigrate(db)
+	require.NoError(err, "ServersMigrate returned an error: %s", err)
 
-	t.Run("nil db", func(t *testing.T) {
-		badDB := &SqliteDB{}
-		err := badDB.AddRepo(db_file, db_alias, testDBMigrater)
-		require.Error(err, "AddRepo did not return an error")
-		require.Equal("SqliteDB.AddRepo: db.DB is nil", err.Error(), "AddRepo returned an unexpected error")
-	})
+	want, err := db.ServerCreate(testServer1)
+	require.NoError(err, "ServerCreate returned an error: %s", err)
 
-	t.Run("bad migrater", func(t *testing.T) {
-		err := db.AddRepo(db_file, db_alias, testBadMigrater)
-		require.Error(err, "AddRepo did not return an error")
-		require.Equal(
-			"SqliteDB.AddRepo: failed to migrate repo: testBadMigrater: failed to migrate",
-			err.Error(),
-			"AddRepo returned an unexpected error",
-		)
-	})
-
-	err := db.AddRepo(db_file, db_alias, testDBMigrater)
 	t.Run("valid", func(t *testing.T) {
-		require.NoError(err, "AddRepo returned an error: %s", err)
-		require.FileExists(db_folder+"/"+db_file, "AddRepo did not create the database file")
-		require.True(db.IsAttached(db_alias), "AddRepo did not attach the database")
+		data, err := db.ServerGet(want.ID)
+		require.NoError(err, "ServerGet returned an error: %s", err)
+		require.Equal(want.Name, data.Name)
+		require.Equal(want.Hostname, data.Hostname)
+		require.Equal(want.IP, data.IP)
+		require.Equal(want.UseIP, data.UseIP)
+		require.Equal(want.ConnectorIDs, data.ConnectorIDs)
+		require.NotZero(data.Created)
+		require.NotZero(data.Updated)
 	})
 
-	row := db.QueryRow("SELECT COUNT(*) FROM t.test")
-	var count int
-	err = row.Scan(&count)
-	require.NoError(err, "Scan returned an error: %s", err)
-	log.Printf("count: %d", count)
-	require.True(db.IsAttached(db_alias), "AddRepo did not attach the database")
-	t.Run("duplicate alias", func(t *testing.T) {
-		err := db.AddRepo(db_file, db_alias, testDBMigrater)
-		require.Error(err, "AddRepo did not return an error")
-		require.Equal(
-			"SqliteDB.AddRepo: failed to attach repo: SqliteDB.Attach: alias is already in use",
+	t.Run("invalid", func(t *testing.T) {
+		data, err := db.ServerGet(9999)
+		require.Error(err, "ServerGet did not return an error")
+		require.ErrorIs(err, sql.ErrNoRows, "ServerGet did not return the expected error")
+		require.Equal(ServerData{}, data)
+	})
+}
+
+func TestSqliteDBServerGetAll(t *testing.T) {
+	require := require.New(t)
+	db := TestSqliteAuthDBSetup(t)
+	defer db.Close()
+	defer DeleteDB(TestAuthDBName)
+
+	err := ServersMigrate(db)
+	require.NoError(err, "ServersMigrate returned an error: %s", err)
+
+	want1, err := db.ServerCreate(testServer1)
+	require.NoError(err, "ServerCreate returned an error: %s", err)
+
+	want2, err := db.ServerCreate(testServer3)
+	require.NoError(err, "ServerCreate returned an error: %s", err)
+
+	t.Run("empty by", func(t *testing.T) {
+		data, err := db.ServerGetAll("", "ASC")
+		require.Error(err, "ServerGetAll did not return an error")
+		require.ErrorIs(err, core.ErrParamInvalid, "ServerGetAll did not return the expected error")
+		require.Empty(data)
+	})
+
+	t.Run("invalid by", func(t *testing.T) {
+		data, err := db.ServerGetAll("id", "ASC")
+		require.Error(err, "ServerGetAll did not return an error")
+		require.ErrorIs(err, core.ErrParamInvalid, "ServerGetAll did not return the expected error")
+		require.Empty(data)
+	})
+
+	t.Run("empty value", func(t *testing.T) {
+		data, err := db.ServerGetAll("name", "")
+		require.Error(err, "ServerGetAll did not return an error")
+		require.ErrorIs(err, core.ErrParamEmpty, "ServerGetAll did not return the expected error")
+		require.Empty(data)
+	})
+
+	t.Run("no match", func(t *testing.T) {
+		data, err := db.ServerGetAll("name", "not_a_server")
+		require.NoError(err, "ServerGetAll returned an error: %s", err)
+		require.Empty(data)
+	})
+
+	t.Run("name match", func(t *testing.T) {
+		data, err := db.ServerGetAll("name", want1.Name)
+		require.NoError(err, "ServerGetAll returned an error: %s", err)
+		require.Len(data, 1)
+		require.Equal(want1.Name, data[0].Name)
+	})
+
+	t.Run("hostname match", func(t *testing.T) {
+		data, err := db.ServerGetAll("hostname", want1.Hostname)
+		require.NoError(err, "ServerGetAll returned an error: %s", err)
+		require.Len(data, 2)
+		require.Equal(want1.Hostname, data[0].Hostname)
+		require.Equal(want2.Hostname, data[1].Hostname)
+	})
+
+	t.Run("ip match", func(t *testing.T) {
+		data, err := db.ServerGetAll("ip", want1.IP)
+		require.NoError(err, "ServerGetAll returned an error: %s", err)
+		require.Len(data, 2)
+		require.Equal(want1.IP, data[0].IP)
+		require.Equal(want2.IP, data[1].IP)
+	})
+}
+
+func TestSqliteDBServerUpdate(t *testing.T) {
+	require := require.New(t)
+	db := TestSqliteAuthDBSetup(t)
+	defer db.Close()
+	defer DeleteDB(TestAuthDBName)
+
+	err := ServersMigrate(db)
+	require.NoError(err, "ServersMigrate returned an error: %s", err)
+
+	want, err := db.ServerCreate(testServer1)
+	require.NoError(err, "ServerCreate returned an error: %s", err)
+
+	_, err = db.ServerCreate(testServer2)
+	require.NoError(err, "ServerCreate returned an error: %s", err)
+
+	t.Run("invalid id", func(t *testing.T) {
+		_, err := db.ServerUpdate(ServerData{ID: 0})
+		require.Error(err, "ServerUpdate did not return an error")
+		require.ErrorIs(err, ErrInvalidID, "ServerUpdate did not return the expected error")
+	})
+
+	t.Run("empty name", func(t *testing.T) {
+		_, err := db.ServerUpdate(ServerData{ID: 1})
+		require.Error(err, "ServerUpdate did not return an error")
+		require.ErrorIs(err, core.ErrParamEmpty, "ServerUpdate did not return the expected error")
+	})
+
+	t.Run("empty hostname", func(t *testing.T) {
+		_, err := db.ServerUpdate(ServerData{ID: 1, Name: "Test Server 1"})
+		require.Error(err, "ServerUpdate did not return an error")
+		require.ErrorIs(err, core.ErrParamEmpty, "ServerUpdate did not return the expected error")
+	})
+
+	t.Run("empty conns", func(t *testing.T) {
+		want.ConnectorIDs = ""
+		updated, err := db.ServerUpdate(want)
+		require.NoError(err, "ServerUpdate returned an error: %s", err)
+		require.Equal(want.Name, updated.Name)
+		require.Equal(want.Hostname, updated.Hostname)
+		require.Equal(want.IP, updated.IP)
+		require.Equal(want.UseIP, updated.UseIP)
+		require.Equal("[]", updated.ConnectorIDs)
+		want.ConnectorIDs = testServer1.ConnectorIDs
+	})
+
+	t.Run("dup name", func(t *testing.T) {
+		want.Name = testServer2.Name
+		_, err := db.ServerUpdate(want)
+		require.Error(err, "ServerUpdate did not return an error")
+		require.Contains(
 			err.Error(),
-			"AddRepo returned an unexpected error",
+			"UNIQUE constraint failed: servers.name",
+			"ServerUpdate did not return the expected error",
 		)
 	})
 
-	DeleteDB(db_file)
+	t.Run("valid", func(t *testing.T) {
+		want.Name = "Test Server 1 Updated"
+		want.Hostname = "test-server-1-updated"
+		want.IP = "192.168.30.50"
+		want.ConnectorIDs = "[1, 2, 3, 4, 5]"
+		updated, err := db.ServerUpdate(want)
+		require.NoError(err, "ServerUpdate returned an error: %s", err)
+		require.Equal(want.Name, updated.Name)
+		require.Equal(want.Hostname, updated.Hostname)
+		require.Equal(want.IP, updated.IP)
+		require.Equal(want.UseIP, updated.UseIP)
+		require.Equal(want.ConnectorIDs, updated.ConnectorIDs)
+	})
 }
-*/
+
+func TestSqliteDBServerDelete(t *testing.T) {
+	require := require.New(t)
+	db := TestSqliteAuthDBSetup(t)
+	defer db.Close()
+	defer DeleteDB(TestAuthDBName)
+
+	err := ServersMigrate(db)
+	require.NoError(err, "ServersMigrate returned an error: %s", err)
+
+	want, err := db.ServerCreate(testServer1)
+	require.NoError(err, "ServerCreate returned an error: %s", err)
+
+	t.Run("invalid id", func(t *testing.T) {
+		err := db.ServerDelete(0)
+		require.Error(err, "ServerDelete did not return an error")
+		require.ErrorIs(err, ErrInvalidID, "ServerDelete did not return the expected error")
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		err := db.ServerDelete(9999)
+		require.Error(err, "ServerDelete did not return an error")
+		require.ErrorIs(err, sql.ErrNoRows, "ServerDelete did not return the expected error")
+	})
+
+	t.Run("valid", func(t *testing.T) {
+		err := db.ServerDelete(want.ID)
+		require.NoError(err, "ServerDelete returned an error: %s", err)
+
+		_, err = db.ServerGet(want.ID)
+		require.Error(err, "ServerGet did not return an error")
+		require.ErrorIs(err, sql.ErrNoRows, "ServerGet did not return the expected error")
+	})
+}
