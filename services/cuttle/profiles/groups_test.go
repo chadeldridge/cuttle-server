@@ -33,7 +33,7 @@ func initGroupTest(t *testing.T, errConn bool) {
 }
 
 func createNewServer(t *testing.T, host string, errConn bool) connections.Server {
-	s, err := connections.NewServer(host, 0, &results, &logs)
+	s, err := connections.NewServer(host, &results, &logs)
 	if err != nil {
 		t.Fatal("", err)
 	}

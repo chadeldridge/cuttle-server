@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"net"
 	"regexp"
+	"strconv"
 	"time"
 
 	"golang.org/x/crypto/ssh"
@@ -17,12 +19,14 @@ const (
 
 // SSHConnector impletments the Connector interface for SSH connectivity.
 type SSHConnector struct {
+	ID          int64            // The unique ID for this connector.
 	Name        string           // A unique name for the connector to make it easier to add to a server.
 	isConnected bool             // Track if we have an active connection to the server.
 	hasSession  bool             // Indicates there's an active session so we don't close the connection on it.
 	Auth        []ssh.AuthMethod // Each auth method will be tried in turn until one works or all fail.
 	// AuthMethods []AuthMethod     // A list of AuthMethods to be used for authentication.
 	User string // The username to login to the server with.
+	port int    // The port to connect to the server on. Default is 22.
 	*ssh.Client
 	*ssh.Session
 }
@@ -35,7 +39,13 @@ func NewSSHConnector(name, username string) (SSHConnector, error) {
 		return s, err
 	}
 
-	return s, s.SetUser(username)
+	err := s.SetUser(username)
+	if err != nil {
+		return s, err
+	}
+
+	err = s.SetPort(SSHDefaultPort)
+	return s, err
 }
 
 // SetName sets a unique Name to make it easier to add to a server.
@@ -57,6 +67,23 @@ func (c *SSHConnector) SetUser(username string) error {
 
 	// INCOMPLETE: Add username validation here
 	c.User = username
+	return nil
+}
+
+// SetPort sets the Port to be used when connecting to the server. If port is 0 it will be set to
+// SSHDefaultPort instead.
+func (c *SSHConnector) SetPort(port int) error {
+	// Negative port numbers are not valid so return an error. We could use uint16 to guarantee a
+	// valid port number but using int makes things easier elsewhere. Fewer conversions needed.
+	if port < 0 || port > 65535 {
+		return fmt.Errorf("profiles.Server.SetPort: port must be between 0 and 65535")
+	}
+
+	if port == 0 {
+		port = SSHDefaultPort
+	}
+
+	c.port = port
 	return nil
 }
 
@@ -184,10 +211,17 @@ func foundExpect(data []byte, expect string) bool {
 func (c *SSHConnector) IsConnected() bool  { return c.isConnected }
 func (c *SSHConnector) IsActive() bool     { return c.hasSession }
 func (c *SSHConnector) Protocol() Protocol { return SSHProtocol }
+func (c *SSHConnector) GetID() int64       { return c.ID }
 func (c *SSHConnector) GetUser() string    { return c.User }
-func (c *SSHConnector) DefaultPort() int   { return SSHDefaultPort }
 func (c *SSHConnector) IsEmpty() bool      { return c.User == "" }
 func (c *SSHConnector) IsValid() bool      { err := c.Validate(); return err == nil }
+
+func (c *SSHConnector) Port() int {
+	if c.port == 0 {
+		return SSHDefaultPort
+	}
+	return c.port
+}
 
 func (c SSHConnector) Validate() error {
 	if c.User == "" {
@@ -201,8 +235,8 @@ func (c SSHConnector) Validate() error {
 	return nil
 }
 
-// Open creates a connection to the server. addr is the server address to connect to in the format
-// of "hostname:port" or "ip:port".
+// Open creates a connection to the server. The addr parameter should NOT include the port, just
+// the Server.Hostname or Server.IP.
 func (c *SSHConnector) Open(addr string, bufs Buffers) error {
 	config := &ssh.ClientConfig{
 		User:            c.User,
@@ -211,7 +245,7 @@ func (c *SSHConnector) Open(addr string, bufs Buffers) error {
 		// TODO: Add a timeout to the connection.
 	}
 
-	// log.Print("Dialing server...")
+	addr = net.JoinHostPort(addr, strconv.Itoa(c.Port()))
 	client, err := ssh.Dial("tcp", addr, config)
 	if err != nil {
 		bufs.Log(time.Now(), err.Error())
@@ -221,8 +255,6 @@ func (c *SSHConnector) Open(addr string, bufs Buffers) error {
 
 	c.isConnected = true
 	c.Client = client
-	// log.Print("done.")
-	// INCOMPLETE: Add a keepalive later. Make sure keepalive is cancelled when the connection is closed.
 	return nil
 }
 

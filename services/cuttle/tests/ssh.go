@@ -55,14 +55,16 @@ func getSSHHideExp(args []TestArg) bool {
 	return v.(bool)
 }
 
+// Run runs the SSHTest on the given server.
 func (t SSHTest) Run(server connections.Server, args ...TestArg) error {
-	_, err := connections.Pool.Open(&server)
+	err := server.Open(connections.SSH)
 	if err != nil {
 		server.Buffers.Log(time.Now(), fmt.Sprintf("SSHTest.Run: %s", err))
 		return ErrTestFailed
 	}
+	defer server.Close(connections.SSH, false)
 
-	err = server.Run(t.Cmd, t.Exp)
+	err = server.Run(connections.SSH, t.Cmd, t.Exp)
 	if err != nil {
 		server.Buffers.Log(time.Now(), fmt.Sprintf("SSHTest.Run: %s", err))
 		return ErrTestFailed

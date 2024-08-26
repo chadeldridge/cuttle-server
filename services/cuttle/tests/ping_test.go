@@ -17,7 +17,7 @@ func testServerSetup(t *testing.T) connections.Server {
 	var testResults bytes.Buffer
 	var testLogs bytes.Buffer
 
-	s, err := connections.NewServer(testHost, 0, &testResults, &testLogs)
+	s, err := connections.NewServer(testHost, &testResults, &testLogs)
 	require.NoError(err, "connections.NewServer() returned an error: %s", err)
 
 	return s

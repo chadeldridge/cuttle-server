@@ -51,8 +51,8 @@ func TestMockConnectorErrOnConnectionOpen(t *testing.T) {
 	require := require.New(t)
 	conn := testNewMockConnector()
 	server := Server{
-		Hostname:  testHost,
-		Connector: &conn,
+		Hostname:   testHost,
+		Connectors: make(map[Protocol]Connector),
 		Buffers: Buffers{
 			User:     testUser,
 			Hostname: testHost,
@@ -61,21 +61,23 @@ func TestMockConnectorErrOnConnectionOpen(t *testing.T) {
 		},
 	}
 
+	server.Connectors[MOCK] = &conn
+
 	t.Run("default", func(t *testing.T) {
-		err := conn.Open(server.GetAddr(), server.Buffers)
+		err := conn.Open(server.GetHostAddr(), server.Buffers)
 		require.NoError(err, "MockConnector.Open() returned an error: %s", err)
 	})
 
 	t.Run("true", func(t *testing.T) {
 		conn.ErrOnConnectionOpen(true)
-		err := conn.Open(server.GetAddr(), server.Buffers)
+		err := conn.Open(server.GetHostAddr(), server.Buffers)
 		require.Error(err, "MockConnector.Open() did not return an error")
 	})
 
 	t.Run("false", func(t *testing.T) {
 		conn.isConnected = false
 		conn.ErrOnConnectionOpen(false)
-		err := conn.Open(server.GetAddr(), server.Buffers)
+		err := conn.Open(server.GetHostAddr(), server.Buffers)
 		require.NoError(err, "MockConnector.Open() returned an error: %s", err)
 	})
 }
@@ -295,10 +297,23 @@ func TestMockConnectorUser(t *testing.T) {
 	})
 }
 
-func TestMockConnectorDefaultPort(t *testing.T) {
+func TestMockConnectorPort(t *testing.T) {
 	require := require.New(t)
-	conn := testNewMockConnector()
-	require.Equal(MockDefaultPort, conn.DefaultPort(), "MockConnector.DefaultPort() di not match MockDefaultPort")
+
+	t.Run("empty port", func(t *testing.T) {
+		conn := MockConnector{port: 0}
+		require.Equal(MockDefaultPort, conn.Port(), "MockConnector.Port() did not match MockDefaultPort")
+	})
+
+	t.Run("default port", func(t *testing.T) {
+		conn := testNewMockConnector()
+		require.Equal(MockDefaultPort, conn.Port(), "MockConnector.Port() did not match MockDefaultPort")
+	})
+
+	t.Run("custom port", func(t *testing.T) {
+		conn := MockConnector{port: 1234}
+		require.Equal(1234, conn.Port(), "MockConnector.Port() did not match 1234")
+	})
 }
 
 func TestMockConnectorIsEmpty(t *testing.T) {
@@ -387,11 +402,15 @@ func TestMockConnectorRun(t *testing.T) {
 
 	require := require.New(t)
 	conn := testNewMockConnector()
-	server := Server{Hostname: testHost, Buffers: Buffers{Results: &res, Logs: &log}}
+	server := Server{
+		Hostname:   testHost,
+		Connectors: make(map[Protocol]Connector),
+		Buffers:    Buffers{Results: &res, Logs: &log},
+	}
 	cmd := "echo testing"
 	exp := "testing"
 
-	server.Connector = &conn
+	server.Connectors[MOCK] = &conn
 
 	t.Run("not connected", func(t *testing.T) {
 		conn.isConnected = false

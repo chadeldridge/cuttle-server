@@ -381,7 +381,7 @@ func TestAuthenticationSignup(t *testing.T) {
 	t.Run("user exists", func(t *testing.T) {
 		u, err := Signup(authDB, "testUser2", "Test User 2", want.password)
 		require.Error(err, "Signup did not return an error")
-		require.ErrorIs(err, db.ErrUserExists, "Signup did not return the correct error")
+		require.ErrorIs(err, db.ErrExists, "Signup did not return the correct error")
 		require.Empty(u, "Signup returned an non-empty user")
 	})
 

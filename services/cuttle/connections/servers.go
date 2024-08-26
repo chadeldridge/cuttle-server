@@ -3,42 +3,92 @@ package connections
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
-	"strconv"
 
+	"github.com/chadeldridge/cuttle-server/db"
 	validator "github.com/go-playground/validator/v10"
 )
 
 var validate = validator.New()
 
 type Server struct {
-	Name     string
-	Hostname string
-	IP       net.IP
-	Port     int
-	UseIP    bool
-	Connector
+	ID         int64
+	Name       string
+	Hostname   string
+	IP         net.IP
+	UseIP      bool
+	Connectors map[Protocol]Connector
 	Buffers
 }
 
-// NewServer creates a new Server object with a display name, port, and stores the byte.Buffers to
-// be used for results and logs output. If port is set to 0, the default port for the Connector
-// will always be used.
-func NewServer(hostname string, port int, results, logs *bytes.Buffer) (Server, error) {
-	s := Server{}
+// NewServer creates a new Server object with a display name, and stores the byte.Buffers to
+// be used for results and logs output.
+func NewServer(hostname string, results, logs *bytes.Buffer) (Server, error) {
+	s := Server{Connectors: make(map[Protocol]Connector)}
 	if err := s.SetHostname(hostname); err != nil {
-		return s, err
-	}
-
-	if err := s.SetPort(port); err != nil {
 		return s, err
 	}
 
 	s.Buffers = NewBuffers(s.Hostname, results, logs)
 
 	return s, nil
+}
+
+func NewFromServerData(data db.ServerData) (Server, error) {
+	s := Server{
+		ID:         data.ID,
+		Name:       data.Name,
+		Hostname:   data.Hostname,
+		IP:         net.ParseIP(data.Hostname),
+		UseIP:      data.UseIP,
+		Connectors: make(map[Protocol]Connector),
+	}
+
+	// If there are no connectors, return the server as is.
+	if data.ConnectorIDs == "[]" {
+		return s, nil
+	}
+
+	var conns []int64
+	err := json.Unmarshal([]byte(data.ConnectorIDs), &conns)
+	if err != nil {
+		return s, fmt.Errorf("profiles.NewFromServerData: %w", err)
+	}
+
+	// INCOMPLETE: Add a way to get the connector from the database.
+
+	return s, nil
+}
+
+func (s Server) ToServerData() db.ServerData {
+	sd := db.ServerData{
+		Name:     s.Name,
+		Hostname: s.Hostname,
+		IP:       s.IP.String(),
+		UseIP:    s.UseIP,
+	}
+
+	if s.ID != 0 {
+		sd.ID = s.ID
+	}
+
+	if len(s.Connectors) == 0 {
+		sd.ConnectorIDs = "[]"
+		return sd
+	}
+
+	conns := make([]int64, len(s.Connectors))
+	for _, c := range s.Connectors {
+		conns = append(conns, c.GetID())
+	}
+
+	data, _ := json.Marshal(conns)
+	sd.ConnectorIDs = string(data)
+
+	return sd
 }
 
 // GetIP returns Server.ip as a string.
@@ -64,28 +114,64 @@ func (s Server) Validate() error {
 		return errors.New("profiles.Server.Validate: Logs buffer is nil")
 	}
 
-	if s.Connector == nil {
-		return errors.New("profiles.Server.Validate: Connector is nil")
+	if s.Connectors == nil || len(s.Connectors) == 0 {
+		return nil
 	}
 
-	return s.Connector.Validate()
+	for p, c := range s.Connectors {
+		// There should never be an invalid connector in the list.
+		if p == INVALID {
+			return fmt.Errorf("profiles.Server.Validate: Connector listed as invalid in Connectors")
+		}
+
+		// Make sure the connector is valid.
+		err := c.Validate()
+		if err != nil {
+			return fmt.Errorf("profiles.Server.Validate: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// Open creates a connection to the server using the given Protocol. If Server.useIP is true then
+// Server.ip will be used instead of Server.hostname.
+func (s Server) Open(proto Protocol) error {
+	if !s.UseIP && s.Hostname == "" {
+		return errors.New("profiles.Server.Open: hostname is empty")
+	}
+
+	err := s.Connectors[proto].Open(s.GetHostAddr(), s.Buffers)
+	if err != nil {
+		return fmt.Errorf("profiles.Server.Open: %w", err)
+	}
+
+	return nil
 }
 
 // Run passes cmd(command) and exp(expect), along with itself, on to Connector.Run to be executed.
 // See Connector.Run() for more details.
-func (s Server) Run(cmd, exp string) error { return s.Connector.Run(s.Buffers, cmd, exp) }
+func (s Server) Run(proto Protocol, cmd, exp string) error {
+	return s.Connectors[proto].Run(s.Buffers, cmd, exp)
+}
 
 // TestConnection tries to open a connection to the server and sends an echo command to validate
 // connectivity and basic access.
-func (s Server) TestConnection() error {
-	_, err := Pool.Open(&s)
+func (s Server) TestConnection(proto Protocol) error {
+	conn := s.Connectors[proto]
+	err := conn.Open(s.GetHostAddr(), s.Buffers)
 	if err != nil {
-		return fmt.Errorf("profiles.Server.TestConnection: %s", err)
+		return fmt.Errorf("profiles.Server.TestConnection: %w", err)
 	}
-	return s.Connector.TestConnection(s.Buffers)
+
+	return conn.TestConnection(s.Buffers)
 }
 
-// GetAddr returns the host address to use, without a port. Returns "hostname" or "ip".
+func (s Server) Close(proto Protocol, force bool) error {
+	return s.Connectors[proto].Close(force)
+}
+
+// GetAddr returns the host address to use, without a port. Returns "hostname" or "ip" if UseIP.
 func (s Server) GetHostAddr() string {
 	host := s.Hostname
 	// Overwrite hostname with IP if Server.usIP is true. Properly set hostnames are preferred
@@ -95,19 +181,6 @@ func (s Server) GetHostAddr() string {
 	}
 
 	return host
-}
-
-// GetAddr determines the address to connect to. Returns "hostname:port" or "ip:port". If port is
-// set to 0, GetAddr uses protocol's default port instead.
-func (s Server) GetAddr() string {
-	// If Server.port is set to 0, use the Connector's default port.
-	p := s.Port
-	if p == 0 {
-		p = s.DefaultPort()
-	}
-
-	// return "host:port"
-	return net.JoinHostPort(s.GetHostAddr(), strconv.Itoa(p))
 }
 
 // SetUseIP sets the useIP field to true or false. This field is used to determine if the ip field
@@ -137,7 +210,7 @@ func (s *Server) SetHostname(hostname string) error {
 
 	// Make sure the hostname follows some type of valid format.
 	if err := validate.Var(hostname, "hostname"); err != nil {
-		return err
+		return fmt.Errorf("profiles.Server.SetHostname: hostname not valid: %s", hostname)
 	}
 
 	// hostname should be valid at this point so set it.
@@ -184,28 +257,15 @@ func (s *Server) SetIP(ip string) error {
 	return fmt.Errorf("profiles.Server.SetIP: ip not valid: %s", ip)
 }
 
-// SetPort sets the Port to be used when connecting to the server. Setting port to 0 will cause
-// Connector.DefaultPort() to be used when a connection string is created.
-func (s *Server) SetPort(port int) error {
-	// Negative port numbers are not valid so return an error. We could use uint16 to guarantee a
-	// valid port number but using int makes things easier elsewhere. Fewer conversions needed.
-	if port < 0 || port > 65535 {
-		return fmt.Errorf("profiles.Server.SetPort: port must be between 0 and 65535")
-	}
-
-	s.Port = port
-	return nil
-}
-
 // SetConnector sets the Connector interface to be used for connecting to the server.
 // MockConnector, SSHConnector, etc. server.SetConnector(&SSHConnector{})
-func (s *Server) SetConnector(connector Connector) error {
+func (s *Server) SetConnector(conn Connector) error {
 	// Setting a nil Connector could get us in trouble elsewhere.
-	if connector == nil {
+	if conn == nil {
 		return errors.New("profiles.Server.SetHandler: Connector was nil")
 	}
 
-	s.Connector = connector
+	s.Connectors[conn.Protocol()] = conn
 	return nil
 }
 

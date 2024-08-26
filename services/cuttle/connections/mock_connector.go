@@ -3,6 +3,7 @@ package connections
 import (
 	"errors"
 	"fmt"
+	"math/rand"
 	"os/exec"
 	"strings"
 	"time"
@@ -15,7 +16,9 @@ const (
 
 // MockConnector holds the minimal information needed for creating a mock Connector interface.
 type MockConnector struct {
+	id           int64
 	user         string
+	port         int
 	isConnected  bool
 	hasSession   bool
 	connOpenErr  bool
@@ -26,8 +29,10 @@ type MockConnector struct {
 
 // NewMockConnector creates a MockConnector to simulate connecting to a server.
 func NewMockConnector(name, username string) (MockConnector, error) {
-	m := MockConnector{}
-
+	m := MockConnector{
+		id:   rand.Int63n(5000),
+		port: MockDefaultPort,
+	}
 	err := m.SetUser(username)
 	return m, err
 }
@@ -39,6 +44,19 @@ func (c *MockConnector) SetUser(username string) error {
 	}
 
 	c.user = username
+	return nil
+}
+
+func (c *MockConnector) SetPort(port int) error {
+	if port < 0 || port > 65535 {
+		return fmt.Errorf("profiles.Server.SetPort: port must be between 0 and 65535")
+	}
+
+	if port == 0 {
+		port = SSHDefaultPort
+	}
+
+	c.port = port
 	return nil
 }
 
@@ -79,10 +97,18 @@ func (c *MockConnector) CloseSession() error {
 func (c MockConnector) IsConnected() bool  { return c.isConnected }
 func (c MockConnector) IsActive() bool     { return c.hasSession }
 func (c MockConnector) Protocol() Protocol { return MockProtocol }
+func (c MockConnector) GetID() int64       { return c.id }
 func (c MockConnector) GetUser() string    { return c.user }
-func (c MockConnector) DefaultPort() int   { return MockDefaultPort }
 func (c MockConnector) IsEmpty() bool      { return c.user == "" }
 func (c MockConnector) IsValid() bool      { return c.user != "" }
+
+func (c MockConnector) Port() int {
+	if c.port == 0 {
+		return MockDefaultPort
+	}
+
+	return c.port
+}
 
 func (c MockConnector) Validate() error {
 	if c.user == "" {

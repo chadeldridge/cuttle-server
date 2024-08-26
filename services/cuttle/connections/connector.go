@@ -26,10 +26,12 @@ type Connector interface {
 	IsActive() bool
 	// Protocol returns the Protocol enum for this Connector type.
 	Protocol() Protocol
+	// GetID returns the unique ID for this Connector.
+	GetID() int64
 	// GetUser returns the username used by this Connector.
 	GetUser() string
-	// DefaultPort returns the default port number used by this Connector type.
-	DefaultPort() int
+	// Port returns the port number used for this Connector.
+	Port() int
 	// IsEmpty checks that fields populated by New contain data.
 	IsEmpty() bool
 	// IsValid returns true if no errors are returned by Connector.Validate(). If IsValid

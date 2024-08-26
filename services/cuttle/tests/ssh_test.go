@@ -131,11 +131,11 @@ func TestTilesSetExp(t *testing.T) {
 func TestSSHTestRun(t *testing.T) {
 	require := require.New(t)
 	server := testServerSetup(t)
-	defer connections.Pool.CloseAll()
 
 	conn, err := connections.NewMockConnector("my connector", testUser)
 	require.NoError(err, "connections.NewMockConnector() returned an error: %s", err)
-	server.SetConnector(&conn)
+	err = server.SetConnector(&conn)
+	require.NoError(err, "server.SetConnector() returned an error: %s", err)
 
 	t.Run("pass", func(t *testing.T) {
 		test := SSHTest{HideCmd: true, HideExp: true, Cmd: "echo Hello", Exp: "Hello"}
@@ -148,4 +148,17 @@ func TestSSHTestRun(t *testing.T) {
 		err := test.Run(server)
 		require.Error(err, "SSHTest.Run() did not return an error")
 	})
+
+	/*
+		t.Run("ssh conn", func(t *testing.T) {
+			c, err := connections.NewSSHConnector("test connector", testUser)
+			require.NoError(err, "connections.NewSSHConnector() returned an error: %s", err)
+			err = server.SetConnector(&c)
+			require.NoError(err, "server.SetConnector() returned an error: %s", err)
+
+			test := SSHTest{HideCmd: true, HideExp: true, Cmd: "echo Hello", Exp: "Hello"}
+			err = test.Run(server)
+			require.NoError(err, "SSHTest.Run() returned an error: %s", err)
+		})
+	*/
 }
